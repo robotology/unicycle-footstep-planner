@@ -1,5 +1,5 @@
 # unicycle-footstep-planner
-This is a library aimed at generating walking trajectories, adopting the model of a unicycle under the hood. Some more details on the theory and the implementation will be coming soo.
+This is a library aimed at generating walking trajectories, adopting the model of a unicycle under the hood. Some more details on the theory and the implementation will be coming soon.
 
 ## Dependencies
 
@@ -15,10 +15,15 @@ cmake ..
 make
 [sudo] make install
 ```
-Notice: ``sudo`` is not necessary if you specify the ``CMAKE_INSTALL_PREFIX``
-
-Then, in the ``.bashrc``
+Notice: ``sudo`` is not necessary if you specify the ``CMAKE_INSTALL_PREFIX``. In this case it is necessary to add in the ``.bashrc`` the following lines:
+### Linux
 ```
 export UnicyclePlanner_DIR=/path/where/you/installed/
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$UnicyclePlanner_DIR/lib
+```
+
+## macOs
+```
+export UnicyclePlanner_DIR=/path/where/you/installed/
+export DYLD_LIBRARY_PATH=$LD_LIBRARY_PATH:$UnicyclePlanner_DIR/lib
 ```
