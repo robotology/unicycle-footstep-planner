@@ -1,0 +1,8 @@
+find_package(iDynTree 0.7.2 REQUIRED)
+find_package(idyntree_optimalcontrol REQUIRED)
+find_package(Eigen3 REQUIRED)
+
+
+if(NOT TARGET UnicyclePlanner)
+  include("${CMAKE_CURRENT_LIST_DIR}/unicycle_planner.cmake")
+endif()
