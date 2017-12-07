@@ -178,7 +178,7 @@ bool plannerTest(){
     //left->addStep(initPosition, iDynTree::deg2rad(15), 25); //fake initialization
 
     start = clock();
-    iDynTree::assertTrue(planner.computeNewSteps(left, right));
+    iDynTree::assertTrue(planner.computeNewSteps(left, right, conf.initTime));
     std::cerr <<"Test Finished in " << (static_cast<double>(clock() - start) / CLOCKS_PER_SEC) << " seconds."<<std::endl;
 
     StepList leftSteps = left->getSteps();
@@ -206,7 +206,7 @@ bool plannerTest(){
     iDynTree::assertTrue(planner.addDesiredTrajectoryPoint(lastStep.impactTime+10, newDesired, dummyVector));
     iDynTree::assertTrue(planner.setEndTime(lastStep.impactTime+10)); // necessary!
 
-    iDynTree::assertTrue(planner.computeNewSteps(left, right));
+    iDynTree::assertTrue(planner.computeNewSteps(left, right, lastStep.impactTime));
 
     leftSteps = left->getSteps();
     rightSteps = right->getSteps();

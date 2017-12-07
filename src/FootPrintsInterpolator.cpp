@@ -43,8 +43,8 @@ bool FeetInterpolator::createPhasesTimings()
         return false;
     }
 
-    m_lFootPhases.reset(new std::vector<StepPhase>);
-    m_rFootPhases.reset(new std::vector<StepPhase>);
+    m_lFootPhases.reset(new std::vector<StepPhase>());
+    m_rFootPhases.reset(new std::vector<StepPhase>());
 
     m_phaseShift.clear();
     m_phaseShift.push_back(0); //necessary, otherwise I cannot call m_phaseShift.back() later
@@ -55,7 +55,7 @@ bool FeetInterpolator::createPhasesTimings()
     std::shared_ptr<std::vector<StepPhase> > swing, stance;
 
     if (m_orderedSteps.size() == 0){
-        double endSwitchSamples = std::round(m_endSwitch/m_dT); //last shift to the center
+        int endSwitchSamples = std::round(m_endSwitch/m_dT); //last shift to the center
 
         m_lFootPhases->reserve(endSwitchSamples);
         m_rFootPhases->reserve(endSwitchSamples);
@@ -90,10 +90,14 @@ bool FeetInterpolator::createPhasesTimings()
         nextStepindex = m_orderedSteps[orderedStepIndex];
         stepTime = nextStepindex->impactTime - previouStepTime;
 
+        if (stepTime < 0){
+            std::cerr <<"Something went wrong. The stepTime appears to be negative." << std::endl;
+            return false;
+        }
 
         if (nextStepindex == m_orderedSteps.front()){ //first half step
             //Timings
-            switchTime = m_switchPercentage/(1 - (m_switchPercentage/2)) * stepTime; //half switch
+            switchTime = (m_switchPercentage/(1 - (m_switchPercentage/2.0)) * stepTime)/2.0; //half switch
         } else { //general case
             switchTime = m_switchPercentage * stepTime; //full switch
         }

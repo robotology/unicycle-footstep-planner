@@ -11,102 +11,97 @@
 #include "iDynTree/Core/EigenHelpers.h"
 #include <iostream>
 
-bool UnicyclePlanner::getInitialStateFromFeet(double& initTime)
+bool UnicyclePlanner::getInitialStateFromFeet(double initTime)
 {
-    double plannerInitTime;
-    initTime = 0;
-    if(!m_controller->getDesiredTrajectoryInitialTime(plannerInitTime))
-        return false;
 
     iDynTree::Vector2 initialUnicycle, dummyVector;
     initialUnicycle.zero();
     dummyVector.zero();
     double initialAngle = 0;
+    double initTimeFromFeet;
 
     if ((m_left->numberOfSteps() == 0) && (m_right->numberOfSteps() == 0)){
 
-        if(!m_controller->getDesiredPoint(plannerInitTime, initialUnicycle, dummyVector))
+        if (!m_controller->getDesiredPoint(initTime, initialUnicycle, dummyVector))
             return false;
 
         initialUnicycle(0) = initialUnicycle(0) - m_controller->getPersonDistance()(0);
         initialUnicycle(1) = initialUnicycle(1) - m_controller->getPersonDistance()(1);
         initialAngle = 0;
-        initTime = plannerInitTime;
 
-        m_left->addStepFromUnicycle(initialUnicycle, initialAngle, plannerInitTime);
-        m_right->addStepFromUnicycle(initialUnicycle, initialAngle, plannerInitTime);
+        m_left->addStepFromUnicycle(initialUnicycle, initialAngle, initTime);
+        m_right->addStepFromUnicycle(initialUnicycle, initialAngle, initTime);
 
         m_swingLeft = m_startLeft;
 
-    } else if (m_left->numberOfSteps() == 0){
-        Step lastFoot;
-
-        if (!(m_right->getLastStep(lastFoot)))
-            return false;
-
-        if (!(m_right->getUnicyclePositionFromFoot(lastFoot.position, lastFoot.angle, initialUnicycle)))
-            return false;
-
-        initialAngle = lastFoot.angle;
-        initTime = lastFoot.impactTime;
-        m_swingLeft = true;
-
-    } else if (m_right->numberOfSteps() == 0){
-        Step lastFoot;
-
-        if (!(m_left->getLastStep(lastFoot)))
-            return false;
-
-        if (!(m_left->getUnicyclePositionFromFoot(lastFoot.position, lastFoot.angle, initialUnicycle)))
-            return false;
-
-        initialAngle = lastFoot.angle;
-        initTime = lastFoot.impactTime;
-        m_swingLeft = false;
     } else {
-        Step lastFootL, lastFootR;
+        if (m_left->numberOfSteps() == 0){
+            Step lastFoot;
 
-        if (!(m_left->getLastStep(lastFootL)) || !(m_right->getLastStep(lastFootR)))
-            return false;
+            if (!(m_right->getLastStep(lastFoot)))
+                return false;
 
-        if(lastFootL.impactTime == lastFootR.impactTime){
-            if (m_startLeft){
+            if (!(m_right->getUnicyclePositionFromFoot(lastFoot.position, lastFoot.angle, initialUnicycle)))
+                return false;
+
+            initialAngle = lastFoot.angle;
+            initTimeFromFeet = lastFoot.impactTime;
+            m_swingLeft = true;
+
+        } else if (m_right->numberOfSteps() == 0){
+            Step lastFoot;
+
+            if (!(m_left->getLastStep(lastFoot)))
+                return false;
+
+            if (!(m_left->getUnicyclePositionFromFoot(lastFoot.position, lastFoot.angle, initialUnicycle)))
+                return false;
+
+            initialAngle = lastFoot.angle;
+            initTimeFromFeet = lastFoot.impactTime;
+            m_swingLeft = false;
+        } else {
+            Step lastFootL, lastFootR;
+
+            if (!(m_left->getLastStep(lastFootL)) || !(m_right->getLastStep(lastFootR)))
+                return false;
+
+            if(lastFootL.impactTime == lastFootR.impactTime){
+                if (m_startLeft){
+                    if (!(m_right->getUnicyclePositionFromFoot(lastFootR.position, lastFootR.angle, initialUnicycle)))
+                        return false;
+
+                    initialAngle = lastFootR.angle;
+                    m_swingLeft = true;
+                } else {
+                    if (!(m_left->getUnicyclePositionFromFoot(lastFootL.position, lastFootL.angle, initialUnicycle)))
+                        return false;
+
+                    initialAngle = lastFootL.angle;
+                    m_swingLeft = false;
+                }
+                initTimeFromFeet = lastFootL.impactTime;
+            } else if (lastFootL.impactTime < lastFootR.impactTime) {
                 if (!(m_right->getUnicyclePositionFromFoot(lastFootR.position, lastFootR.angle, initialUnicycle)))
                     return false;
 
                 initialAngle = lastFootR.angle;
                 m_swingLeft = true;
+                initTimeFromFeet = lastFootR.impactTime;
             } else {
                 if (!(m_left->getUnicyclePositionFromFoot(lastFootL.position, lastFootL.angle, initialUnicycle)))
                     return false;
 
                 initialAngle = lastFootL.angle;
                 m_swingLeft = false;
+                initTimeFromFeet = lastFootL.impactTime;
             }
-            initTime = lastFootL.impactTime;
-        } else if (lastFootL.impactTime < lastFootR.impactTime) {
-            if (!(m_right->getUnicyclePositionFromFoot(lastFootR.position, lastFootR.angle, initialUnicycle)))
-                return false;
-
-            initialAngle = lastFootR.angle;
-            m_swingLeft = true;
-            initTime = lastFootR.impactTime;
-        } else {
-            if (!(m_left->getUnicyclePositionFromFoot(lastFootL.position, lastFootL.angle, initialUnicycle)))
-                return false;
-
-            initialAngle = lastFootL.angle;
-            m_swingLeft = false;
-            initTime = lastFootL.impactTime;
         }
-    }
+        if (initTime < initTimeFromFeet){
+            std::cerr << "The initTime cannot be greater then the last impactTime." << std::endl;
+            return false;
+        }
 
-    if(!(m_unicycle->setInitialState(initialUnicycle, initialAngle))){
-        std::cerr << "Error while setting the initial state for the integrator." << std::endl;
-        return false;
-    }
-
-    if (initTime < plannerInitTime){
         TrajectoryPoint initialPoint;
         initialPoint.initTime = initTime;
         initialPoint.yDesired = m_controller->getPersonPosition(initialUnicycle, initialAngle);
@@ -119,11 +114,15 @@ bool UnicyclePlanner::getInitialStateFromFeet(double& initTime)
         }
     }
 
+    if(!(m_unicycle->setInitialState(initialUnicycle, initialAngle))){
+        std::cerr << "Error while setting the initial state for the integrator." << std::endl;
+        return false;
+    }
 
     return true;
 }
 
-bool UnicyclePlanner::initializePlanner(double &initTime)
+bool UnicyclePlanner::initializePlanner(double initTime)
 {
 
     iDynTree::Vector2 widths;
@@ -138,15 +137,13 @@ bool UnicyclePlanner::initializePlanner(double &initTime)
     if (!(m_right->setTinyStepLength(m_minLength)))
         return false;
 
-    initTime = 0;
-
     if(!getInitialStateFromFeet(initTime)){
         std::cerr << "Error while computing the initial state." << std::endl;
         return false;
     }
 
     if (m_endTime <= initTime){
-        std::cerr << "The endTime should be strictly greater than the time at which the desired trajectory begins and the last of the impactTime of the two feet." << std::endl;
+        std::cerr << "The endTime should be strictly greater than the specified initTime." << std::endl;
         return false;
     }
 
@@ -469,7 +466,7 @@ void UnicyclePlanner::startWithLeft(bool startLeft)
     m_startLeft = startLeft;
 }
 
-bool UnicyclePlanner::computeNewSteps(std::shared_ptr<FootPrint> leftFoot, std::shared_ptr<FootPrint> rightFoot)
+bool UnicyclePlanner::computeNewSteps(std::shared_ptr< FootPrint > leftFoot, std::shared_ptr< FootPrint > rightFoot, double initTime)
 {
     if (!leftFoot || !rightFoot){
         std::cerr <<"Empty feet pointers."<<std::endl;
@@ -487,7 +484,6 @@ bool UnicyclePlanner::computeNewSteps(std::shared_ptr<FootPrint> leftFoot, std::
     if (m_nominalWidth > m_maxLength)
         std::cerr << "Warning: the maxLength parameter seems to be too restrictive. Notice that it represents the cartesian distance between the two feet (width included)." <<std::endl;
 
-    double initTime = 0;
     if (!initializePlanner(initTime)){
         std::cerr << "Error during planner initialization." <<std::endl;
         return false;
@@ -508,6 +504,8 @@ bool UnicyclePlanner::computeNewSteps(std::shared_ptr<FootPrint> leftFoot, std::
         return false;
 
     double t = initTime, tOptim = -1.0;
+    pauseTime = t - prevStep.impactTime;
+
     while (t <= m_endTime){
         deltaTime = t - prevStep.impactTime;
 

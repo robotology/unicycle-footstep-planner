@@ -14,10 +14,10 @@ UnicycleTrajectoryGenerator::UnicycleTrajectoryGenerator()
 
 bool UnicycleTrajectoryGenerator::generateAndInterpolate(std::shared_ptr<FootPrint> leftFoot, std::shared_ptr<FootPrint> rightFoot, double initTime, double dT, const InitialState& weightInLeftAtMergePoint)
 {
-    return computeNewSteps(leftFoot, rightFoot) && interpolate(*leftFoot, *rightFoot, initTime, dT, weightInLeftAtMergePoint);
+    return computeNewSteps(leftFoot, rightFoot, initTime) && interpolate(*leftFoot, *rightFoot, initTime, dT, weightInLeftAtMergePoint);
 }
 
 bool UnicycleTrajectoryGenerator::generateAndInterpolate(std::shared_ptr<FootPrint> leftFoot, std::shared_ptr<FootPrint> rightFoot, double initTime, double dT)
 {
-    return computeNewSteps(leftFoot, rightFoot) && interpolate(*leftFoot, *rightFoot, initTime, dT);
+    return computeNewSteps(leftFoot, rightFoot, initTime) && interpolate(*leftFoot, *rightFoot, initTime, dT);
 }

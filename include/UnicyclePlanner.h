@@ -12,7 +12,7 @@
 #include "UnicycleController.h"
 #include "UnicycleOptimization.h"
 #include "UnicycleFoot.h"
-#include "RK4.h"
+#include <iDynTree/Integrators/RK4.h>
 #include <memory>
 
 class UnicyclePlanner {
@@ -28,9 +28,9 @@ class UnicyclePlanner {
     //state
     bool m_swingLeft;
 
-    bool getInitialStateFromFeet(double &initTime);
+    bool getInitialStateFromFeet(double initTime);
 
-    bool initializePlanner(double &initTime);
+    bool initializePlanner(double initTime);
 
     bool get_rPl(const iDynTree::Vector2 &unicyclePosition, double unicycleAngle, iDynTree::Vector2 &rPl); //depending on left and right foot and on swing_left
 
@@ -85,7 +85,7 @@ public:
 
     void startWithLeft(bool startLeft);
 
-    bool computeNewSteps(std::shared_ptr<FootPrint> leftFoot, std::shared_ptr<FootPrint> rightFoot); //if the inputs are empty, the initTime is obtained from the first trajectory point, otherwise the initTime is the latest impactTime
+    bool computeNewSteps(std::shared_ptr<FootPrint> leftFoot, std::shared_ptr<FootPrint> rightFoot, double initTime); //if the inputs are empty, the initTime is obtained from the first trajectory point, otherwise the initTime is the latest impactTime
 
     bool startWithLeft() const;
 
