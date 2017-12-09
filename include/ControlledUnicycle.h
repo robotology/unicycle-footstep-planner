@@ -8,9 +8,9 @@
 #ifndef CONTROLLEDUNICYCLE_H
 #define CONTROLLEDUNICYCLE_H
 
-#include "DynamicalSystem.h"
-#include "UnicycleController.h"
-#include "iDynTree/Core/VectorDynSize.h"
+#include <iDynTree/DynamicalSystem.h>
+#include <UnicycleController.h>
+#include <iDynTree/Core/VectorDynSize.h>
 #include <memory>
 
 class ControlledUnicycle : public iDynTree::optimalcontrol::DynamicalSystem{
