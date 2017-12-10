@@ -8,11 +8,11 @@
 #ifndef UNICYCLEOPTIMIZATION_H
 #define UNICYCLEOPTIMIZATION_H
 
-#include "Constraint.h"
-#include "Cost.h"
-#include "OptimalControlProblem.h"
-#include "iDynTree/Core/VectorDynSize.h"
-#include "iDynTree/Core/VectorFixSize.h"
+#include <iDynTree/Constraint.h>
+#include <iDynTree/Cost.h>
+#include <iDynTree/OptimalControlProblem.h>
+#include <iDynTree/Core/VectorDynSize.h>
+#include <iDynTree/Core/VectorFixSize.h>
 #include <cmath>
 #include <string>
 #include <iostream>
