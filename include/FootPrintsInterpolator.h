@@ -65,7 +65,7 @@ class FeetInterpolator {
     //CoM height related variables
     double m_CoMHeight;
     double m_CoMHeightDelta;
-    std::vector<double> m_CoMHeightTrajectory, m_CoMHeightAcceleration;
+    std::vector<double> m_CoMHeightTrajectory, m_CoMHeightVelocity, m_CoMHeightAcceleration;
 
     bool orderSteps();
     bool createPhasesTimings();
@@ -136,6 +136,8 @@ public:
                                  std::vector<iDynTree::Vector2> &rightZMPVelocity, std::vector<iDynTree::Vector2> &rightZMPAcceleration) const;
 
     void getCoMHeightTrajectory(std::vector<double>& CoMHeightTrajectory) const;
+
+    void getCoMHeightVelocity(std::vector<double>& CoMHeightVelocity) const;
 
     void getCoMHeightAccelerationProfile(std::vector<double>& CoMHeightAccelerationProfile) const;
 
