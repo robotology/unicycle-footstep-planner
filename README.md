@@ -22,8 +22,13 @@ export UnicyclePlanner_DIR=/path/where/you/installed/
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$UnicyclePlanner_DIR/lib
 ```
 
-## macOs
+### macOs
 ```
 export UnicyclePlanner_DIR=/path/where/you/installed/
 export DYLD_LIBRARY_PATH=$LD_LIBRARY_PATH:$UnicyclePlanner_DIR/lib
 ```
+## Basic Idea
+<img src="https://github.com/robotology/unicycle-footstep-planner/blob/master/images/planner.gif">
+
+## Implementation
+<img src="https://github.com/robotology/unicycle-footstep-planner/blob/master/images/unicycleWalking.gif">
