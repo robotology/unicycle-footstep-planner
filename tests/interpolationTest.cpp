@@ -116,10 +116,12 @@ void printVector(object& objectName, std::ofstream& file){
 }
 
 void printTrajectories(const FeetInterpolator& interpolator, size_t& newMergePoint, InitialState& newAlpha, size_t mergePoint){
-    std::ofstream posLeft, posRight, zmp, leftZmp, rightZmp, weightLeft, weightRight, height, heightAcceleration;
+    std::ofstream posLeft, posRight, zmp, leftZmp, rightZmp, weightLeft, weightRight, height, heightAcceleration, zmpVel, zmpAcc;
     posLeft.open("pL.txt");
     posRight.open("pR.txt");
     zmp.open ("zmp.txt");
+    zmpVel.open ("zmpVel.txt");
+    zmpAcc.open("zmpAcc.txt");
     leftZmp.open("zmpL.txt");
     rightZmp.open("zmpR.txt");
     weightLeft.open ("leftW.txt");
@@ -179,13 +181,20 @@ void printTrajectories(const FeetInterpolator& interpolator, size_t& newMergePoi
     std::cerr << "--------------------------------------------->Right ZMP." << std::endl;
     print_iDynTree(rZMPTrajectory, rightZmp);
 
-    static std::vector< iDynTree::Vector2 > ZMPTrajectory;
-    std::vector< iDynTree::Vector2 > ZMPTrajectoryIn;
-    interpolator.getZMPTrajectory(ZMPTrajectoryIn);
+    static std::vector< iDynTree::Vector2 > ZMPTrajectory, ZMPVel, ZMPAcc;
+    std::vector< iDynTree::Vector2 > ZMPTrajectoryIn, ZMPVelIn, ZMPAccIn;
+    interpolator.getZMPTrajectory(ZMPTrajectoryIn, ZMPVelIn, ZMPAccIn);
     ZMPTrajectory.insert(ZMPTrajectory.begin()+ mergePoint, ZMPTrajectoryIn.begin(), ZMPTrajectoryIn.end());
     ZMPTrajectory.resize(mergePoint + ZMPTrajectoryIn.size());
+    ZMPVel.insert(ZMPVel.begin()+ mergePoint, ZMPVelIn.begin(), ZMPVelIn.end());
+    ZMPVel.resize(mergePoint + ZMPVelIn.size());
+    ZMPAcc.insert(ZMPAcc.begin()+ mergePoint, ZMPAccIn.begin(), ZMPAccIn.end());
+    ZMPAcc.resize(mergePoint + ZMPAccIn.size());
+
     std::cerr << "--------------------------------------------->Global ZMP Trajectory." << std::endl;
     print_iDynTree(ZMPTrajectory, zmp);
+    print_iDynTree(ZMPVel, zmpVel);
+    print_iDynTree(ZMPAcc, zmpAcc);
 
     static std::vector< double > CoMHeightTrajectory;
     std::vector< double > CoMHeightTrajectoryIn;
@@ -244,6 +253,8 @@ void printTrajectories(const FeetInterpolator& interpolator, size_t& newMergePoi
     posLeft.close();
     posRight.close();
     zmp.close();
+    zmpVel.close();
+    zmpAcc.close();
     leftZmp.close();
     rightZmp.close();
     weightLeft.close();
