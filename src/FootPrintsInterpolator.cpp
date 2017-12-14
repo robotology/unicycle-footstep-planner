@@ -711,6 +711,9 @@ bool FeetInterpolator::computeCoMHeightTrajectory()
     if (m_CoMHeightTrajectory.size() != leftPhases.size())
         m_CoMHeightTrajectory.resize(leftPhases.size());
 
+    if (m_CoMHeightVelocity.size() != leftPhases.size())
+        m_CoMHeightVelocity.resize(leftPhases.size());
+
     if (m_CoMHeightAcceleration.size() != leftPhases.size())
         m_CoMHeightAcceleration.resize(leftPhases.size());
 
@@ -728,6 +731,7 @@ bool FeetInterpolator::computeCoMHeightTrajectory()
         if ((leftPhases[instant] == StepPhase::SwitchIn)||(leftPhases[instant] == StepPhase::SwitchOut)){
             while (instant < endOfPhase){
                 m_CoMHeightTrajectory[instant] = m_CoMHeight;
+                m_CoMHeightVelocity[instant] = 0.0;
                 m_CoMHeightAcceleration[instant] = 0.0;
                 instant++;
             }
@@ -753,7 +757,9 @@ bool FeetInterpolator::computeCoMHeightTrajectory()
             initialInstant = instant;
             while (instant < endOfPhase){
                 interpolationTime = (instant - initialInstant) * m_dT;
-                m_CoMHeightTrajectory[instant] = heightSpline.evaluatePoint(interpolationTime, dummy, m_CoMHeightAcceleration[instant]);
+                m_CoMHeightTrajectory[instant] = heightSpline.evaluatePoint(interpolationTime,
+                                                                            m_CoMHeightVelocity[instant],
+                                                                            m_CoMHeightAcceleration[instant]);
                 instant++;
             }
         } else {
@@ -1056,6 +1062,11 @@ void FeetInterpolator::getLocalZMPTrajectories(std::vector<iDynTree::Vector2> &l
 void FeetInterpolator::getCoMHeightTrajectory(std::vector<double> &CoMHeightTrajectory) const
 {
     CoMHeightTrajectory = m_CoMHeightTrajectory;
+}
+
+void FeetInterpolator::getCoMHeightVelocity(std::vector<double> &CoMHeightVelocity) const
+{
+    CoMHeightVelocity = m_CoMHeightVelocity;
 }
 
 void FeetInterpolator::getCoMHeightAccelerationProfile(std::vector<double> &CoMHeightAccelerationProfile) const

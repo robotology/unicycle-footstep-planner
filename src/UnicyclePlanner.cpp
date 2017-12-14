@@ -476,8 +476,8 @@ bool UnicyclePlanner::computeNewSteps(std::shared_ptr< FootPrint > leftFoot, std
     m_left.reset(new UnicycleFoot(leftFoot));
     m_right.reset(new UnicycleFoot(rightFoot));
 
-    double maxVelocity = std::sqrt(std::pow(m_maxLength,2) - std::pow(m_nominalWidth,2))/m_minTime * 0.75;
-    double maxAngVelocity = m_maxAngle/m_minTime*0.75;
+    double maxVelocity = std::sqrt(std::pow(m_maxLength,2) - std::pow(m_nominalWidth,2))/m_minTime * 0.70;
+    double maxAngVelocity = m_maxAngle/m_minTime*0.70;
     if (!m_controller->setSaturations(maxVelocity, maxAngVelocity))
         return false;
 
