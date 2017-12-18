@@ -616,82 +616,113 @@ bool FeetInterpolator::computeLocalZMP(const std::vector<StepPhase> &stepPhase,
     return true;
 }
 
-void FeetInterpolator::computeGlobalZMP()
+iDynTree::Position FeetInterpolator::pos3D(const iDynTree::Vector2 &xy)
+{
+    iDynTree::Position output;
+    output.zero();
+    output(0) = xy(0);
+    output(1) = xy(1);
+    return output;
+}
+
+iDynTree::Position FeetInterpolator::pos3D(const iDynTree::Transform &H, const iDynTree::Vector2 &xy)
+{
+    return H * pos3D(xy);
+}
+
+void FeetInterpolator::computeGlobalZMP(const Step &previousLeft, const Step &previousRight)
 {
     //NOTE This must be called after that both the local ZMPs, the weight portions and the feet are computed
-    iDynTree::Position leftLocalZMP, rightLocalZMP, leftWorldZMP, rightWorldZMP;
-    iDynTree::Position leftWorldZMPVelocity, rightWorldZMPVelocity, leftLocalZMPVelocity, rightLocalZMPVelocity;
-    iDynTree::Position leftWorldZMPAcceleration, rightWorldZMPAcceleration, leftLocalZMPAcceleration, rightLocalZMPAcceleration;
-
-    leftLocalZMP.zero();
-    rightLocalZMP.zero();
-    leftWorldZMP.zero();
-    rightWorldZMP.zero();
-
-    leftWorldZMPVelocity.zero();
-    rightWorldZMPVelocity.zero();
-    leftLocalZMPVelocity.zero();
-    rightLocalZMPVelocity.zero();
-
-    leftWorldZMPAcceleration.zero();
-    rightWorldZMPAcceleration.zero();
-    leftLocalZMPAcceleration.zero();
-    rightLocalZMPAcceleration.zero();
+    iDynTree::Position leftWorldZMP, rightWorldZMP;
+    iDynTree::Position leftWorldZMPVelocity, rightWorldZMPVelocity;
+    iDynTree::Position leftWorldZMPAcceleration, rightWorldZMPAcceleration;
 
     m_worldZMP.resize(m_leftZMP.size());
     m_worldZMPVelocity.resize(m_leftZMPVelocity.size());
     m_worldZMPAcceleration.resize(m_leftZMPAcceleration.size());
 
+    iDynTree::CubicSpline correctionSpline(2);
+    static iDynTree::VectorDynSize correctionBuffer(2), timeBuffer(2);
+
+    correctionBuffer(0) = 1.0;
+    timeBuffer(0) = 0.0;
+    correctionBuffer(1) = 0.0;
+    timeBuffer(1) = m_phaseShift[1] * m_dT;
+    correctionSpline.setInitialConditions(0.0, 0.0);
+    correctionSpline.setFinalConditions(0.0, 0.0);
+    correctionSpline.setData(timeBuffer, correctionBuffer);
+
+    iDynTree::Transform oldLeftH, oldRightH;
+    oldLeftH.setPosition(pos3D(previousLeft.position));
+    oldLeftH.setRotation(iDynTree::Rotation::RotZ(previousLeft.angle));
+    oldRightH.setPosition(pos3D(previousRight.position));
+    oldRightH.setRotation(iDynTree::Rotation::RotZ(previousRight.angle));
+    iDynTree::Position deltaL, deltaR;
+
+
+    double correction, correctionVelocity, correctionAcceleration;
+
     for (size_t instant = 0; instant < m_leftZMP.size(); ++instant){
 
-        leftLocalZMP(0) = m_leftZMP[instant](0);
-        leftLocalZMP(1) = m_leftZMP[instant](1);
-        rightLocalZMP(0) = m_rightZMP[instant](0);
-        rightLocalZMP(1) = m_rightZMP[instant](1);
+        leftWorldZMP = pos3D(m_leftTrajectory[instant], m_leftZMP[instant]);
+        rightWorldZMP = pos3D(m_rightTrajectory[instant], m_rightZMP[instant]);
 
-        leftWorldZMP = m_leftTrajectory[instant] * leftLocalZMP;
-        rightWorldZMP = m_rightTrajectory[instant] * rightLocalZMP;
+        if (instant < m_phaseShift[1]){ //first half switch
+            deltaL = pos3D(oldLeftH, m_leftZMP[instant]) - leftWorldZMP;
+            deltaR = pos3D(oldRightH, m_rightZMP[instant]) - rightWorldZMP;
+            correction = correctionSpline.evaluatePoint(instant*m_dT, correctionVelocity, correctionAcceleration);
+            for (int i = 0; i < 2; ++i){
+                m_worldZMP[instant](i) = m_weightInLeft[instant] * (leftWorldZMP(i) + correction * deltaL(i)) +
+                        m_weightInRight[instant] * (rightWorldZMP(i) + correction * deltaR(i));
+            }
+        } else {
+            for (int i = 0; i < 2; ++i){
+                m_worldZMP[instant](i) = m_weightInLeft[instant] * leftWorldZMP(i) + m_weightInRight[instant] * rightWorldZMP(i);
+            }
+        }
 
-        m_worldZMP[instant](0) = m_weightInLeft[instant] * leftWorldZMP(0) + m_weightInRight[instant] * rightWorldZMP(0);
-        m_worldZMP[instant](1) = m_weightInLeft[instant] * leftWorldZMP(1) + m_weightInRight[instant] * rightWorldZMP(1);
 
-        leftLocalZMPVelocity(0) = m_leftZMPVelocity[instant](0);
-        leftLocalZMPVelocity(1) = m_leftZMPVelocity[instant](1);
-        rightLocalZMPVelocity(0) = m_rightZMPVelocity[instant](0);
-        rightLocalZMPVelocity(1) = m_rightZMPVelocity[instant](1);
+        leftWorldZMPVelocity = pos3D(m_leftTrajectory[instant], m_leftZMPVelocity[instant]);
+        rightWorldZMPVelocity = pos3D(m_rightTrajectory[instant], m_rightZMPVelocity[instant]);
 
-        leftWorldZMPVelocity = m_leftTrajectory[instant] * leftLocalZMPVelocity;
-        rightWorldZMPVelocity = m_rightTrajectory[instant] * rightLocalZMPVelocity;
+        if (instant < m_phaseShift[1]){
+            for (int i = 0; i < 2; ++i){ //NOTE!! HERE WE ARE ASSUMING THAT NEITHER THE FEET, NOR THE LOCAL ZMPs ARE MOVING (only for the first phase)
+                m_worldZMPVelocity[instant](i) = m_weightInLeftVelocity[instant] * (leftWorldZMP(i) + correction * deltaL(i)) +
+                        m_weightInLeft[instant] * correctionVelocity * deltaL(i) +
+                        m_weightInRightVelocity[instant] * (rightWorldZMP(i) + correction * deltaR(i)) +
+                        m_weightInRight[instant] * correctionVelocity * deltaR(i);
+            }
+        } else {
+            for (int i = 0; i < 2; ++i){
+                m_worldZMPVelocity[instant](i) = m_weightInLeftVelocity[instant] * leftWorldZMP(i) +
+                        m_weightInLeft[instant] * leftWorldZMPVelocity(i) +
+                        m_weightInRightVelocity[instant] * rightWorldZMP(i) +
+                        m_weightInRight[instant] * rightWorldZMPVelocity(i);
+            }
+        }
 
-        m_worldZMPVelocity[instant](0) = m_weightInLeftVelocity[instant] * leftWorldZMP(0) +
-                m_weightInLeft[instant] * leftWorldZMPVelocity(0) +
-                m_weightInRightVelocity[instant] * rightWorldZMP(0) +
-                m_weightInRight[instant] * rightWorldZMPVelocity(0);
-        m_worldZMPVelocity[instant](1) = m_weightInLeftVelocity[instant] * leftWorldZMP(1) +
-                m_weightInLeft[instant] * leftWorldZMPVelocity(1) +
-                m_weightInRightVelocity[instant] * rightWorldZMP(1) +
-                m_weightInRight[instant] * rightWorldZMPVelocity(1);
+        leftWorldZMPAcceleration = pos3D(m_leftTrajectory[instant], m_leftZMPAcceleration[instant]);
+        rightWorldZMPAcceleration = pos3D(m_rightTrajectory[instant], m_rightZMPAcceleration[instant]);
 
-        leftLocalZMPAcceleration(0) = m_leftZMPAcceleration[instant](0);
-        leftLocalZMPAcceleration(1) = m_leftZMPAcceleration[instant](1);
-        rightLocalZMPAcceleration(0) = m_rightZMPAcceleration[instant](0);
-        rightLocalZMPAcceleration(1) = m_rightZMPAcceleration[instant](1);
-
-        leftWorldZMPAcceleration = m_leftTrajectory[instant] * leftLocalZMPAcceleration;
-        rightWorldZMPAcceleration = m_rightTrajectory[instant] * rightLocalZMPAcceleration;
-
-        m_worldZMPAcceleration[instant](0) = m_weightInLeftAcceleration[instant] * leftWorldZMP(0) +
-                2*m_weightInLeftVelocity[instant]*leftWorldZMPVelocity(0) +
-                m_weightInLeft[instant] * leftWorldZMPAcceleration(0) +
-                m_weightInRightAcceleration[instant] * rightWorldZMP(0) +
-                2*m_weightInRightVelocity[instant]*rightWorldZMPVelocity(0) +
-                m_weightInRight[instant] * rightWorldZMPAcceleration(0);
-        m_worldZMPAcceleration[instant](1) = m_weightInLeftAcceleration[instant] * leftWorldZMP(1) +
-                2*m_weightInLeftVelocity[instant]*leftWorldZMPVelocity(1) +
-                m_weightInLeft[instant] * leftWorldZMPAcceleration(1) +
-                m_weightInRightAcceleration[instant] * rightWorldZMP(1) +
-                2*m_weightInRightVelocity[instant]*rightWorldZMPVelocity(1) +
-                m_weightInRight[instant] * rightWorldZMPAcceleration(1);
+        if (instant < m_phaseShift[1]){
+            for (int i = 0; i < 2; ++i){ //NOTE!! HERE WE ARE ASSUMING THAT NEITHER THE FEET, NOR THE LOCAL ZMPs ARE MOVING (only for the first phase)
+                m_worldZMPAcceleration[instant](i) = m_weightInLeftAcceleration[instant] * (leftWorldZMP(i) + correction * deltaL(i)) +
+                        2 * m_weightInLeftVelocity[instant] * correctionVelocity * deltaL(i) +
+                        m_weightInLeft[instant] * correctionAcceleration * deltaL(i) +
+                        m_weightInRightAcceleration[instant] * (rightWorldZMP(i) + correction * deltaR(i)) +
+                        2 * m_weightInRightVelocity[instant] * correctionVelocity * deltaR(i) +
+                        m_weightInRight[instant] * correctionAcceleration * deltaR(i);
+            }
+        } else {
+            for (int i = 0; i < 2; ++i){
+                m_worldZMPAcceleration[instant](i) = m_weightInLeftAcceleration[instant] * leftWorldZMP(i) +
+                        2 * m_weightInLeftVelocity[instant] * leftWorldZMPVelocity(i) +
+                        m_weightInLeft[instant] * leftWorldZMPAcceleration(i) +
+                        m_weightInRightAcceleration[instant] * rightWorldZMP(i) +
+                        2 * m_weightInRightVelocity[instant] * rightWorldZMPVelocity(i) +
+                        m_weightInRight[instant] * rightWorldZMPAcceleration(i);
+            }
+        }
     }
 }
 
@@ -787,8 +818,8 @@ FeetInterpolator::FeetInterpolator()
     m_rightSwitchZMP.zero();
 }
 
-bool FeetInterpolator::interpolate(const FootPrint &left, const FootPrint &right,
-                                   double initTime, double dT, const InitialState& weightInLeftAtMergePoint)
+bool FeetInterpolator::interpolate(const FootPrint &left, const FootPrint &right, double initTime, double dT,
+                                   const InitialState& weightInLeftAtMergePoint, const Step &previousLeft, const Step &previousRight)
 {
     if (left.numberOfSteps() < 1){
         std::cerr << "[FEETINTERPOLATOR] No steps in the left pointer." << std::endl;
@@ -872,7 +903,7 @@ bool FeetInterpolator::interpolate(const FootPrint &left, const FootPrint &right
         return false;
     }
 
-    computeGlobalZMP();
+    computeGlobalZMP(previousLeft, previousRight);
 
 
     if (!computeCoMHeightTrajectory()){
@@ -881,6 +912,11 @@ bool FeetInterpolator::interpolate(const FootPrint &left, const FootPrint &right
     }
 
     return true;
+}
+
+bool FeetInterpolator::interpolate(const FootPrint &left, const FootPrint &right, double initTime, double dT, const InitialState &weightInLeftAtMergePoint)
+{
+    return interpolate(left, right, initTime, dT, weightInLeftAtMergePoint, left.getSteps().front(), right.getSteps().front());
 }
 
 bool FeetInterpolator::interpolate(const FootPrint &left, const FootPrint &right, double initTime, double dT)
