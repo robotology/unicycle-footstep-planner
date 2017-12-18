@@ -84,7 +84,9 @@ class FeetInterpolator {
                          std::vector<iDynTree::Vector2> &output,
                          std::vector<iDynTree::Vector2> &outputVelocity,
                          std::vector<iDynTree::Vector2> &outputAcceleration);
-    void computeGlobalZMP();
+    iDynTree::Position pos3D(const iDynTree::Vector2 &xy);
+    iDynTree::Position pos3D(const iDynTree::Transform &H, const iDynTree::Vector2 &xy);
+    void computeGlobalZMP(const Step &previousLeft, const Step &previousRight);
     bool computeCoMHeightTrajectory();
 
 
@@ -92,7 +94,10 @@ public:
     FeetInterpolator();
 
     bool interpolate(const FootPrint &left, const FootPrint &right, double initTime, double dT,
-                     const InitialState &weightInLeftAtMergePoint); //both feet are supposed to start on the ground at zero velocity. The initTime must be greater than the maximum of the first impactTime of the two feet. The first step has half switch time. The FootPrints needs to be ordered!
+                     const InitialState &weightInLeftAtMergePoint, const Step &previousLeft, const Step &previousRight); //both feet are supposed to start on the ground at zero velocity. The initTime must be greater than the maximum of the first impactTime of the two feet. The first step has half switch time. The FootPrints needs to be ordered! previousLeft and previouRight are needed to compensate eventual discontinuities on the ZMP when the foot lands not at the specified point
+
+    bool interpolate(const FootPrint &left, const FootPrint &right, double initTime, double dT,
+                     const InitialState &weightInLeftAtMergePoint);
 
     bool interpolate(const FootPrint &left, const FootPrint &right, double initTime, double dT);
 
