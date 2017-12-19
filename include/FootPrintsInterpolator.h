@@ -44,7 +44,7 @@ class FeetInterpolator {
     std::vector<bool> m_lFootContact, m_rFootContact, m_leftFixed;
 
     //Feet Trajectory related variables
-    double m_switchPercentage, m_dT, m_endSwitch, m_initTime, m_stepHeight, m_swingApex;
+    double m_switchPercentage, m_dT, m_endSwitch, m_initTime, m_stepHeight, m_swingApex, m_landingVelocity;
     std::vector<iDynTree::Transform> m_leftTrajectory, m_rightTrajectory;
 
     //ZMP related variables
@@ -110,6 +110,8 @@ public:
     bool setStepHeight(double stepHeight);
 
     bool setFootApexTime(double swingTimeRatio = 0.5);
+
+    bool setFootLandingVelocity(double landingVelocity = 0.0);
 
     bool setPauseConditions(double maxStepTime, double nominalStepTime);
 

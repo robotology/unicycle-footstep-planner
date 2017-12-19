@@ -258,7 +258,7 @@ bool FeetInterpolator::interpolateFoot(const std::vector<StepPhase> &stepPhase, 
 
             xSpline.setFinalConditions(0.0, 0.0);
             ySpline.setFinalConditions(0.0, 0.0);
-            zSpline.setFinalConditions(0.0, 0.0); //we may think of non-null final acceleration for the z
+            zSpline.setFinalConditions(m_landingVelocity, 0.0); //we may think of non-null final acceleration for the z
             yawSpline.setFinalConditions(0.0, 0.0);
 
             if (!xSpline.setData(timesBuffer, xPositionsBuffer)){
@@ -808,6 +808,7 @@ FeetInterpolator::FeetInterpolator()
     ,m_initTime(0.0)
     ,m_stepHeight(-1)
     ,m_swingApex(0.5)
+    ,m_landingVelocity(0.0)
     ,m_pauseActive(false)
     ,m_CoMHeight(-1.0)
     ,m_CoMHeightDelta(0.0)
@@ -968,6 +969,12 @@ bool FeetInterpolator::setFootApexTime(double swingTimeRatio)
         return false;
     }
     m_swingApex = swingTimeRatio;
+    return true;
+}
+
+bool FeetInterpolator::setFootLandingVelocity(double landingVelocity)
+{
+    m_landingVelocity = landingVelocity;
     return true;
 }
 
