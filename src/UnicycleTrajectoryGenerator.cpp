@@ -110,7 +110,9 @@ bool UnicycleTrajectoryGenerator::reGenerate(double initTime, double dT, double 
     correctedStep = correctLeft ? previousL : previousR;
 
     correctedStep.position = measuredPosition;
-    correctedStep.angle = measuredAngle;
+    iDynTree::Rotation initialRotation = iDynTree::Rotation::RotZ(correctedStep.angle);
+    iDynTree::Rotation measuredRotation = iDynTree::Rotation::RotZ(measuredAngle);
+    correctedStep.angle = correctedStep.angle + (initialRotation.inverse()*measuredRotation).asRPY()(2);
 
     toBeCorrected->addStep(correctedStep);
 
