@@ -35,7 +35,8 @@ set(UCPLANNER_SOURCES src/ControlledUnicycle.cpp
                       src/UnicycleFoot.cpp
                       src/FootPrint.cpp
                       src/FootPrintsInterpolator.cpp
-                      src/UnicycleTrajectoryGenerator.cpp)
+                      src/UnicycleTrajectoryGenerator.cpp
+		      src/DcmTrajectoryGenerator.cpp)
 
 set(UCPLANNER_HEADERS include/ControlledUnicycle.h
                       include/UnicycleController.h
@@ -44,7 +45,8 @@ set(UCPLANNER_HEADERS include/ControlledUnicycle.h
                       include/FootPrint.h
                       include/UnicyclePlanner.h
                       include/FootPrintsInterpolator.h
-                      include/UnicycleTrajectoryGenerator.h)
+                      include/UnicycleTrajectoryGenerator.h
+		      include/DcmTrajectoryGenerator.h)
 
 add_library(UnicyclePlanner  SHARED ${UCPLANNER_HEADERS} ${UCPLANNER_SOURCES})
 target_include_directories(UnicyclePlanner PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>)
