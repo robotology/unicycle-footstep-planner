@@ -71,7 +71,7 @@ class FeetInterpolator {
 
     //DCM trajecectory generator
     DcmTrajectoryGenerator m_dcmTrajGenerator;
-    
+
     bool orderSteps();
     bool createPhasesTimings();
     void fillFeetStandingPeriodsVectors();
@@ -161,6 +161,8 @@ public:
 
     void getMergePoints(std::vector<size_t>& mergePoints) const; //indexes in which is suitable to perform a merge of trajectories. The weight percentage is discontinuos in velocity
 
+
+    const std::vector<iDynTree::Vector2>& getDcmPosition() const;
 };
 
 #endif // FOOTPRINTSINTERPOLATOR_H
