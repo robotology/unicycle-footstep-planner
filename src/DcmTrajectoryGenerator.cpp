@@ -240,8 +240,8 @@ void DcmTrajectoryGenerator::setdT(const double &dT)
 
 bool DcmTrajectoryGenerator::addLastStep(const double &singleSupportStartTime,
 					 const double &singleSupportEndTime,
-					 const double &doubleSupportEndTime,
 					 const double &singleSupportDuration,
+					 const double &doubleSupportEndTime,
 					 const double &t0,
 					 const iDynTree::Vector2 &comPosition,
 					 const iDynTree::Vector2 &zmp)
@@ -480,9 +480,9 @@ bool DcmTrajectoryGenerator::generateDcmTrajectory(const std::vector<StepList::c
   
   // evaluate the last step
   if(!addLastStep(singleSupportStartTime, singleSupportEndTime,
-		   singleSupportDuration, doubleSupportEndTime,
-		   singleSupportT0,
-		   comPosition, lastZmp))
+		  singleSupportDuration, doubleSupportEndTime,
+		  singleSupportT0,
+		  comPosition, lastZmp))
      return false;
 
   while (m_orderedSteps.size() > 0){
@@ -508,11 +508,11 @@ bool DcmTrajectoryGenerator::generateDcmTrajectory(const std::vector<StepList::c
 				 initPosition,
 				 initVelocity))
     return false;
-
+  
   // evaluate the DCM trajectory
   if(!evaluateDcmPosition())
     return false;
-  
+
   return true;
 
 }
@@ -562,6 +562,7 @@ bool DcmTrajectoryGenerator::evaluateDcmPosition()
   for (size_t t: time){
     if(!evaluateDcmPosition(t, dcmPos))
       return false;
+    
     m_dcmPos.push_back(dcmPos);
   }
   return true;

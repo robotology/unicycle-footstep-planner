@@ -343,13 +343,6 @@ class DcmTrajectoryGenerator
 
   
   /**
-   * Evaluate the position of the DCM at time t for the general
-   * trajectory.
-   * @return true / false in case of success / failure
-   */
-  bool getDcmPos(std::vector<StepList::const_iterator> &dcmPos);
-
-  /**
    * Generate the Divergent Component of Motion trajectory
    * @param orderedSteps vector containing the both left and right footprint sorted into ascending order
    * @param firstStanceFoot is the footprint of the first stance foot
