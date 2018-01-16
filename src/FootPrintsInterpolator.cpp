@@ -925,8 +925,13 @@ bool FeetInterpolator::interpolate(const FootPrint &left, const FootPrint &right
        std::cerr << "[FEETINTERPOLATOR] Failed while computing the DCM trajectories." << std::endl;
        return false;
     }
-      
+    
     return true;
+}
+
+const std::vector<iDynTree::Vector2>& FeetInterpolator::getDcmPosition() const
+{
+  return m_dcmTrajGenerator.getDcmPosition();
 }
 
 bool FeetInterpolator::interpolate(const FootPrint &left, const FootPrint &right, double initTime, double dT, const InitialState &weightInLeftAtMergePoint)
