@@ -326,10 +326,22 @@ class DcmTrajectoryGenerator
 
   /**
    * Constructor.
+   * @param dT is the period of the Trajectory generator planner
    * @param omega time constant of the 3D-LIPM
    */
-  DcmTrajectoryGenerator(const double &omega);
+  DcmTrajectoryGenerator(const double &dT, const double &omega);
 
+  /**
+   * Constructor.
+   */
+  DcmTrajectoryGenerator(){};
+
+  void setOmega(const double &omega);
+
+
+  void setdT(const double &dT);
+
+  
   /**
    * Evaluate the position of the DCM at time t for the general
    * trajectory.

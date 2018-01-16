@@ -220,9 +220,22 @@ bool DoubleSupportTrajectory::getDcmVel(const double &t, iDynTree::Vector2 &dcmV
   return false;  
 }
 
-DcmTrajectoryGenerator::DcmTrajectoryGenerator(const double &omega):
-  m_omega(omega)
+DcmTrajectoryGenerator::DcmTrajectoryGenerator(const double &dT, const double &omega):
+  m_omega(omega),
+  m_dT(dT)
 {}
+
+
+void DcmTrajectoryGenerator::setOmega(const double &omega)
+{
+  m_omega = omega;
+}
+
+
+void DcmTrajectoryGenerator::setdT(const double &dT)
+{
+  m_dT = dT;
+}
 
 
 bool DcmTrajectoryGenerator::addLastStep(const double &singleSupportStartTime,
