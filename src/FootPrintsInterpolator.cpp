@@ -812,6 +812,7 @@ FeetInterpolator::FeetInterpolator()
     ,m_pauseActive(false)
     ,m_CoMHeight(-1.0)
     ,m_CoMHeightDelta(0.0)
+    ,m_dcmTrajGenerator()
 {
     m_leftStanceZMP.zero();
     m_leftSwitchZMP.zero();
@@ -862,6 +863,10 @@ bool FeetInterpolator::interpolate(const FootPrint &left, const FootPrint &right
     m_dT = dT;
     m_initTime = initTime;
 
+    //remove 9.81
+    m_dcmTrajGenerator.setdT(m_dT);
+    m_dcmTrajGenerator.setOmega(9.81);
+    
     if (!orderSteps()){
         std::cerr << "[FEETINTERPOLATOR] Failed while ordering the steps." << std::endl;
         return false;
@@ -906,12 +911,21 @@ bool FeetInterpolator::interpolate(const FootPrint &left, const FootPrint &right
 
     computeGlobalZMP(previousLeft, previousRight);
 
-
     if (!computeCoMHeightTrajectory()){
         std::cerr << "[FEETINTERPOLATOR] Failed while computing the CoM height trajectories." << std::endl;
         return false;
     }
 
+    // generate DCM trajectory
+    StepList::const_iterator firstStanceFoot, firstSwingFoot;
+    firstStanceFoot = (m_left.getSteps().front().impactTime > m_right.getSteps().front().impactTime) ? m_right.getSteps().cbegin() : m_left.getSteps().cbegin();
+    firstSwingFoot = (m_left.getSteps().front().impactTime > m_right.getSteps().front().impactTime) ? m_left.getSteps().cbegin() : m_right.getSteps().cbegin();
+    
+    if(!m_dcmTrajGenerator.generateDcmTrajectory(m_orderedSteps, firstStanceFoot, firstSwingFoot, m_phaseShift )){
+       std::cerr << "[FEETINTERPOLATOR] Failed while computing the DCM trajectories." << std::endl;
+       return false;
+    }
+      
     return true;
 }
 

@@ -9,6 +9,7 @@
 #define FOOTPRINTSINTERPOLATOR_H
 
 #include "FootPrint.h"
+#include "DcmTrajectoryGenerator.h"
 #include "iDynTree/Core/VectorFixSize.h"
 #include "iDynTree/Core/VectorDynSize.h"
 #include "iDynTree/Core/Transform.h"
@@ -67,6 +68,10 @@ class FeetInterpolator {
     double m_CoMHeightDelta;
     std::vector<double> m_CoMHeightTrajectory, m_CoMHeightVelocity, m_CoMHeightAcceleration;
 
+
+    //DCM trajecectory generator
+    DcmTrajectoryGenerator m_dcmTrajGenerator;
+    
     bool orderSteps();
     bool createPhasesTimings();
     void fillFeetStandingPeriodsVectors();
