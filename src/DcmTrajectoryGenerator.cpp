@@ -65,8 +65,7 @@ void SingleSupportTrajectory::setDcmIos(const iDynTree::Vector2 &nextDcmIos,
   // dcm_ios[i] = dcm_ios[i+1]
   //              + exp(-omega * Ts[i]) * (1 - exp(-omega * Ts[i])) * zmp[i]
   
-  iDynTree::toEigen(m_dcmIos) = iDynTree::toEigen(m_zmp)
-    + exp(-m_omega * stepDuration) * (iDynTree::toEigen(nextDcmIos) - iDynTree::toEigen(m_zmp));
+  iDynTree::toEigen(m_dcmIos) = iDynTree::toEigen(m_zmp) + exp(-m_omega * stepDuration) * (iDynTree::toEigen(nextDcmIos) - iDynTree::toEigen(m_zmp));
 }
 
 const iDynTree::Vector2& SingleSupportTrajectory::getDcmIos() const
@@ -250,7 +249,7 @@ bool DcmTrajectoryGenerator::addLastStep(const double &singleSupportStartTime,
   std::shared_ptr<GeneralSupportTrajectory> newSingleSupport(new SingleSupportTrajectory(singleSupportStartTime, singleSupportEndTime,
 											 t0, singleSupportDuration, m_omega,
 											 zmp, comPosition));
-
+  
   // instantiate position and velocity boundary conditions vectors
   iDynTree::Vector2 initPosition, initVelocity;
   iDynTree::Vector2 endPosition, endVelocity;
@@ -280,6 +279,8 @@ bool DcmTrajectoryGenerator::addLastStep(const double &singleSupportStartTime,
   // add the new Single Support phase
   m_trajectory.push_front(newSingleSupport);
 
+  
+  
   return true;
 }
 
@@ -401,7 +402,7 @@ void DcmTrajectoryGenerator::getLastStepsTiming(double &singleSupportStartTime,
 
   
   singleSupportT0  =  (singleSupportStartTime + m_phaseShift.back() * m_dT)/2;
-  singleSupportDuration = singleSupportEndTime / 2 - singleSupportT0;
+  singleSupportDuration = singleSupportEndTime  - singleSupportT0;
 }
 
 
@@ -477,26 +478,26 @@ bool DcmTrajectoryGenerator::generateDcmTrajectory(const std::vector<StepList::c
 
   lastZmp = m_orderedSteps.back()->position;
   m_orderedSteps.pop_back();
-  
+
   // evaluate the last step
   if(!addLastStep(singleSupportStartTime, singleSupportEndTime,
 		  singleSupportDuration, doubleSupportEndTime,
 		  singleSupportT0,
 		  comPosition, lastZmp))
-     return false;
-
+    return false;
+  
   while (m_orderedSteps.size() > 0){
     
     getStepsTiming(singleSupportStartTime, singleSupportEndTime,
-		   singleSupportDuration, singleSupportT0);
+  		   singleSupportDuration, singleSupportT0);
 
     
     lastZmp = m_orderedSteps.back()->position;
     m_orderedSteps.pop_back();
     
     if(!addNewStep(singleSupportStartTime, singleSupportEndTime,
-		   singleSupportDuration, singleSupportT0, 
-		   lastZmp))
+  		   singleSupportDuration, singleSupportT0, 
+  		   lastZmp))
       return false;
   }
 
@@ -505,8 +506,8 @@ bool DcmTrajectoryGenerator::generateDcmTrajectory(const std::vector<StepList::c
   getFirstDoubleSupportTiming(doubleSupportStartTime);
 
   if(!addFirstDoubleSupportPhase(doubleSupportStartTime,
-				 initPosition,
-				 initVelocity))
+  				 initPosition,
+  				 initVelocity))
     return false;
   
   // evaluate the DCM trajectory
