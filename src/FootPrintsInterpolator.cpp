@@ -53,7 +53,7 @@ bool FeetInterpolator::createPhasesTimings()
     m_mergePoints.push_back(0); //attach a completely new trajectory
 
     std::shared_ptr<std::vector<StepPhase> > swing, stance;
-
+    
     if (m_orderedSteps.size() == 0){
         int endSwitchSamples = std::round(m_endSwitch/m_dT); //last shift to the center
 
@@ -863,9 +863,8 @@ bool FeetInterpolator::interpolate(const FootPrint &left, const FootPrint &right
     m_dT = dT;
     m_initTime = initTime;
 
-    //remove 9.81
     m_dcmTrajGenerator.setdT(m_dT);
-    m_dcmTrajGenerator.setOmega(9.81);
+    m_dcmTrajGenerator.setOmega(m_omega);
     
     if (!orderSteps()){
         std::cerr << "[FEETINTERPOLATOR] Failed while ordering the steps." << std::endl;
@@ -876,7 +875,7 @@ bool FeetInterpolator::interpolate(const FootPrint &left, const FootPrint &right
         std::cerr << "[FEETINTERPOLATOR] Failed while creating the standing periods." << std::endl;
         return false;
     }
-
+    
     fillFeetStandingPeriodsVectors();
     fillLeftFixedVector();
 
@@ -918,10 +917,10 @@ bool FeetInterpolator::interpolate(const FootPrint &left, const FootPrint &right
 
     // generate DCM trajectory
     StepList::const_iterator firstStanceFoot, firstSwingFoot;
-    firstStanceFoot = (m_left.getSteps().front().impactTime > m_right.getSteps().front().impactTime) ? m_right.getSteps().cbegin() : m_left.getSteps().cbegin();
-    firstSwingFoot = (m_left.getSteps().front().impactTime > m_right.getSteps().front().impactTime) ? m_left.getSteps().cbegin() : m_right.getSteps().cbegin();
-    
-    if(!m_dcmTrajGenerator.generateDcmTrajectory(m_orderedSteps, firstStanceFoot, firstSwingFoot, m_phaseShift )){
+    firstStanceFoot = (m_left.getSteps()[1].impactTime > m_right.getSteps()[1].impactTime) ? m_left.getSteps().cbegin() : m_right.getSteps().cbegin();
+    firstSwingFoot = (m_left.getSteps()[1].impactTime > m_right.getSteps()[1].impactTime) ? m_right.getSteps().cbegin() : m_left.getSteps().cbegin();
+
+    if(!m_dcmTrajGenerator.generateDcmTrajectory(m_orderedSteps, firstStanceFoot, firstSwingFoot, m_phaseShift)){
        std::cerr << "[FEETINTERPOLATOR] Failed while computing the DCM trajectories." << std::endl;
        return false;
     }
@@ -1054,6 +1053,9 @@ bool FeetInterpolator::setCoMHeightSettings(double comHeight, double comHeightSt
     m_CoMHeight = comHeight;
     m_CoMHeightDelta = comHeightStanceDelta;
 
+
+    m_omega = sqrt(9.81/m_CoMHeight);
+    
     return true;
 }
 

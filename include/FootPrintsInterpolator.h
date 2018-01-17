@@ -69,6 +69,9 @@ class FeetInterpolator {
     std::vector<double> m_CoMHeightTrajectory, m_CoMHeightVelocity, m_CoMHeightAcceleration;
 
 
+    //3D-LIPM constant time
+    double m_omega;
+    
     //DCM trajecectory generator
     DcmTrajectoryGenerator m_dcmTrajGenerator;
 
