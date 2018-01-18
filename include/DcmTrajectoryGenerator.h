@@ -220,6 +220,7 @@ class DcmTrajectoryGenerator
   std::vector<StepList::const_iterator> m_orderedSteps;  /**< Vector containing the both left and right footprint sorted into ascending order. */
   std::vector<size_t> m_phaseShift; /**< Vector containing the index when a change of phase (SS -> DS and viceversa) occours. */
   std::vector<iDynTree::Vector2> m_dcmPos;   /**< Vector containing the position of the DCM . */
+  std::vector<iDynTree::Vector2> m_dcmVel;   /**< Vector containing the velocity of the DCM . */
 
   /**
    * Return the subtrajectory such that the time t belongs to the domain
@@ -314,13 +315,13 @@ class DcmTrajectoryGenerator
    * @param dcmPos cartesian position of the Diverget Component of Motion 
    * @return true / false in case of success / failure
    */
-  bool evaluateDcmPosition(const size_t &t, iDynTree::Vector2 &dcmPos);
+  bool evaluateDcmTrajectory(const size_t &t, iDynTree::Vector2 &dcmPos, iDynTree::Vector2 &dcmVel);
 
   /**
    * Evaluate the DCM position for all time 
    * @return true / false in case of success / failure
    */
-  bool evaluateDcmPosition();
+  bool evaluateDcmTrajectory();
 
  public:
 

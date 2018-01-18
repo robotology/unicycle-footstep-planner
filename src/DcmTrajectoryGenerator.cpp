@@ -441,13 +441,19 @@ bool DcmTrajectoryGenerator::generateDcmTrajectory(const std::vector<StepList::c
 {
 
   m_trajectoryDomain = std::make_pair(phaseShift.front(), phaseShift.back());
-  //TODO CHECK IF IS THE FIRST TIME
-
   iDynTree::Vector2 initPosition;
-  iDynTree::toEigen(initPosition) = (iDynTree::toEigen(firstStanceFoot->position) + iDynTree::toEigen(firstSwingFoot->position)) / 2;
-  
   iDynTree::Vector2 initVelocity;
-  initVelocity.zero();
+  
+  // it is the first time that the generateDcmTrajectory is called
+  if(m_trajectory.size() == 0){
+    // the iinit position coincides with the position of the COM
+    iDynTree::toEigen(initPosition) = (iDynTree::toEigen(firstStanceFoot->position) + iDynTree::toEigen(firstSwingFoot->position)) / 2;
+    initVelocity.zero();
+  }
+  else{
+    initPosition = m_dcmPos[phaseShift.front()];
+    initVelocity = m_dcmVel[phaseShift.front()];
+  }
   
   m_orderedSteps = orderedSteps;
 
@@ -511,7 +517,7 @@ bool DcmTrajectoryGenerator::generateDcmTrajectory(const std::vector<StepList::c
     return false;
   
   // evaluate the DCM trajectory
-  if(!evaluateDcmPosition())
+  if(!evaluateDcmTrajectory())
     return false;
 
   return true;
@@ -528,43 +534,47 @@ std::shared_ptr<GeneralSupportTrajectory> DcmTrajectoryGenerator::findSubTraject
   return nullptr;
 }
 
-bool DcmTrajectoryGenerator::evaluateDcmPosition(const size_t &t, iDynTree::Vector2 &dcmPos)
+bool DcmTrajectoryGenerator::evaluateDcmTrajectory(const size_t &t, iDynTree::Vector2 &dcmPos, iDynTree::Vector2 &dcmVel)
 {
   // convert the time into double
   double time = t * m_dT;
 
   // get the subtrajectory
   std::shared_ptr<GeneralSupportTrajectory> subTrajectory = findSubTrajectory(time);
-
-  // evaluate the DCM position
+  
+  // evaluate the DCM position and velocity
   if (subTrajectory != nullptr){
     subTrajectory->getDcmPos(time, dcmPos);
+    subTrajectory->getDcmPos(time, dcmVel);
     return true;
   }
 
   return false;
 }
 
-bool DcmTrajectoryGenerator::evaluateDcmPosition()
+bool DcmTrajectoryGenerator::evaluateDcmTrajectory()
 {
-  // evaluate the length of the time vector 
-  size_t dcmPosLength = std::get<1>(m_trajectoryDomain) - std::get<0>(m_trajectoryDomain);
-  std::vector<size_t> time(dcmPosLength);
-
+  size_t timeVectorLength = std::get<1>(m_trajectoryDomain) - std::get<0>(m_trajectoryDomain);
+  std::vector<size_t> time(timeVectorLength);
+  
   // populate the time vector
   std::iota(std::begin(time), std::end(time), std::get<0>(m_trajectoryDomain));
 
   // clear all the previous DCM position 
   m_dcmPos.clear();
-  m_dcmPos.reserve(dcmPosLength);
+  m_dcmPos.reserve(timeVectorLength);
 
-  // populate the m_dcmPos vector
-  iDynTree::Vector2 dcmPos;
+  // clear all the previous DCM velocity 
+  m_dcmVel.clear();
+  m_dcmVel.reserve(timeVectorLength);
+
+  iDynTree::Vector2 dcmPos, dcmVel;
   for (size_t t: time){
-    if(!evaluateDcmPosition(t, dcmPos))
+    if(!evaluateDcmTrajectory(t, dcmPos, dcmVel))
       return false;
     
     m_dcmPos.push_back(dcmPos);
+    m_dcmVel.push_back(dcmVel);
   }
   return true;
 }
