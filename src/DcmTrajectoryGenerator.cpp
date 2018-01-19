@@ -437,7 +437,8 @@ void DcmTrajectoryGenerator::getFirstDoubleSupportTiming(double &doubleSupportSt
 bool DcmTrajectoryGenerator::generateDcmTrajectory(const std::vector<StepList::const_iterator> &orderedSteps,
 						   const StepList::const_iterator &firstStanceFoot,
 						   const StepList::const_iterator &firstSwingFoot,
-						   const std::vector<size_t> &phaseShift)
+						   const std::vector<size_t> &phaseShift,
+						   const size_t &mergePoint)
 {
 
   m_trajectoryDomain = std::make_pair(phaseShift.front(), phaseShift.back());
@@ -451,8 +452,8 @@ bool DcmTrajectoryGenerator::generateDcmTrajectory(const std::vector<StepList::c
     initVelocity.zero();
   }
   else{
-    initPosition = m_dcmPos[phaseShift.front()];
-    initVelocity = m_dcmVel[phaseShift.front()];
+    initPosition = m_dcmPos[mergePoint];
+    initVelocity = m_dcmVel[mergePoint];
   }
   
   m_orderedSteps = orderedSteps;
@@ -545,7 +546,7 @@ bool DcmTrajectoryGenerator::evaluateDcmTrajectory(const size_t &t, iDynTree::Ve
   // evaluate the DCM position and velocity
   if (subTrajectory != nullptr){
     subTrajectory->getDcmPos(time, dcmPos);
-    subTrajectory->getDcmPos(time, dcmVel);
+    subTrajectory->getDcmVel(time, dcmVel);
     return true;
   }
 
@@ -582,4 +583,10 @@ bool DcmTrajectoryGenerator::evaluateDcmTrajectory()
 const std::vector<iDynTree::Vector2>& DcmTrajectoryGenerator::getDcmPosition() const
 {
   return m_dcmPos;
+}
+
+
+const std::vector<iDynTree::Vector2>& DcmTrajectoryGenerator::getDcmVelocity() const
+{
+  return m_dcmVel;
 }

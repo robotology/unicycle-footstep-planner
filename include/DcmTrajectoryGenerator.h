@@ -354,7 +354,8 @@ class DcmTrajectoryGenerator
   bool generateDcmTrajectory(const std::vector<StepList::const_iterator> &orderedSteps,
 			     const StepList::const_iterator &firstStanceFoot,
 			     const StepList::const_iterator &firstSwingFoot,
-			     const std::vector<size_t> &phaseShift);
+			     const std::vector<size_t> &phaseShift,
+			     const size_t &mergePoint);
 
 
   /**
@@ -362,6 +363,7 @@ class DcmTrajectoryGenerator
    * @return a vector containing the DCM position during all the trajectory domain
    */  
   const std::vector<iDynTree::Vector2>& getDcmPosition() const;
+  const std::vector<iDynTree::Vector2>& getDcmVelocity() const;
 };
 
 #endif
