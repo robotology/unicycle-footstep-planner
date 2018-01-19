@@ -166,6 +166,8 @@ public:
 
 
     const std::vector<iDynTree::Vector2>& getDcmPosition() const;
+    const std::vector<iDynTree::Vector2>& getDcmVelocity() const;
+
 };
 
 #endif // FOOTPRINTSINTERPOLATOR_H
