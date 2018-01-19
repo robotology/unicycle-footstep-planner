@@ -27,6 +27,8 @@ public:
 
     bool generateAndInterpolate(double initTime, double dT, double endTime);
 
+    bool generateAndInterpolate(std::shared_ptr<FootPrint> leftFoot, std::shared_ptr<FootPrint> rightFoot, double initTime, double dT, double endTime);
+    
     bool reGenerate(double initTime, double dT, double endTime, const InitialState &weightInLeftAtMergePoint);
 
     bool reGenerate(double initTime, double dT, double endTime, const InitialState &weightInLeftAtMergePoint,

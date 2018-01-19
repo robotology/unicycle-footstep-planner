@@ -34,6 +34,14 @@ bool UnicycleTrajectoryGenerator::generateAndInterpolate(double initTime, double
     return setEndTime(endTime) && computeNewSteps(m_left, m_right, initTime) && interpolate(*m_left, *m_right, initTime, dT);
 }
 
+bool UnicycleTrajectoryGenerator::generateAndInterpolate(std::shared_ptr<FootPrint> leftFoot, std::shared_ptr<FootPrint> rightFoot, double initTime, double dT, double endTime)
+{
+    m_left = leftFoot;
+    m_right = rightFoot;
+    return setEndTime(endTime) && computeNewSteps(m_left, m_right, initTime) && interpolate(*m_left, *m_right, initTime, dT);
+}
+
+
 bool UnicycleTrajectoryGenerator::reGenerate(double initTime, double dT, double endTime, const InitialState &weightInLeftAtMergePoint)
 {
     if (!m_left->keepOnlyPresentStep(initTime)){
