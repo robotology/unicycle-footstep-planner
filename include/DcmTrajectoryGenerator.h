@@ -113,8 +113,16 @@ class SingleSupportTrajectory : public GeneralSupportTrajectory
 			  const iDynTree::Vector2 &nextDcmIos);
 
 
+  /**
+   * DCM init of step getter.
+   * @return the position of the DCM at the beginning of SS phase
+   */
   const iDynTree::Vector2& getDcmIos() const;
 
+  /**
+   * ZMP getter.
+   * @return the position of the ZMP
+   */
   const iDynTree::Vector2& getZmp() const;
   
   /**
@@ -221,12 +229,12 @@ class DcmTrajectoryGenerator
   double m_omega; /**< Time constant of the 3D-LIPM. */
   std::vector<StepList::const_iterator> m_orderedSteps;  /**< Vector containing the both left and right footprint sorted into ascending order. */
   std::vector<size_t> m_phaseShift; /**< Vector containing the index when a change of phase (SS -> DS and viceversa) occours. */
-  std::vector<iDynTree::Vector2> m_dcmPos;   /**< Vector containing the position of the DCM . */
-  std::vector<iDynTree::Vector2> m_dcmVel;   /**< Vector containing the velocity of the DCM . */
+  std::vector<iDynTree::Vector2> m_dcmPos;   /**< Vector containing the position of the DCM. */
+  std::vector<iDynTree::Vector2> m_dcmVel;   /**< Vector containing the velocity of the DCM. */
 
-  bool m_pauseActive;
-  double m_maxDoubleSupportDuration;
-  double m_nominalDoubleSupportDuration;
+  bool m_pauseActive; /**< True if the pause feature is activate. */
+  double m_maxDoubleSupportDuration; /**< Max duration of a DS phase. */ 
+  double m_nominalDoubleSupportDuration; /**< Nominal duration of a DS phase. */
 
   /**
    * Return the subtrajectory such that the time t belongs to the domain
@@ -342,12 +350,26 @@ class DcmTrajectoryGenerator
    * Constructor.
    */
   DcmTrajectoryGenerator();
-
+  
+  /**
+   * Set the time constant of the 3D-LIPM
+   * @param omega is the time constant of the 3D-LIPM
+   */  
   void setOmega(const double &omega);
 
-
+  /**
+   * Set the period of the Trajectory generator planner
+   * @param dT is the period (in seconds) of the Trajectory generator planner
+   */  
   void setdT(const double &dT);
 
+  /**
+   * Set the pause condition
+   * @param maxDoubleSupportDuration is the max duration of a DS phase
+   * @param nominalDoubleSupportDuration is the nominal duration of a DS phase
+   * @return true if the pause conditions are set, false otherwise
+   */  
+  bool setPauseConditions(const double &maxDoubleSupportDuration, const double &nominalDoubleSupportDuration);
   
   /**
    * Generate the Divergent Component of Motion trajectory
@@ -369,9 +391,12 @@ class DcmTrajectoryGenerator
    * @return a vector containing the DCM position during all the trajectory domain
    */  
   const std::vector<iDynTree::Vector2>& getDcmPosition() const;
-  const std::vector<iDynTree::Vector2>& getDcmVelocity() const;
 
-  bool setPauseConditions(const double &maxDoubleSupportDuration, const double &nominalDoubleSupportDuration);
+  /**
+   * Get the velocity of the Divergent Component of Motion 
+   * @return a vector containing the DCM velocity during all the trajectory domain
+   */  
+  const std::vector<iDynTree::Vector2>& getDcmVelocity() const;
 };
 
 #endif
