@@ -485,24 +485,11 @@ void DcmTrajectoryGenerator::getFirstDoubleSupportTiming(double &doubleSupportSt
 
 bool DcmTrajectoryGenerator::generateDcmTrajectory(const std::vector<StepList::const_iterator> &orderedSteps,
 						   const StepList::const_iterator &firstStanceFoot,
-						   const StepList::const_iterator &firstSwingFoot,
-						   const std::vector<size_t> &phaseShift,
-						   const size_t &mergePoint)
+						   const iDynTree::Vector2 &initPosition,
+						   const iDynTree::Vector2 &initVelocity,
+						   const std::vector<size_t> &phaseShift)
 {
   m_trajectoryDomain = std::make_pair(phaseShift.front(), phaseShift.back());
-  iDynTree::Vector2 initPosition;
-  iDynTree::Vector2 initVelocity;
-  
-  // it is the first time that the generateDcmTrajectory is called
-  if(m_trajectory.size() == 0){
-    // the iinit position coincides with the position of the COM
-    iDynTree::toEigen(initPosition) = (iDynTree::toEigen(firstStanceFoot->position) + iDynTree::toEigen(firstSwingFoot->position)) / 2;
-    initVelocity.zero();
-  }
-  else{
-    initPosition = m_dcmPos[mergePoint];
-    initVelocity = m_dcmVel[mergePoint];
-  }
   
   m_orderedSteps = orderedSteps;
 

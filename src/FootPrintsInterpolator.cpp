@@ -6,6 +6,7 @@
  */
 
 #include "FootPrintsInterpolator.h"
+#include "iDynTree/Core/EigenHelpers.h"
 #include <iostream>
 #include <algorithm>
 #include <cmath>
@@ -921,8 +922,24 @@ bool FeetInterpolator::interpolate(const FootPrint &left, const FootPrint &right
     firstSwingFoot = (m_left.getSteps()[1].impactTime > m_right.getSteps()[1].impactTime) ? m_right.getSteps().cbegin() : m_left.getSteps().cbegin();
 
     size_t mergePoint = std::round(initTime / m_dT);
+
+    iDynTree::Vector2 initDcmPosition, initDcmVelocity;
+
+    std::vector<iDynTree::Vector2> dcmPosition = getDcmPosition();
+    std::vector<iDynTree::Vector2> dcmVelocity = getDcmVelocity();
     
-    if(!m_dcmTrajGenerator.generateDcmTrajectory(m_orderedSteps, firstStanceFoot, firstSwingFoot, m_phaseShift, mergePoint)){
+    // it is the first time that the generateDcmTrajectory is called
+    if(dcmPosition.size() == 0){
+      // the init position coincides with the position of the COM
+      iDynTree::toEigen(initDcmPosition) = (iDynTree::toEigen(firstStanceFoot->position) + iDynTree::toEigen(firstSwingFoot->position)) / 2;
+      initDcmVelocity.zero();
+    }
+    else{
+      initDcmPosition = dcmPosition[mergePoint];
+      initDcmVelocity = dcmVelocity[mergePoint];
+    }
+    
+    if(!m_dcmTrajGenerator.generateDcmTrajectory(m_orderedSteps, firstStanceFoot, initDcmPosition, initDcmVelocity, m_phaseShift)){
        std::cerr << "[FEETINTERPOLATOR] Failed while computing the DCM trajectories." << std::endl;
        return false;
     }

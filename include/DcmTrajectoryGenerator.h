@@ -353,16 +353,16 @@ class DcmTrajectoryGenerator
    * Generate the Divergent Component of Motion trajectory
    * @param orderedSteps vector containing the both left and right footprint sorted into ascending order
    * @param firstStanceFoot is the footprint of the first stance foot
-   * @param firstSwingFoot is the footprint of the first swing foot
+   * @param initPosition is the position of the DCM at the beginning of the trajectory
+   * @param initVelocity is the velocity of the DCM at the beginning of the trajectory
    * @param phaseShift vector containing the index when a change of phase (SS -> DS and viceversa) occours.
    * @return true / false in case of success / failure
    */
   bool generateDcmTrajectory(const std::vector<StepList::const_iterator> &orderedSteps,
 			     const StepList::const_iterator &firstStanceFoot,
-			     const StepList::const_iterator &firstSwingFoot,
-			     const std::vector<size_t> &phaseShift,
-			     const size_t &mergePoint);
-
+			     const iDynTree::Vector2 &initPosition,
+			     const iDynTree::Vector2 &initVelocity,
+			     const std::vector<size_t> &phaseShift);
 
   /**
    * Get the position of the Divergent Component of Motion 
