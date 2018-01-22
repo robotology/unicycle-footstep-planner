@@ -226,6 +226,7 @@ void printTrajectories(const FeetInterpolator& interpolator, size_t& newMergePoi
   dcmPosInput = interpolator.getDcmPosition();
   dcmPosVector.insert(dcmPosVector.begin() + mergePoint, dcmPosInput.begin(), dcmPosInput.end());
   dcmPosVector.resize(mergePoint + dcmPosInput.size());
+  dcmPosStream << "dcm_x dcm_y" <<std::endl;
   print_iDynTree(dcmPosVector, dcmPosStream);
 
   // print the velocity of the DCM
@@ -234,6 +235,7 @@ void printTrajectories(const FeetInterpolator& interpolator, size_t& newMergePoi
   dcmVelInput = interpolator.getDcmVelocity();
   dcmVelVector.insert(dcmVelVector.begin() + mergePoint, dcmVelInput.begin(), dcmVelInput.end());
   dcmVelVector.resize(mergePoint + dcmVelInput.size());
+  dcmVelStream << "dcm_vx dcm_vy" <<std::endl;
   print_iDynTree(dcmVelVector, dcmVelStream);
 
   // close stream
