@@ -44,7 +44,7 @@ typedef struct
   double comHeight = 0.53, comHeightDelta = 0.01;
 
   // Timings
-  double nominalDuration = 2.5, lastStepSwitchTime = 0.8,  switchOverSwingRatio = 1.0;
+  double nominalDuration = 2.3, lastStepSwitchTime = 0.8,  switchOverSwingRatio = 1.0;
 
   // Local ZMP via points
   // Right
