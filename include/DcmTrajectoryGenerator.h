@@ -114,7 +114,9 @@ class SingleSupportTrajectory : public GeneralSupportTrajectory
 
 
   const iDynTree::Vector2& getDcmIos() const;
-		  
+
+  const iDynTree::Vector2& getZmp() const;
+  
   /**
    * Implementation of the getDcmPos method of the
    * GeneralSupportTrajectory class
@@ -221,6 +223,10 @@ class DcmTrajectoryGenerator
   std::vector<size_t> m_phaseShift; /**< Vector containing the index when a change of phase (SS -> DS and viceversa) occours. */
   std::vector<iDynTree::Vector2> m_dcmPos;   /**< Vector containing the position of the DCM . */
   std::vector<iDynTree::Vector2> m_dcmVel;   /**< Vector containing the velocity of the DCM . */
+
+  bool m_pauseActive;
+  double m_maxDoubleSupportDuration;
+  double m_nominalDoubleSupportDuration;
 
   /**
    * Return the subtrajectory such that the time t belongs to the domain
@@ -335,7 +341,7 @@ class DcmTrajectoryGenerator
   /**
    * Constructor.
    */
-  DcmTrajectoryGenerator(){};
+  DcmTrajectoryGenerator();
 
   void setOmega(const double &omega);
 
@@ -364,6 +370,8 @@ class DcmTrajectoryGenerator
    */  
   const std::vector<iDynTree::Vector2>& getDcmPosition() const;
   const std::vector<iDynTree::Vector2>& getDcmVelocity() const;
+
+  bool setPauseConditions(const double &maxDoubleSupportDuration, const double &nominalDoubleSupportDuration);
 };
 
 #endif

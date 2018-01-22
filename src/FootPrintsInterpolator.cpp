@@ -1029,6 +1029,9 @@ bool FeetInterpolator::setPauseConditions(double maxStepTime, double nominalStep
     }
     m_nominalStepTime = nominalStepTime;
 
+    // set pouse condition for te DCM trajectory generator
+    //m_dcmTrajGenerator.setPauseConditions(maxStepTime, nominalStepTime);
+    
     return true;
 }
 

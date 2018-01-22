@@ -14,7 +14,6 @@
 
 #include "DcmTrajectoryGenerator.h"
 
-
 //dedbug
 #include <iostream>
 
@@ -72,6 +71,12 @@ const iDynTree::Vector2& SingleSupportTrajectory::getDcmIos() const
 {
   return m_dcmIos;
 }
+
+const iDynTree::Vector2& SingleSupportTrajectory::getZmp() const
+{
+  return m_zmp;
+}
+
 
 
 bool SingleSupportTrajectory::getDcmPos(const double &t, iDynTree::Vector2 &dcmPos)
@@ -219,9 +224,14 @@ bool DoubleSupportTrajectory::getDcmVel(const double &t, iDynTree::Vector2 &dcmV
   return false;  
 }
 
+DcmTrajectoryGenerator::DcmTrajectoryGenerator():
+  m_pauseActive(false)
+{}
+
 DcmTrajectoryGenerator::DcmTrajectoryGenerator(const double &dT, const double &omega):
   m_omega(omega),
-  m_dT(dT)
+  m_dT(dT),
+  m_pauseActive(false)
 {}
 
 
@@ -310,7 +320,7 @@ bool DcmTrajectoryGenerator::addNewStep(const double &singleSupportStartTime,
   iDynTree::Vector2 endPosition, endVelocity;
 
   // the begining time of the Double Support phase coinceds with the beginning of the next Single Support phase
-  double endTimeDoubleSupport = std::get<0>(nextSubTrajectoryDomain);
+  double doubleSupportEndTime = std::get<0>(nextSubTrajectoryDomain);
 
   // get the boundary conditions
   if(!currentSingleSupport->getDcmPos(singleSupportEndTime, initPosition)){
@@ -323,25 +333,64 @@ bool DcmTrajectoryGenerator::addNewStep(const double &singleSupportStartTime,
     return false;
   }
   
-  if(!nextSingleSupport->getDcmPos(endTimeDoubleSupport, endPosition)){
+  if(!nextSingleSupport->getDcmPos(doubleSupportEndTime, endPosition)){
     std::cerr << "Add new step" <<std::endl;
     return false;
   }
 
-  if(!nextSingleSupport->getDcmVel(endTimeDoubleSupport, endVelocity)){
+  if(!nextSingleSupport->getDcmVel(doubleSupportEndTime, endVelocity)){
     std::cerr << "Add new step" <<std::endl;
     return false;
   }
 
   // evaluate the new Double Support phase
   double doubleSupportStartTime = singleSupportEndTime;
-  std::shared_ptr<GeneralSupportTrajectory> currentDoubleSupport(new DoubleSupportTrajectory(initPosition, initVelocity,
-											     endPosition, endVelocity,
-											     doubleSupportStartTime,
-											     endTimeDoubleSupport));
-  // add the new Double Support phase
-  m_trajectory.push_front(currentDoubleSupport);
+  std::shared_ptr<GeneralSupportTrajectory> currentDoubleSupport;
+  
+  if (m_pauseActive && (doubleSupportEndTime - doubleSupportStartTime > m_maxDoubleSupportDuration)){
+    iDynTree::Vector2 stancePosition, stanceVelocity;
+    stanceVelocity.zero();
+    iDynTree::toEigen(stancePosition) = (iDynTree::toEigen(zmp) + iDynTree::toEigen(nextSingleSupport_cast->getZmp())) / 2;
 
+    double doubleSupportStanceStartTime = doubleSupportStartTime + m_nominalDoubleSupportDuration / 2;
+    double doubleSupportStanceEndTime = doubleSupportEndTime - m_nominalDoubleSupportDuration / 2;
+
+    if(fabs(doubleSupportStanceStartTime - doubleSupportStanceEndTime) < 0.001){
+      std::cerr << "Add new step" <<std::endl;
+      return false;
+    }
+    
+    currentDoubleSupport.reset(new DoubleSupportTrajectory(initPosition, initVelocity,
+							   stancePosition, stanceVelocity,
+							   doubleSupportStartTime,
+							   doubleSupportStanceStartTime));
+    // add the new Double Support phase
+    m_trajectory.push_front(currentDoubleSupport);
+
+    currentDoubleSupport.reset(new DoubleSupportTrajectory(stancePosition, stanceVelocity,
+							   stancePosition, stanceVelocity,
+							   doubleSupportStanceStartTime,
+							   doubleSupportStanceEndTime));
+    // add the new Double Support phase
+    m_trajectory.push_front(currentDoubleSupport);
+
+    currentDoubleSupport.reset(new DoubleSupportTrajectory(stancePosition, stanceVelocity,
+							   endPosition, endVelocity,
+							   doubleSupportStanceEndTime,
+							   doubleSupportEndTime));
+    // add the new Double Support phase
+    m_trajectory.push_front(currentDoubleSupport);
+
+    
+  }else{
+
+    currentDoubleSupport.reset(new DoubleSupportTrajectory(initPosition, initVelocity,
+							   endPosition, endVelocity,
+							   doubleSupportStartTime,
+							   doubleSupportEndTime));
+    // add the new Double Support phase
+    m_trajectory.push_front(currentDoubleSupport);
+  }
   // add the new Single Support phase
   m_trajectory.push_front(currentSingleSupport);
 
@@ -363,14 +412,14 @@ bool DcmTrajectoryGenerator::addFirstDoubleSupportPhase(const double &doubleSupp
   iDynTree::Vector2 endPosition, endVelocity;
 
   // the begining time of the Double Support phase coinceds with the beginning of the next Single Support phase
-  double endTimeDoubleSupport = std::get<0>(nextSubTrajectoryDomain);
+  double doubleSupportEndTime = std::get<0>(nextSubTrajectoryDomain);
   
-  if(!nextSingleSupport->getDcmPos(endTimeDoubleSupport, endPosition)){
+  if(!nextSingleSupport->getDcmPos(doubleSupportEndTime, endPosition)){
     std::cerr << "Add new step" <<std::endl;
     return false;
   }
 
-  if(!nextSingleSupport->getDcmVel(endTimeDoubleSupport, endVelocity)){
+  if(!nextSingleSupport->getDcmVel(doubleSupportEndTime, endVelocity)){
     std::cerr << "Add new step" <<std::endl;
     return false;
   }
@@ -379,7 +428,7 @@ bool DcmTrajectoryGenerator::addFirstDoubleSupportPhase(const double &doubleSupp
   std::shared_ptr<GeneralSupportTrajectory> currentDoubleSupport(new DoubleSupportTrajectory(initPosition, initVelocity,
 											     endPosition, endVelocity,
 											     doubleSupportStartTime,
-											     endTimeDoubleSupport));
+											     doubleSupportEndTime));
   // add the new Double Support phase
   m_trajectory.push_front(currentDoubleSupport);
   return true;
@@ -440,7 +489,6 @@ bool DcmTrajectoryGenerator::generateDcmTrajectory(const std::vector<StepList::c
 						   const std::vector<size_t> &phaseShift,
 						   const size_t &mergePoint)
 {
-
   m_trajectoryDomain = std::make_pair(phaseShift.front(), phaseShift.back());
   iDynTree::Vector2 initPosition;
   iDynTree::Vector2 initVelocity;
@@ -462,7 +510,6 @@ bool DcmTrajectoryGenerator::generateDcmTrajectory(const std::vector<StepList::c
   m_orderedSteps.insert(m_orderedSteps.begin(), firstStanceFoot);
   
   m_phaseShift = phaseShift;
-
 
   double singleSupportStartTime;
   double singleSupportEndTime;
@@ -589,4 +636,32 @@ const std::vector<iDynTree::Vector2>& DcmTrajectoryGenerator::getDcmPosition() c
 const std::vector<iDynTree::Vector2>& DcmTrajectoryGenerator::getDcmVelocity() const
 {
   return m_dcmVel;
+}
+
+bool DcmTrajectoryGenerator::setPauseConditions(const double &maxDoubleSupportDuration, const double &nominalDoubleSupportDuration)
+{
+  if (maxDoubleSupportDuration < 0){
+    std::cerr << "[DCM INTERPOLATOR] If the maxDoubleSupportDuration  is negative, the robot won't pause in middle stance." << std::endl;
+    m_pauseActive = false;
+  }
+  
+  m_pauseActive = true;
+  m_maxDoubleSupportDuration = maxDoubleSupportDuration;
+  
+  if (m_pauseActive){
+    if (nominalDoubleSupportDuration <= 0){
+      std::cerr << "[DCM INTERPOLATOR] The nominalDoubleSupportDuration is supposed to be positive." << std::endl;
+      m_pauseActive = false;
+      return false;
+    }
+    
+    if (nominalDoubleSupportDuration > maxDoubleSupportDuration / 2){
+      std::cerr << "[DCM INTERPOLATOR] The nominalDoubleSupportDuration cannot be greater than maxnominalDoubleSupportDuration." << std::endl;
+      m_pauseActive = false;
+      return false;
+    }
+  }
+  m_nominalDoubleSupportDuration = nominalDoubleSupportDuration;
+
+  return true;
 }
