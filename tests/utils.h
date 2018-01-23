@@ -1,11 +1,57 @@
-/*
- * Copyright (C) 2018 Fondazione Istituto Italiano di Tecnologia
- * Authors: Giulio Romualdi
- * CopyPolicy: Released under the terms of the LGPLv2.1 or later, see LGPL.TXT
+/**
+ * @file DcmTrajectoryGenerator.h
+ * @author Giulio Romualdi
+ * @copyright 2018 iCub Facility - Istituto Italiano di Tecnologia
+ *            Released under the terms of the LGPLv2.1 or later, see LGPL.TXT
+ * @date 2018
  */
 
+#ifndef TEST_UTILS_H
+#define TEST_UTILS_H
+
+#include <ostream>
+#include <fstream> 
+
 #include "UnicycleTrajectoryGenerator.h"
- #include <fstream> 
+
+/**
+ * Color namespace
+ */
+namespace Color {
+  enum Code {
+    FG_RED      = 31,
+    FG_GREEN    = 32,
+    FG_BLUE     = 34,
+    FG_DEFAULT  = 39,
+    BG_RED      = 41,
+    BG_GREEN    = 42,
+    BG_BLUE     = 44,
+    BG_DEFAULT  = 49
+  };
+  
+  /**
+   * Modifier class 
+   */
+  class Modifier
+  {
+    Code code /** < Color code. */; 
+    
+  public:
+    
+    /**
+     * Modifier constructor
+     * @param pCode is the color code
+     */
+  Modifier(Code pCode):
+    code(pCode)
+    {}
+
+    /**
+     * Overloading << operator.
+     */
+    friend std::ostream& operator<<(std::ostream& os, const Modifier& mod);
+  };
+}
 
 /**
  * Print left and right footsteps into a file
@@ -46,9 +92,11 @@ void print_iDynTree(object& objectName, std::ofstream& file){
  */
 template<class object>
 void printVector(object& objectName){
+  std::cerr << "[ " ;
   for (auto pose : objectName){
-    std::cerr << pose << std::endl;
+    std::cerr << pose << " ";
   }
+  std::cerr << "]" << std::endl;
 }
 
 /**
@@ -62,3 +110,5 @@ void printVector(object& objectName, std::ofstream& file){
     file << pose << std::endl;
   }
 }
+
+#endif
