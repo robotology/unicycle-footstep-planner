@@ -1,0 +1,71 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%2345678901234567890123456789012345678901234567890123456789012345678901234567890
+%        1         2         3         4         5         6         7         8
+
+\documentclass[10 pt]{article}  % Comment this line out if you need a4paper
+
+%\documentclass[a4paper, 10pt, conference]{ieeeconf}      % Use this line for a4 paper
+\bibliographystyle{IEEEtran} 
+
+\usepackage{amssymb}
+\usepackage{amsmath}
+\usepackage{commath}
+\usepackage{mathtools}
+\DeclarePairedDelimiter{\ceil}{\lceil}{\rceil}
+\usepackage{bbm}
+\usepackage{hyperref}
+\usepackage{import}
+\usepackage{paralist}
+\usepackage[pdf]{svg}
+\usepackage{IEEEtrantools}
+
+% See the \addtolength command later in the file to balance the column lengths
+% on the last page of the document
+
+% The following packages can be found on http:\\www.ctan.org
+\usepackage{graphics} % for pdf, bitmapped graphics files
+\usepackage{epsfig} % for postscript graphics files
+%\usepackage{mathptmx} % assumes new font selection scheme installed
+%\usepackage{times} % assumes new font selection scheme installed
+%\usepackage{amsmath} % assumes amsmath package installed
+%\usepackage{amssymb}  % assumes amsmath package installed
+
+\usepackage{todonotes}
+\usepackage[normalem]{ulem}
+\date{8 January 2018}
+\title{\LARGE \bf
+Unicycle Planner}
+
+\author{Stefano Dafarra}
+
+
+
+%math commands
+\DeclareMathOperator*{\minimize}{minimize}
+\DeclareMathOperator*{\argmin}{argmin}
+
+\begin{document}
+	
+\maketitle
+\thispagestyle{empty}
+\pagestyle{empty}
+
+
+\import{tex/}{problem}
+\import{tex/}{unicycle}
+%\import{tex/}{twistMap}
+%\import{tex/}{constraints}
+
+\addtolength{\textheight}{0cm}   % This command serves to balance the column lengths
+                                  % on the last page of the document manually. It shortens
+                                  % the textheight of the last page by a suitable amount.
+                                  % This command does not take effect until the next page
+                                  % so it should come on the page before the last. Make
+                                  % sure that you do not shorten the textheight too much.
+
+
+%\addcontentsline{toc}{section}{References}
+
+\bibliography{IEEEabrv,Bibliography}
+
+\end{document}

@@ -1,0 +1,12 @@
+\section{Problem Definition}
+Let us consider a humanoid robot walking on a flat terrain. The main problem is to define the position and the orientation that the robot's feet should take in order to reach a specified position in the space. Timings should also be taken into account, since the robot will not be able to perform steps at arbitrary speed. In brief, for every foot and for every step taken the following parameters need to be defined:
+\begin{itemize}
+	\item $x_{f, i}$
+	\item $y_{f, i}$
+	\item $\theta_{f, i}$
+	\item $t_{f, i}$.
+\end{itemize}
+$x_{f, i}$ and $y_{f, i}$ are the $x$ and $y$ position of a frame fixed to the foot $f$ when step $i$ is completed, measured in a inertial reference frame $\mathbbm{w}$, called \textit{world}. The \textit{world} frame is oriented such that the $z-$axis is aligned with the gravity and the origin belongs to the ground plane, supposed to be perpendicular to gravity too. The position of the origin of the feet fixed frame (measured in $\mathbbm{w}$) has zero $z-$component when in touch with the ground, while the $z-$axis is parallel to gravity. In this configuration $\theta_{f, i}$ expresses the magnitude of the rotation to be performed around the \textit{world} $z-$axis to align this frame with the corresponding foot fixed frame. Finally $t_{f, i}$ expresses the impact time, the instant at which foot $f$ impacts the ground after completing the $i^\text{th}$ step.
+
+Suppose now that you want the robot to follow a generic point on the ground. It may be difficult to define directly all the quantities defined above, while using an optimization algorithm usually require the usage of integers variables which make the resulting problem hard to be solved. Another point that has to be taken into account is side stepping. Usually stepping aside is costly also for humans \cite{handford2014sideways} while the robot could have difficulties in perform this motion correctly due to kinematic limitations. 
+Referring again to human walking, the shape of the feet and the placement of the strong muscles makes the forward direction preferred. In view of all these considerations, the use of a unicycle model to plan footsteps provides a solution.
