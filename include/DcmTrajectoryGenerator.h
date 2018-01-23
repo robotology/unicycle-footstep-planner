@@ -15,9 +15,12 @@
 // Eigen3
 #include <Eigen/Dense>
 
+// iDynTree
 #include "iDynTree/Core/VectorFixSize.h"
 
 #include "FootPrint.h"
+
+# define MIN_DURATION_DOUBLE_SUPPORT_STANCE_PHASE 0.001
 
 /**
  * Virtual class that represents a coordiante (x or y) of the Divergent Component
