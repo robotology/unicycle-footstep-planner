@@ -1,20 +1,25 @@
-/*
- * Copyright (C) 2018 Fondazione Istituto Italiano di Tecnologia
- * Authors: Giulio Romualdi
- * CopyPolicy: Released under the terms of the LGPLv2.1 or later, see LGPL.TXT
+/**
+ * @file DcmTrajectoryGenerator.h
+ * @author Giulio Romualdi
+ * @copyright 2018 iCub Facility - Istituto Italiano di Tecnologia
+ *            Released under the terms of the LGPLv2.1 or later, see LGPL.TXT
+ * @date 2018
  */
 
-#include "utils.h"
-
-#include "UnicycleTrajectoryGenerator.h"
-#include "iDynTree/Core/TestUtils.h"
+// std
 #include <memory>
-#include "iDynTree/Core/VectorDynSize.h"
-#include "iDynTree/Core/VectorFixSize.h"
 #include <fstream>
 #include <ctime>
 
-/*
+// iDynTree
+#include "iDynTree/Core/VectorDynSize.h"
+#include "iDynTree/Core/VectorFixSize.h"
+#include "iDynTree/Core/TestUtils.h"
+
+#include "utils.h"
+#include "UnicycleTrajectoryGenerator.h"
+
+/**
  * Struct containing the necessary quantities for the trajectory planner
  */
 typedef struct
@@ -153,18 +158,15 @@ void printTrajectories(const FeetInterpolator& interpolator, size_t& newMergePoi
   rFootTrajectory.insert(rFootTrajectory.begin() + mergePoint, rFootTrajectoryInput.begin(), rFootTrajectoryInput.end());
   rFootTrajectory.resize(mergePoint + rFootTrajectoryInput.size());
   
-  std::cerr << "--------------------------------------------->Left Trajectory." << std::endl;
   for (auto pose : lFootTrajectory){
-    posLeftStream << pose.getPosition()(0) << "    " << pose.getPosition()(1) << "    " <<
-      "    " << pose.getPosition()(2)<<"    "<< std::endl;
+    posLeftStream << pose.getPosition()(0) << " " << pose.getPosition()(1) << " " <<
+      " " << pose.getPosition()(2)<< " " << std::endl;
   }
 
-  std::cerr << "--------------------------------------------->Right Trajectory." << std::endl;
   for (auto pose : rFootTrajectory){
     posRightStream << pose.getPosition()(0) << " " << pose.getPosition()(1) << " " <<
-      " " << pose.getPosition()(2)<<"    "<< std::endl;
+      " " << pose.getPosition()(2)<< " " << std::endl;
   }
-
 
   // print CoM height trajectory
   static std::vector< double > CoMHeightTrajectory;
@@ -173,7 +175,6 @@ void printTrajectories(const FeetInterpolator& interpolator, size_t& newMergePoi
   CoMHeightTrajectory.insert(CoMHeightTrajectory.begin()+ mergePoint, CoMHeightTrajectoryIn.begin(), CoMHeightTrajectoryIn.end());
   CoMHeightTrajectory.resize(mergePoint + CoMHeightTrajectoryIn.size());
 
-  std::cerr << "--------------------------------------------->CoM Height Trajectory." << std::endl;
   printVector(CoMHeightTrajectory, heightStream);
 
   // print CoM height acceleration
@@ -182,10 +183,7 @@ void printTrajectories(const FeetInterpolator& interpolator, size_t& newMergePoi
   interpolator.getCoMHeightAccelerationProfile(CoMHeightAccelerationProfileIn);
   CoMHeightAccelerationProfile.insert(CoMHeightAccelerationProfile.begin()+ mergePoint, CoMHeightAccelerationProfileIn.begin(), CoMHeightAccelerationProfileIn.end());
   CoMHeightAccelerationProfile.resize(mergePoint + CoMHeightAccelerationProfileIn.size());
-
-  std::cerr << "--------------------------------------------->CoM Height Acceleration." << std::endl;
   printVector(CoMHeightAccelerationProfile, heightAccelerationStream);
-
   
   // print the vector containing the instant when the feet are in contact
   static std::vector < bool > lFootContacts, rFootContacts;
@@ -202,8 +200,6 @@ void printTrajectories(const FeetInterpolator& interpolator, size_t& newMergePoi
   interpolator.getWhenUseLeftAsFixed(lFootFixedIn);
   lFootFixed.insert(lFootFixed.begin()+ mergePoint, lFootFixedIn.begin(), lFootFixedIn.end());
   lFootFixed.resize(mergePoint + lFootFixedIn.size());
-  std::cerr << "--------------------------------------------->Left fixed." << std::endl;
-  //    printVector(lFootFixed);
 
   std::vector<InitialState> initPoints;
   interpolator.getInitialStatesAtMergePoints(initPoints);
@@ -214,11 +210,11 @@ void printTrajectories(const FeetInterpolator& interpolator, size_t& newMergePoi
 
   // REMOVE ME necessary only for ZMP
   newAlpha = initPoints[1];
-  
-  std::cerr << "--------------------------------------------->Merge Points." << std::endl;
-  printVector(mergePoints);
 
-  std::cerr << "--------------------------------------------->DCM trajectory." << std::endl;
+  Color::Modifier green(Color::FG_GREEN);
+  Color::Modifier def(Color::FG_DEFAULT);
+  std::cerr << green << "Merge Points: " << def;
+  printVector(mergePoints);
 
   // print the position of the DCM
   static std::vector<iDynTree::Vector2> dcmPosVector;
@@ -238,6 +234,8 @@ void printTrajectories(const FeetInterpolator& interpolator, size_t& newMergePoi
   dcmVelStream << "dcm_vx dcm_vy" <<std::endl;
   print_iDynTree(dcmVelVector, dcmVelStream);
 
+  std::cerr << "************************************" << std::endl;
+  
   // close stream
   posLeftStream.close();
   posRightStream.close();
@@ -252,7 +250,15 @@ void printTrajectories(const FeetInterpolator& interpolator, size_t& newMergePoi
 
 bool interpolationTest()
 {
+  // colors
+  Color::Modifier red(Color::FG_RED);
+  Color::Modifier blue(Color::FG_BLUE);
+  Color::Modifier def(Color::FG_DEFAULT);
+
+  // instantiate the configuration struct
   Configuration conf;
+
+  // instantiate the trajectory generator 
   UnicycleTrajectoryGenerator unicycle;
 
   // configure the planner
@@ -273,22 +279,26 @@ bool interpolationTest()
   finalPosition(1) = initPosition(1) + 0;
   finalVelocity.zero();
 
+  // set the init time of the trajectory
   double initTime = 0;
 
   // add desired initial and final position dor the unicycle
   iDynTree::assertTrue(unicycle.addDesiredTrajectoryPoint(initTime, initPosition, initVelocity));
-  iDynTree::assertTrue(unicycle.addDesiredTrajectoryPoint(initTime + conf.plannerHorizon, finalPosition, finalVelocity));
+  iDynTree::assertTrue(unicycle.addDesiredTrajectoryPoint(initTime + conf.plannerHorizon,
+							  finalPosition, finalVelocity));
 
   // generate the reference footprints and the trajectory for the DCM
   clock_t startTime, endTime;
   startTime = clock();
+  std::cerr << red << "First run" << def << ": start time " << initTime << " seconds" << std::endl;
+
   iDynTree::assertTrue(unicycle.generateAndInterpolate(leftFoot, rightFoot,
-						       initTime, conf.dT, initTime + conf.plannerHorizon));
+						       initTime,
+						       conf.dT, initTime + conf.plannerHorizon));
   endTime = clock();
-  
-  std::cerr << "Total time " << (static_cast<double>(endTime - startTime) / CLOCKS_PER_SEC) << " seconds."<<std::endl;
-  
-  std::cerr << "Output from unicycle." << std::endl;
+
+  std::cerr << blue << "Total time " << (static_cast<double>(endTime - startTime) / CLOCKS_PER_SEC)
+	    << " seconds." << def <<std::endl;
   
   size_t newMergePoint;
   std::string pL("pL.txt");
@@ -314,7 +324,7 @@ bool interpolationTest()
 
   // test merge points
   initTime = newMergePoint*conf.dT + initTime;
-  std::cerr << "New run at " << initTime << std::endl;
+  std::cerr << red << "New run" << def << ": start time " << initTime << " seconds" << std::endl;
   iDynTree::assertTrue(unicycle.setEndTime(initTime + conf.plannerHorizon));
   iDynTree::assertTrue(unicycle.getPersonPosition(initTime, initPosition));
   
@@ -331,7 +341,8 @@ bool interpolationTest()
   iDynTree::assertTrue(unicycle.reGenerate(initTime, conf.dT, initTime + conf.plannerHorizon, newAlpha));
   endTime = clock();
   
-  std::cerr << "Total time " << (static_cast<double>(endTime - startTime) / CLOCKS_PER_SEC) << " seconds."<<std::endl;
+  std::cerr << blue << "Total time " << (static_cast<double>(endTime - startTime) / CLOCKS_PER_SEC)
+	    << " seconds." << def <<std::endl;
 
   // save data 
   pL = "pL1.txt";
