@@ -87,7 +87,7 @@ bool SingleSupportTrajectory::getDcmPos(const double &t, iDynTree::Vector2 &dcmP
       + exp(m_omega * (t - m_t0)) * (iDynTree::toEigen(m_dcmIos) - iDynTree::toEigen(m_zmp));
     return true;
   }
-  std::cerr << "[Single support trajectory] the time t: " << t << "does not belong to the trajectory domain" <<
+  std::cerr << "[Single support trajectory] the time t: " << t << " does not belong to the trajectory domain" <<
     std::endl;
   return false;  
 }
@@ -99,7 +99,7 @@ bool SingleSupportTrajectory::getDcmVel(const double &t, iDynTree::Vector2 &dcmV
     iDynTree::toEigen(dcmVel) = m_omega * exp(m_omega * (t - m_t0)) * (iDynTree::toEigen(m_dcmIos) - iDynTree::toEigen(m_zmp));
     return true;
   }
-  std::cerr << "[Single support trajectory] the time t: " << t << "does not belong to the trajectory domain" <<
+  std::cerr << "[Single support trajectory] the time t: " << t << " does not belong to the trajectory domain" <<
     std::endl;
   return false;  
 }
@@ -190,7 +190,7 @@ bool DoubleSupportTrajectory::getDcmPos(const double &t, iDynTree::Vector2 &dcmP
     return true;
   }
   
-  std::cerr << "[Double support trajectory] the time t: " << t << "does not belong to the trajectory domain" <<
+  std::cerr << "[Double support trajectory] the time t: " << t << " does not belong to the trajectory domain" <<
     std::endl;
   return false;  
 
@@ -284,10 +284,10 @@ bool DcmTrajectoryGenerator::addLastStep(const double &singleSupportStartTime,
 											 doubleSupportEndTime));
   
   // add the new Double Support phase
-  m_trajectory.push_front(newDoubleSupport);
+  m_trajectory.push_back(newDoubleSupport);
 
   // add the new Single Support phase
-  m_trajectory.push_front(newSingleSupport);
+  m_trajectory.push_back(newSingleSupport);
 
   
   
@@ -301,7 +301,7 @@ bool DcmTrajectoryGenerator::addNewStep(const double &singleSupportStartTime,
 					const iDynTree::Vector2 &zmp)
 {
   // get the next Single Support trajectory
-  std::shared_ptr<GeneralSupportTrajectory> nextSingleSupport = m_trajectory.front();
+  std::shared_ptr<GeneralSupportTrajectory> nextSingleSupport = m_trajectory.back();
 
   // get the domain of the next SingleSupport trajectory
   const std::pair<double, double> nextSubTrajectoryDomain = nextSingleSupport->getTrajectoryDomain();
@@ -359,28 +359,32 @@ bool DcmTrajectoryGenerator::addNewStep(const double &singleSupportStartTime,
       std::cerr << "Add new step" <<std::endl;
       return false;
     }
-    
-    currentDoubleSupport.reset(new DoubleSupportTrajectory(initPosition, initVelocity,
-							   stancePosition, stanceVelocity,
-							   doubleSupportStartTime,
-							   doubleSupportStanceStartTime));
-    // add the new Double Support phase
-    m_trajectory.push_front(currentDoubleSupport);
-
-    currentDoubleSupport.reset(new DoubleSupportTrajectory(stancePosition, stanceVelocity,
-							   stancePosition, stanceVelocity,
-							   doubleSupportStanceStartTime,
-							   doubleSupportStanceEndTime));
-    // add the new Double Support phase
-    m_trajectory.push_front(currentDoubleSupport);
 
     currentDoubleSupport.reset(new DoubleSupportTrajectory(stancePosition, stanceVelocity,
 							   endPosition, endVelocity,
 							   doubleSupportStanceEndTime,
 							   doubleSupportEndTime));
     // add the new Double Support phase
-    m_trajectory.push_front(currentDoubleSupport);
+    m_trajectory.push_back(currentDoubleSupport);
 
+    
+    currentDoubleSupport.reset(new DoubleSupportTrajectory(stancePosition, stanceVelocity,
+							   stancePosition, stanceVelocity,
+							   doubleSupportStanceStartTime,
+							   doubleSupportStanceEndTime));
+    // add the new Double Support phase
+    m_trajectory.push_back(currentDoubleSupport);
+
+
+    currentDoubleSupport.reset(new DoubleSupportTrajectory(initPosition, initVelocity,
+							   stancePosition, stanceVelocity,
+							   doubleSupportStartTime,
+							   doubleSupportStanceStartTime));
+    // add the new Double Support phase
+    m_trajectory.push_back(currentDoubleSupport);
+
+    
+   
     
   }else{
 
@@ -389,21 +393,20 @@ bool DcmTrajectoryGenerator::addNewStep(const double &singleSupportStartTime,
 							   doubleSupportStartTime,
 							   doubleSupportEndTime));
     // add the new Double Support phase
-    m_trajectory.push_front(currentDoubleSupport);
+    m_trajectory.push_back(currentDoubleSupport);
   }
   // add the new Single Support phase
-  m_trajectory.push_front(currentSingleSupport);
+  m_trajectory.push_back(currentSingleSupport);
 
-  return true;
+  return true; 
 }
-
 
 bool DcmTrajectoryGenerator::addFirstDoubleSupportPhase(const double &doubleSupportStartTime,
 							const iDynTree::Vector2 &initPosition,
 							const iDynTree::Vector2 &initVelocity)
 {
   // get the next Single Support trajectory
-  std::shared_ptr<GeneralSupportTrajectory> nextSingleSupport = m_trajectory.front();
+  std::shared_ptr<GeneralSupportTrajectory> nextSingleSupport = m_trajectory.back();
 
   // get the domain of the next SingleSupport trajectory
   const std::pair<double, double> nextSubTrajectoryDomain = nextSingleSupport->getTrajectoryDomain();
@@ -430,7 +433,7 @@ bool DcmTrajectoryGenerator::addFirstDoubleSupportPhase(const double &doubleSupp
 											     doubleSupportStartTime,
 											     doubleSupportEndTime));
   // add the new Double Support phase
-  m_trajectory.push_front(currentDoubleSupport);
+  m_trajectory.push_back(currentDoubleSupport);
   return true;
 }
 
@@ -468,7 +471,7 @@ void DcmTrajectoryGenerator::getStepsTiming(double &singleSupportStartTime,
   
   singleSupportT0  =  (singleSupportStartTime + m_phaseShift.back() * m_dT) / 2;
 
-  std::shared_ptr<GeneralSupportTrajectory> lastDoubleSupportPhase = m_trajectory.front();
+  std::shared_ptr<GeneralSupportTrajectory> lastDoubleSupportPhase = m_trajectory.back();
   std::pair<double, double> subtrajectoryDomain = lastDoubleSupportPhase->getTrajectoryDomain();
   double doubleSupportEndTime = std::get<1>(subtrajectoryDomain);
   singleSupportDuration = (singleSupportEndTime + doubleSupportEndTime) / 2 - singleSupportT0;
@@ -554,46 +557,18 @@ bool DcmTrajectoryGenerator::generateDcmTrajectory(const std::vector<StepList::c
   // evaluate the DCM trajectory
   if(!evaluateDcmTrajectory())
     return false;
-
+  
   return true;
 
-}
-
-std::shared_ptr<GeneralSupportTrajectory> DcmTrajectoryGenerator::findSubTrajectory(const double &t)
-{
-  // return the subptrajectory such that the time t belongs to its domain
-  for(auto &subTrajectory: m_trajectory)
-    if (subTrajectory->timeBelongsToDomain(t))
-      return subTrajectory;
-
-  return nullptr;
-}
-
-bool DcmTrajectoryGenerator::evaluateDcmTrajectory(const size_t &t, iDynTree::Vector2 &dcmPos, iDynTree::Vector2 &dcmVel)
-{
-  // convert the time into double
-  double time = t * m_dT;
-
-  // get the subtrajectory
-  std::shared_ptr<GeneralSupportTrajectory> subTrajectory = findSubTrajectory(time);
-  
-  // evaluate the DCM position and velocity
-  if (subTrajectory != nullptr){
-    subTrajectory->getDcmPos(time, dcmPos);
-    subTrajectory->getDcmVel(time, dcmVel);
-    return true;
-  }
-
-  return false;
 }
 
 bool DcmTrajectoryGenerator::evaluateDcmTrajectory()
 {
   size_t timeVectorLength = std::get<1>(m_trajectoryDomain) - std::get<0>(m_trajectoryDomain);
-  std::vector<size_t> time(timeVectorLength);
+  std::vector<size_t> timeVector(timeVectorLength);
   
   // populate the time vector
-  std::iota(std::begin(time), std::end(time), std::get<0>(m_trajectoryDomain));
+  std::iota(std::begin(timeVector), std::end(timeVector), std::get<0>(m_trajectoryDomain));
 
   // clear all the previous DCM position 
   m_dcmPos.clear();
@@ -604,8 +579,20 @@ bool DcmTrajectoryGenerator::evaluateDcmTrajectory()
   m_dcmVel.reserve(timeVectorLength);
 
   iDynTree::Vector2 dcmPos, dcmVel;
-  for (size_t t: time){
-    if(!evaluateDcmTrajectory(t, dcmPos, dcmVel))
+  double time;
+  std::vector<std::shared_ptr<GeneralSupportTrajectory>>::reverse_iterator subTrajectory;
+  subTrajectory = m_trajectory.rbegin();
+  
+  for (size_t t : timeVector){
+    time = t * m_dT;
+    double subTrajectoryEndTime  = std::get<1>((*subTrajectory)->getTrajectoryDomain());
+    if (time > subTrajectoryEndTime){
+      subTrajectory++;
+    }
+    
+    if(!(*subTrajectory)->getDcmPos(time, dcmPos))
+      return false;
+    if(!(*subTrajectory)->getDcmVel(time, dcmVel))
       return false;
     
     m_dcmPos.push_back(dcmPos);

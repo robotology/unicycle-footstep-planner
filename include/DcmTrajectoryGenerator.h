@@ -219,9 +219,8 @@ class DoubleSupportTrajectory : public GeneralSupportTrajectory
 class DcmTrajectoryGenerator
 {
  private:
-
-  // TODO MOVE INTO A VECTOR?? 
-  std::deque<std::shared_ptr<GeneralSupportTrajectory>> m_trajectory; /**< Vector containing pointer of every trajectory phase. */
+  
+  std::vector<std::shared_ptr<GeneralSupportTrajectory>> m_trajectory; /**< Vector containing pointer of every trajectory phase. */
 
   std::pair<size_t, size_t> m_trajectoryDomain;
   
@@ -235,13 +234,6 @@ class DcmTrajectoryGenerator
   bool m_pauseActive; /**< True if the pause feature is activate. */
   double m_maxDoubleSupportDuration; /**< Max duration of a DS phase. */ 
   double m_nominalDoubleSupportDuration; /**< Nominal duration of a DS phase. */
-
-  /**
-   * Return the subtrajectory such that the time t belongs to the domain
-   * @param t is the trajectory evaluation time 
-   * @return shared_ptr to the subtrajectory
-   */
-  std::shared_ptr<GeneralSupportTrajectory> findSubTrajectory(const double &t);
 
   /**
    * Evaluate the timings for the last step.
@@ -322,14 +314,6 @@ class DcmTrajectoryGenerator
   bool addFirstDoubleSupportPhase(const double &doubleSupportStartTime,
 				  const iDynTree::Vector2 &initPosition,
 				  const iDynTree::Vector2 &initVelocity);  
-
-  /**
-   * Evaluate the DCM position an time t
-   * @param t is the trajectory evaluation time
-   * @param dcmPos cartesian position of the Diverget Component of Motion 
-   * @return true / false in case of success / failure
-   */
-  bool evaluateDcmTrajectory(const size_t &t, iDynTree::Vector2 &dcmPos, iDynTree::Vector2 &dcmVel);
 
   /**
    * Evaluate the DCM position for all time 
