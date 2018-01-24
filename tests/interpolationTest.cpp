@@ -116,7 +116,7 @@ void printVector(object& objectName, std::ofstream& file){
 }
 
 void printTrajectories(const FeetInterpolator& interpolator, size_t& newMergePoint, InitialState& newAlpha, size_t mergePoint){
-    std::ofstream posLeft, posRight, zmp, leftZmp, rightZmp, weightLeft, weightRight, height, heightAcceleration, zmpVel, zmpAcc, dcmPos;
+    std::ofstream posLeft, posRight, zmp, leftZmp, rightZmp, weightLeft, weightRight, height, heightAcceleration, zmpVel, zmpAcc;
     posLeft.open("pL.txt");
     posRight.open("pR.txt");
     zmp.open ("zmp.txt");
@@ -128,7 +128,6 @@ void printTrajectories(const FeetInterpolator& interpolator, size_t& newMergePoi
     weightRight.open ("rightW.txt");
     height.open("height.txt");
     heightAcceleration.open("heightAcc.txt");
-    dcmPos.open("dcmPos.txt");
 
     static std::vector<iDynTree::Transform> lFootTrajectory, rFootTrajectory;
 
@@ -251,11 +250,6 @@ void printTrajectories(const FeetInterpolator& interpolator, size_t& newMergePoi
     std::cerr << "--------------------------------------------->Merge Points." << std::endl;
     printVector(mergePoints);
 
-    std::cerr << "--------------------------------------------->DCM trajectory." << std::endl;
-    static std::vector< iDynTree::Vector2 > dcmTrajectory;
-    dcmTrajectory = interpolator.getDcmPosition();
-    print_iDynTree(dcmTrajectory, dcmPos);
-    
     posLeft.close();
     posRight.close();
     zmp.close();
@@ -267,7 +261,6 @@ void printTrajectories(const FeetInterpolator& interpolator, size_t& newMergePoi
     weightRight.close();
     height.close();
     heightAcceleration.close();
-    dcmPos.close();
 }
 
 
