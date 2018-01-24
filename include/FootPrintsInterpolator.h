@@ -32,6 +32,12 @@ typedef struct{
     double initialAcceleration;
 } InitialState;
 
+typedef struct{
+    iDynTree::Vector2 initialPosition;
+    iDynTree::Vector2 initialVelocity;
+} DcmInitialState;
+
+
 class FeetInterpolator {
 
     std::vector<StepsIndex> m_orderedSteps;
@@ -109,6 +115,13 @@ public:
 
     bool interpolate(const FootPrint &left, const FootPrint &right, double initTime, double dT);
 
+    bool interpolateDcm(const FootPrint &left, const FootPrint &right, double initTime, double dT,
+                     const DcmInitialState &dcmBoundaryConditionAtMergePoint, const Step &previousLeft, const Step &previousRight);
+
+    bool interpolateDcm(const FootPrint &left, const FootPrint &right, double initTime, double dT, const DcmInitialState &dcmBoundaryConditionAtMergePoint);
+
+    bool interpolateDcm(const FootPrint &left, const FootPrint &right, double initTime, double dT);
+    
     //Settings
 
     bool setSwitchOverSwingRatio(double ratio); //indeed the swing time cannot be null, while the switch time can be very close to zero (but not zero)

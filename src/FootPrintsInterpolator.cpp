@@ -915,37 +915,98 @@ bool FeetInterpolator::interpolate(const FootPrint &left, const FootPrint &right
         std::cerr << "[FEETINTERPOLATOR] Failed while computing the CoM height trajectories." << std::endl;
         return false;
     }
+    
+    return true;
+}
+
+
+bool FeetInterpolator::interpolateDcm(const FootPrint &left, const FootPrint &right, double initTime, double dT,
+				      const DcmInitialState& dcmBoundaryConditionAtMergePoint, const Step &previousLeft, const Step &previousRight)
+{
+    if (left.numberOfSteps() < 1){
+        std::cerr << "[FEETINTERPOLATOR] No steps in the left pointer." << std::endl;
+        return false;
+    }
+
+    if (right.numberOfSteps() < 1){
+        std::cerr << "[FEETINTERPOLATOR] No steps in the right pointer." << std::endl;
+        return false;
+    }
+
+    if (dT <= 0){
+        std::cerr << "[FEETINTERPOLATOR] The dT is supposed to be positive." << std::endl;
+        return false;
+    }
+
+    double startLeft = left.getSteps().front().impactTime;
+    double startRight = right.getSteps().front().impactTime;
+
+    if (initTime < std::max(startLeft, startRight)){
+        std::cerr << "[FEETINTERPOLATOR] The initTime must be greater or equal than the maximum of the first impactTime of the two feet."
+                  << std::endl;
+        return false;
+    }
+
+    m_maxSwitchTime = m_switchPercentage * m_maxStepTime;
+    m_maxSwingTime = m_maxStepTime - m_maxSwitchTime;
+
+    m_nominalSwitchTime = m_switchPercentage * m_nominalStepTime;
+    m_nominalSwingTime = m_nominalStepTime - m_nominalSwitchTime;
+
+    m_left = left;
+    m_right = right;
+    m_dT = dT;
+    m_initTime = initTime;
+
+    m_dcmTrajGenerator.setdT(m_dT);
+    m_dcmTrajGenerator.setOmega(m_omega);
+    
+    if (!orderSteps()){
+        std::cerr << "[FEETINTERPOLATOR] Failed while ordering the steps." << std::endl;
+        return false;
+    }
+
+    if (!createPhasesTimings()){
+        std::cerr << "[FEETINTERPOLATOR] Failed while creating the standing periods." << std::endl;
+        return false;
+    }
+    
+    fillFeetStandingPeriodsVectors();
+    fillLeftFixedVector();
+
+    if (!interpolateFoot(*m_lFootPhases, left, m_leftTrajectory)){
+        std::cerr << "[FEETINTERPOLATOR] Failed while interpolating left foot trajectory." << std::endl;
+        return false;
+    }
+
+    if (!interpolateFoot(*m_rFootPhases, right, m_rightTrajectory)){
+        std::cerr << "[FEETINTERPOLATOR] Failed while interpolating left foot trajectory." << std::endl;
+        return false;
+    }
+
+    if (!computeCoMHeightTrajectory()){
+        std::cerr << "[FEETINTERPOLATOR] Failed while computing the CoM height trajectories." << std::endl;
+        return false;
+    }
 
     // generate DCM trajectory
     StepList::const_iterator firstStanceFoot, firstSwingFoot;
     firstStanceFoot = (m_left.getSteps()[1].impactTime > m_right.getSteps()[1].impactTime) ? m_left.getSteps().cbegin() : m_right.getSteps().cbegin();
     firstSwingFoot = (m_left.getSteps()[1].impactTime > m_right.getSteps()[1].impactTime) ? m_right.getSteps().cbegin() : m_left.getSteps().cbegin();
 
-    size_t mergePoint = std::round(initTime / m_dT);
-
     iDynTree::Vector2 initDcmPosition, initDcmVelocity;
 
-    std::vector<iDynTree::Vector2> dcmPosition = getDcmPosition();
-    std::vector<iDynTree::Vector2> dcmVelocity = getDcmVelocity();
-    
-    // it is the first time that the generateDcmTrajectory is called
-    if(dcmPosition.size() == 0){
-      // the init position coincides with the position of the COM
-      iDynTree::toEigen(initDcmPosition) = (iDynTree::toEigen(firstStanceFoot->position) + iDynTree::toEigen(firstSwingFoot->position)) / 2;
-      initDcmVelocity.zero();
-    }
-    else{
-      initDcmPosition = dcmPosition[mergePoint];
-      initDcmVelocity = dcmVelocity[mergePoint];
-    }
-    
+    initDcmPosition = dcmBoundaryConditionAtMergePoint.initialPosition;
+    initDcmVelocity = dcmBoundaryConditionAtMergePoint.initialVelocity;
+        
     if(!m_dcmTrajGenerator.generateDcmTrajectory(m_orderedSteps, firstStanceFoot, initDcmPosition, initDcmVelocity, m_phaseShift)){
        std::cerr << "[FEETINTERPOLATOR] Failed while computing the DCM trajectories." << std::endl;
        return false;
     }
-    
+
     return true;
 }
+
 
 const std::vector<iDynTree::Vector2>& FeetInterpolator::getDcmPosition() const
 {
@@ -960,7 +1021,7 @@ const std::vector<iDynTree::Vector2>& FeetInterpolator::getDcmVelocity() const
 
 bool FeetInterpolator::interpolate(const FootPrint &left, const FootPrint &right, double initTime, double dT, const InitialState &weightInLeftAtMergePoint)
 {
-    return interpolate(left, right, initTime, dT, weightInLeftAtMergePoint, left.getSteps().front(), right.getSteps().front());
+  return interpolate(left, right, initTime, dT, weightInLeftAtMergePoint, left.getSteps().front(), right.getSteps().front());
 }
 
 bool FeetInterpolator::interpolate(const FootPrint &left, const FootPrint &right, double initTime, double dT)
@@ -972,6 +1033,23 @@ bool FeetInterpolator::interpolate(const FootPrint &left, const FootPrint &right
 
     return interpolate(left, right, initTime, dT, alpha0);
 }
+
+bool FeetInterpolator::interpolateDcm(const FootPrint &left, const FootPrint &right, double initTime, double dT, const DcmInitialState &dcmBoundaryConditionAtMergePoint)
+{
+  return interpolateDcm(left, right, initTime, dT, dcmBoundaryConditionAtMergePoint, left.getSteps().front(), right.getSteps().front());
+}
+
+bool FeetInterpolator::interpolateDcm(const FootPrint &left, const FootPrint &right, double initTime, double dT)
+{
+    DcmInitialState dcmBoundaryConditionAtMergePoint;
+    iDynTree::Vector2 leftFootPosition = left.getSteps().front().position;
+    iDynTree::Vector2 rightFootPosition = right.getSteps().front().position;
+    iDynTree::toEigen(dcmBoundaryConditionAtMergePoint.initialPosition) = (iDynTree::toEigen(leftFootPosition) + iDynTree::toEigen(rightFootPosition)) / 2;
+    dcmBoundaryConditionAtMergePoint.initialVelocity.zero();
+
+    return interpolateDcm(left, right, initTime, dT, dcmBoundaryConditionAtMergePoint);
+}
+
 
 bool FeetInterpolator::setSwitchOverSwingRatio(double ratio)
 {
@@ -1047,7 +1125,7 @@ bool FeetInterpolator::setPauseConditions(double maxStepTime, double nominalStep
     m_nominalStepTime = nominalStepTime;
 
     // set pouse condition for te DCM trajectory generator
-    //m_dcmTrajGenerator.setPauseConditions(maxStepTime, nominalStepTime);
+    m_dcmTrajGenerator.setPauseConditions(maxStepTime, nominalStepTime);
     
     return true;
 }
@@ -1186,5 +1264,3 @@ void FeetInterpolator::getMergePoints(std::vector<size_t> &mergePoints) const
 {
     mergePoints = m_mergePoints;
 }
-
-
