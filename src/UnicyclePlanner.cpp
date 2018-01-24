@@ -315,6 +315,11 @@ bool UnicyclePlanner::setControllerGain(double controllerGain)
     return m_controller->setGain(controllerGain);
 }
 
+bool UnicyclePlanner::setSlowWhenTurnGain(double slowWhenTurnGain)
+{
+    return m_controller->setSlowWhenTurnGain(slowWhenTurnGain);
+}
+
 bool UnicyclePlanner::addDesiredTrajectoryPoint(double initTime, const iDynTree::Vector2 &yDesired)
 {
     TrajectoryPoint newPoint;

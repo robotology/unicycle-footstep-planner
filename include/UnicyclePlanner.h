@@ -47,6 +47,8 @@ public:
 
     bool setControllerGain(double controllerGain); //optional
 
+    bool setSlowWhenTurnGain(double slowWhenTurnGain); //if >0 the unicycle progress more slowly when also turning.
+
     bool addDesiredTrajectoryPoint(double initTime, const iDynTree::Vector2& yDesired, const iDynTree::Vector2& yDotDesired); //If two points have the same initTime it is an undefined behavior. It keeps the desired values constant from initTime to the initTime of the next desired point (they are automatically ordered)
 
     bool addDesiredTrajectoryPoint(double initTime, const iDynTree::Vector2& yDesired);// like the above but assumes zero velocity
