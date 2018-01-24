@@ -13,7 +13,8 @@ UnicycleTrajectoryGenerator::UnicycleTrajectoryGenerator()
 {
 }
 
-bool UnicycleTrajectoryGenerator::generateAndInterpolate(std::shared_ptr<FootPrint> leftFoot, std::shared_ptr<FootPrint> rightFoot, double initTime, double dT, const InitialState& weightInLeftAtMergePoint)
+bool UnicycleTrajectoryGenerator::generateAndInterpolate(std::shared_ptr<FootPrint> leftFoot, std::shared_ptr<FootPrint> rightFoot, double initTime, double dT,
+							 const InitialState& weightInLeftAtMergePoint)
 {
     m_left = leftFoot;
     m_right = rightFoot;
@@ -55,7 +56,7 @@ bool UnicycleTrajectoryGenerator::reGenerate(double initTime, double dT, double 
     }
 
     return setEndTime(endTime) && computeNewSteps(m_left, m_right, initTime) &&
-            interpolate(*m_left, *m_right, initTime, dT, weightInLeftAtMergePoint);
+      interpolate(*m_left, *m_right, initTime, dT, weightInLeftAtMergePoint);
 }
 
 bool UnicycleTrajectoryGenerator::reGenerate(double initTime, double dT, double endTime, const InitialState &weightInLeftAtMergePoint,
@@ -90,7 +91,7 @@ bool UnicycleTrajectoryGenerator::reGenerate(double initTime, double dT, double 
     }
 
     return setEndTime(endTime) && computeNewSteps(m_left, m_right, initTime) &&
-            interpolate(*m_left, *m_right, initTime, dT, weightInLeftAtMergePoint, previousL, previousR);
+      interpolate(*m_left, *m_right, initTime, dT, weightInLeftAtMergePoint, previousL, previousR);
 }
 
 bool UnicycleTrajectoryGenerator::reGenerate(double initTime, double dT, double endTime, const InitialState &weightInLeftAtMergePoint,
@@ -125,5 +126,39 @@ bool UnicycleTrajectoryGenerator::reGenerate(double initTime, double dT, double 
     toBeCorrected->addStep(correctedStep);
 
     return setEndTime(endTime) && computeNewSteps(m_left, m_right, initTime) &&
-            interpolate(*m_left, *m_right, initTime, dT, weightInLeftAtMergePoint, previousL, previousR);
+      interpolate(*m_left, *m_right, initTime, dT, weightInLeftAtMergePoint, previousL, previousR);
+}
+
+
+// dcm functions
+
+bool UnicycleTrajectoryGenerator::generateAndInterpolateDcm(double initTime, double dT, double endTime)
+{
+    m_left->clearSteps();
+    m_right->clearSteps();
+    return setEndTime(endTime) && computeNewSteps(m_left, m_right, initTime) && interpolateDcm(*m_left, *m_right, initTime, dT);
+}
+
+bool UnicycleTrajectoryGenerator::generateAndInterpolateDcm(std::shared_ptr<FootPrint> leftFoot, std::shared_ptr<FootPrint> rightFoot, double initTime, double dT, double endTime)
+{
+    m_left = leftFoot;
+    m_right = rightFoot;
+    return setEndTime(endTime) && computeNewSteps(m_left, m_right, initTime) && interpolateDcm(*m_left, *m_right, initTime, dT);
+}
+
+
+bool UnicycleTrajectoryGenerator::reGenerateDcm(double initTime, double dT, double endTime, const DcmInitialState &dcmBoundaryConditionAtMergePoint)
+{
+    if (!m_left->keepOnlyPresentStep(initTime)){
+        std::cerr << "The initTime is not compatible with previous runs. Call a method generateAndInterpolate instead." << std::endl;
+        return false;
+    }
+
+    if (!m_right->keepOnlyPresentStep(initTime)){
+        std::cerr << "The initTime is not compatible with previous runs. Call a method generateAndInterpolate instead." << std::endl;
+        return false;
+    }
+
+    return setEndTime(endTime) && computeNewSteps(m_left, m_right, initTime) &&
+      interpolateDcm(*m_left, *m_right, initTime, dT, dcmBoundaryConditionAtMergePoint);
 }
