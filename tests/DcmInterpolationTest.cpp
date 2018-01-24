@@ -128,7 +128,7 @@ bool configureInterpolator(FeetInterpolator& interpolator, const Configuration &
 /**
  * Save all the trajectories in files
  */
-void printTrajectories(const FeetInterpolator& interpolator, size_t& newMergePoint, size_t mergePoint, InitialState& newAlpha,
+void printTrajectories(const FeetInterpolator& interpolator, size_t& newMergePoint, size_t mergePoint, DcmInitialState& boundaryConditionAtMergePoint,
 		       const std::string& pL, const std::string& pR,
 		       const std::string& height, const std::string& heightAcc,
 		       const std::string& dcmPos, const std::string& dcmVel)
@@ -194,7 +194,6 @@ void printTrajectories(const FeetInterpolator& interpolator, size_t& newMergePoi
   rFootContacts.insert(rFootContacts.begin()+ mergePoint, rFootContactsIn.begin(), rFootContactsIn.end());
   rFootContacts.resize(mergePoint + rFootContactsIn.size());
 
-
   static std::vector < bool > lFootFixed;
   std::vector < bool > lFootFixedIn;
   interpolator.getWhenUseLeftAsFixed(lFootFixedIn);
@@ -207,10 +206,7 @@ void printTrajectories(const FeetInterpolator& interpolator, size_t& newMergePoi
   std::vector<size_t> mergePoints;
   interpolator.getMergePoints(mergePoints);
   newMergePoint = mergePoints[1] + mergePoint;
-
-  // REMOVE ME necessary only for ZMP
-  newAlpha = initPoints[1];
-
+  
   Color::Modifier green(Color::FG_GREEN);
   Color::Modifier def(Color::FG_DEFAULT);
   std::cerr << green << "Merge Points: " << def;
@@ -233,7 +229,11 @@ void printTrajectories(const FeetInterpolator& interpolator, size_t& newMergePoi
   dcmVelVector.resize(mergePoint + dcmVelInput.size());
   dcmVelStream << "dcm_vx dcm_vy" <<std::endl;
   print_iDynTree(dcmVelVector, dcmVelStream);
-
+  
+  // evaluate the the new dcm boundary conditions
+  boundaryConditionAtMergePoint.initialPosition = dcmPosInput[mergePoints[1]];
+  boundaryConditionAtMergePoint.initialVelocity = dcmVelInput[mergePoints[1]];
+  
   std::cerr << "************************************" << std::endl;
   
   // close stream
@@ -292,9 +292,9 @@ bool interpolationTest()
   startTime = clock();
   std::cerr << red << "First run" << def << ": start time " << initTime << " seconds" << std::endl;
 
-  iDynTree::assertTrue(unicycle.generateAndInterpolate(leftFoot, rightFoot,
-						       initTime,
-						       conf.dT, initTime + conf.plannerHorizon));
+  iDynTree::assertTrue(unicycle.generateAndInterpolateDcm(leftFoot, rightFoot,
+							  initTime,
+							  conf.dT, initTime + conf.plannerHorizon));
   endTime = clock();
 
   std::cerr << blue << "Total time " << (static_cast<double>(endTime - startTime) / CLOCKS_PER_SEC)
@@ -315,15 +315,15 @@ bool interpolationTest()
 	     footstepsL, footstepsR);
   
   // print the trajectory in the files
-  InitialState newAlpha;
-  printTrajectories(unicycle, newMergePoint, 0, newAlpha,
+  DcmInitialState boundaryConditionAtMergePoint;
+  printTrajectories(unicycle, newMergePoint, 0, boundaryConditionAtMergePoint,
 		    pL,  pR,
 		    height,  heightAcc,
 		    dcmPos, dcmVel);
     
 
   // test merge points
-  initTime = newMergePoint*conf.dT + initTime;
+  initTime = (newMergePoint)*conf.dT;
   std::cerr << red << "New run" << def << ": start time " << initTime << " seconds" << std::endl;
   iDynTree::assertTrue(unicycle.setEndTime(initTime + conf.plannerHorizon));
   iDynTree::assertTrue(unicycle.getPersonPosition(initTime, initPosition));
@@ -338,7 +338,7 @@ bool interpolationTest()
 
   // evaluate the new trajectory
   startTime = clock();
-  iDynTree::assertTrue(unicycle.reGenerate(initTime, conf.dT, initTime + conf.plannerHorizon, newAlpha));
+  iDynTree::assertTrue(unicycle.reGenerateDcm(initTime, conf.dT, initTime + conf.plannerHorizon, boundaryConditionAtMergePoint));
   endTime = clock();
   
   std::cerr << blue << "Total time " << (static_cast<double>(endTime - startTime) / CLOCKS_PER_SEC)
@@ -357,10 +357,52 @@ bool interpolationTest()
   printSteps(leftFoot->getSteps(), rightFoot->getSteps(),
 	     footstepsL, footstepsR);
 
-  printTrajectories(unicycle, newMergePoint, newMergePoint, newAlpha,
+  printTrajectories(unicycle, newMergePoint, newMergePoint, boundaryConditionAtMergePoint,
 		    pL,  pR,
 		    height,  heightAcc,
 		    dcmPos, dcmVel);
+
+
+  // test merge points
+  initTime = newMergePoint*conf.dT;
+  std::cerr << red << "New run" << def << ": start time " << initTime << " seconds" << std::endl;
+  iDynTree::assertTrue(unicycle.setEndTime(initTime + conf.plannerHorizon));
+  iDynTree::assertTrue(unicycle.getPersonPosition(initTime, initPosition));
+  
+  // remove all desired trajectory point
+  unicycle.clearDesiredTrajectory();
+
+  // set new desired positin
+  finalPosition(0) = initPosition(0) + 0.0;
+  finalPosition(1) = initPosition(1) + 0.2;
+  iDynTree::assertTrue(unicycle.addDesiredTrajectoryPoint(initTime + conf.plannerHorizon, finalPosition));
+
+  // evaluate the new trajectory
+  startTime = clock();
+  iDynTree::assertTrue(unicycle.reGenerateDcm(initTime, conf.dT, initTime + conf.plannerHorizon, boundaryConditionAtMergePoint));
+  endTime = clock();
+  
+  std::cerr << blue << "Total time " << (static_cast<double>(endTime - startTime) / CLOCKS_PER_SEC)
+	    << " seconds." << def <<std::endl;
+
+  // save data 
+  pL = "pL2.txt";
+  pR = "pR2.txt";
+  footstepsL = "footstepsL2.txt";
+  footstepsR = "footstepsR2.txt";
+  height = "height2.txt";
+  heightAcc = "heightAcc2.txt";
+  dcmPos = "dcmPos2.txt";
+  dcmVel = "dcmVel2.txt";
+
+  printSteps(leftFoot->getSteps(), rightFoot->getSteps(),
+	     footstepsL, footstepsR);
+
+  printTrajectories(unicycle, newMergePoint, newMergePoint, boundaryConditionAtMergePoint,
+		    pL,  pR,
+		    height,  heightAcc,
+		    dcmPos, dcmVel);
+
   
   return true;
 }
