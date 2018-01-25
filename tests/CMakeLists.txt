@@ -22,9 +22,8 @@ add_test(NAME InterpolationTest
   COMMAND InterpolationTest)
 
 # DcmInterpolationTest
-include_directories(${CMAKE_CURRENT_SOURCE_DIR})
-add_executable(DcmInterpolationTest DcmInterpolationTest.cpp utils.cpp utils.h) #
-target_link_libraries(DcmInterpolationTest ${iDynTree_LIBRARIES} UnicyclePlanner) #
+add_executable(DcmInterpolationTest DcmInterpolationTest.cpp utils.cpp utils.h)
+target_include_directories(DcmInterpolationTest PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(DcmInterpolationTest ${iDynTree_LIBRARIES} UnicyclePlanner)
 add_test(NAME DcmInterpolationTest
   COMMAND DcmInterpolationTest)
-
