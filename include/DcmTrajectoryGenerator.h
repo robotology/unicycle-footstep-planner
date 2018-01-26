@@ -163,6 +163,8 @@ class DoubleSupportTrajectory : public GeneralSupportTrajectory
 					   const double &dsDuration);
 
  public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
   /**
    * Constructor.
    * @param initBoundaryCondition desired init position and velocity of the
