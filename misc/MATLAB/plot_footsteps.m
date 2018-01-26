@@ -36,3 +36,4 @@ for i = 1:length(posRight)
                                               'zrotate', angleRight(i));
     patch('XData',x,'YData',y,'FaceColor','yellow','FaceAlpha',alpha,'Parent',right_foot_transform);
 end
+end
