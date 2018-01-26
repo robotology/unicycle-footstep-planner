@@ -305,16 +305,18 @@ class DCMTrajectoryGenerator
     DCMTrajectoryGenerator();
 
     /**
-     * Set the time constant of the 3D-LIPM-
+     * Set the time constant of the 3D-LIPM.
      * @param omega is the time constant of the 3D-LIPM.
+     * @return true / false in case of success / failure.
      */
-    void setOmega(const double &omega);
+    bool setOmega(const double &omega);
 
     /**
-     * Set the period of the Trajectory generator planner
+     * Set the period of the Trajectory generator planner.
      * @param dT is the period (in seconds) of the Trajectory generator planner
+     * @return true / false in case of success / failure.
      */
-    void setdT(const double &dT);
+    bool setdT(const double &dT);
 
     /**
      * Set the pause condition.

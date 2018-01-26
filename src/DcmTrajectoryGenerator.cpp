@@ -227,14 +227,28 @@ DCMTrajectoryGenerator::DCMTrajectoryGenerator(const double &dT, const double &o
     m_pauseActive(false)
 {}
 
-void DCMTrajectoryGenerator::setOmega(const double &omega)
+bool DCMTrajectoryGenerator::setOmega(const double &omega)
 {
+    if (omega < 0){
+        std::cerr << "[DCM TRAJECTORY GENERATOR] The time constant of the 3D-LIPM must be a positive number."
+                  << std::endl;
+        return false;
+    }
+
     m_omega = omega;
+    return true;
 }
 
-void DCMTrajectoryGenerator::setdT(const double &dT)
+bool DCMTrajectoryGenerator::setdT(const double &dT)
 {
+    if (dT < 0){
+        std::cerr << "[DCM TRAJECTORY GENERATOR] The period of the planner must be a positve number."
+                  << std::endl;
+        return false;
+    }
+
     m_dT = dT;
+    return true;
 }
 
 bool DCMTrajectoryGenerator::addLastStep(const double &singleSupportStartTime,
