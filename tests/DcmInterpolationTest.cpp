@@ -26,7 +26,7 @@ typedef struct
 {
   // timing quantities
   double plannerHorizon = 10.0, dT = 0.010;
-  
+
   // Unicycle quantities
   double unicycleGain = 10.0, referencePointDistanceX = 0.1, referencePointDistanceY = 0;
   double timeWeight = 2.5, positionWeight = 1;
@@ -53,12 +53,12 @@ typedef struct
 
   // Local ZMP via points
   // Right
-  double rStancePositionX = 0.0, rStancePositionY = 0.0; 
+  double rStancePositionX = 0.0, rStancePositionY = 0.0;
   double rSwitchInitPositionX = 0.0, rSwitchInitPositionY = 0.0;
   // Left
-  double lStancePositionX = 0.0, lStancePositionY = 0.0; 
+  double lStancePositionX = 0.0, lStancePositionY = 0.0;
   double lSwitchInitPositionX = 0.0, lSwitchInitPositionY = 0.0;
-  
+
   bool swingLeft = true;
 } Configuration;
 
@@ -70,7 +70,7 @@ typedef struct
 bool configurePlanner(UnicyclePlanner& planner, const Configuration &conf)
 {
   bool ok = true;
-    
+
   ok = ok && planner.setDesiredPersonDistance(conf.referencePointDistanceX, conf.referencePointDistanceY);
   ok = ok && planner.setControllerGain(conf.unicycleGain);
   ok = ok && planner.setMaximumIntegratorStepSize(conf.dT);
@@ -96,7 +96,7 @@ bool configurePlanner(UnicyclePlanner& planner, const Configuration &conf)
 bool configureInterpolator(FeetInterpolator& interpolator, const Configuration &conf)
 {
   bool ok = true;
-  
+
   ok = ok && interpolator.setSwitchOverSwingRatio(conf.switchOverSwingRatio);
   ok = ok && interpolator.setTerminalHalfSwitchTime(conf.lastStepSwitchTime);
   ok = ok && interpolator.setStepHeight(conf.stepHeight);
@@ -121,7 +121,7 @@ bool configureInterpolator(FeetInterpolator& interpolator, const Configuration &
 
   ok = ok && interpolator.setFootLandingVelocity(conf.stepLandingVelocity);
   ok = ok && interpolator.setFootApexTime(conf.footApexTime);
-  
+
   return ok;
 }
 
@@ -139,11 +139,11 @@ void printTrajectories(const FeetInterpolator& interpolator, size_t& newMergePoi
   std::ofstream heightStream, heightAccelerationStream;
   std::ofstream DCMPosStream, DCMVelStream;
   std::ofstream mergePointsStream;
-  
+
   // open files
   posLeftStream.open(pLFileName.c_str());
   posRightStream.open(pRFileName.c_str());
-    
+
   heightStream.open(heightFileName.c_str());
   heightAccelerationStream.open(heightAccFileName.c_str());
 
@@ -153,7 +153,7 @@ void printTrajectories(const FeetInterpolator& interpolator, size_t& newMergePoi
   mergePointsStream.open(mergePointFileName.c_str());
 
   // print feet trajectories
-  static std::vector<iDynTree::Transform> lFootTrajectory, rFootTrajectory;  
+  static std::vector<iDynTree::Transform> lFootTrajectory, rFootTrajectory;
   std::vector<iDynTree::Transform> lFootTrajectoryInput, rFootTrajectoryInput;
   interpolator.getFeetTrajectories(lFootTrajectoryInput, rFootTrajectoryInput);
 
@@ -161,7 +161,7 @@ void printTrajectories(const FeetInterpolator& interpolator, size_t& newMergePoi
   lFootTrajectory.resize(mergePoint + lFootTrajectoryInput.size());
   rFootTrajectory.insert(rFootTrajectory.begin() + mergePoint, rFootTrajectoryInput.begin(), rFootTrajectoryInput.end());
   rFootTrajectory.resize(mergePoint + rFootTrajectoryInput.size());
-  
+
   for (auto pose : lFootTrajectory){
     posLeftStream << pose.getPosition()(0) << " " << pose.getPosition()(1) << " " <<
       " " << pose.getPosition()(2)<< " " << std::endl;
@@ -187,7 +187,7 @@ void printTrajectories(const FeetInterpolator& interpolator, size_t& newMergePoi
   CoMHeightAccelerationProfile.insert(CoMHeightAccelerationProfile.begin()+ mergePoint, CoMHeightAccelerationProfileIn.begin(), CoMHeightAccelerationProfileIn.end());
   CoMHeightAccelerationProfile.resize(mergePoint + CoMHeightAccelerationProfileIn.size());
   printVector(CoMHeightAccelerationProfile, heightAccelerationStream);
-  
+
   // print the vector containing the instant when the feet are in contact
   static std::vector < bool > lFootContacts, rFootContacts;
   std::vector < bool > lFootContactsIn, rFootContactsIn;
@@ -209,7 +209,7 @@ void printTrajectories(const FeetInterpolator& interpolator, size_t& newMergePoi
   std::vector<size_t> mergePoints;
   interpolator.getMergePoints(mergePoints);
   newMergePoint = mergePoints[1] + mergePoint;
-  
+
   Color::Modifier green(Color::FG_GREEN);
   Color::Modifier def(Color::FG_DEFAULT);
   std::cerr << green << "Merge Points: " << def;
@@ -233,17 +233,17 @@ void printTrajectories(const FeetInterpolator& interpolator, size_t& newMergePoi
   DCMVelVector.resize(mergePoint + DCMVelInput.size());
   DCMVelStream << "DCM_vx DCM_vy" <<std::endl;
   print_iDynTree(DCMVelVector, DCMVelStream);
-  
+
   // evaluate the the new DCM boundary conditions
   boundaryConditionAtMergePoint.initialPosition = DCMPosInput[mergePoints[1]];
   boundaryConditionAtMergePoint.initialVelocity = DCMVelInput[mergePoints[1]];
-  
+
   std::cerr << "************************************" << std::endl;
-  
+
   // close stream
   posLeftStream.close();
   posRightStream.close();
-  
+
   heightStream.close();
   heightAccelerationStream.close();
 
@@ -264,19 +264,19 @@ bool interpolationTest()
   // instantiate the configuration struct
   Configuration conf;
 
-  // instantiate the trajectory generator 
+  // instantiate the trajectory generator
   UnicycleTrajectoryGenerator unicycle;
 
   // configure the planner
   iDynTree::assertTrue(configurePlanner(unicycle, conf));
   iDynTree::assertTrue(configureInterpolator(unicycle, conf));
 
-  // instantiate Footprints pointer  
+  // instantiate Footprints pointer
   std::shared_ptr<FootPrint> leftFoot, rightFoot;
   leftFoot = std::make_shared<FootPrint>();
   rightFoot = std::make_shared<FootPrint>();
 
-  // set the initial and final desired position and velocity  
+  // set the initial and final desired position and velocity
   iDynTree::Vector2 initPosition, initVelocity, finalPosition, finalVelocity;
   initPosition(0) = conf.referencePointDistanceX;
   initPosition(1) = conf.referencePointDistanceY;
@@ -305,7 +305,7 @@ bool interpolationTest()
 
   std::cerr << blue << "Total time " << (static_cast<double>(endTime - startTime) / CLOCKS_PER_SEC)
 	    << " seconds." << def <<std::endl;
-  
+
   size_t newMergePoint;
   std::string pLFileName("pL1.txt");
   std::string pRFileName("pR1.txt");
@@ -320,7 +320,7 @@ bool interpolationTest()
   // print footsteep in the files
   printSteps(leftFoot->getSteps(), rightFoot->getSteps(),
 	     footstepsLFileName, footstepsRFileName);
-  
+
   // print the trajectory in the files
   DCMInitialState boundaryConditionAtMergePoint;
   printTrajectories(unicycle, newMergePoint, 0, boundaryConditionAtMergePoint,
@@ -328,14 +328,14 @@ bool interpolationTest()
 		    heightFileName,  heightAccFileName,
 		    DCMPosFileName, DCMVelFileName,
 		    mergePointsFileName);
-    
+
 
   // test merge points
   initTime = (newMergePoint)*conf.dT;
   std::cerr << red << "New run" << def << ": start time " << initTime << " seconds" << std::endl;
   iDynTree::assertTrue(unicycle.setEndTime(initTime + conf.plannerHorizon));
   iDynTree::assertTrue(unicycle.getPersonPosition(initTime, initPosition));
-  
+
   // remove all desired trajectory point
   unicycle.clearDesiredTrajectory();
 
@@ -348,11 +348,11 @@ bool interpolationTest()
   startTime = clock();
   iDynTree::assertTrue(unicycle.reGenerateDCM(initTime, conf.dT, initTime + conf.plannerHorizon, boundaryConditionAtMergePoint));
   endTime = clock();
-  
+
   std::cerr << blue << "Total time " << (static_cast<double>(endTime - startTime) / CLOCKS_PER_SEC)
 	    << " seconds." << def <<std::endl;
 
-  // save data 
+  // save data
   pLFileName = "pL2.txt";
   pRFileName = "pR2.txt";
   footstepsLFileName = "footstepsL2.txt";
@@ -362,7 +362,7 @@ bool interpolationTest()
   DCMPosFileName = "DCMPos2.txt";
   DCMVelFileName = "DCMVel2.txt";
   mergePointsFileName = "mergePoints2.txt";
-  
+
   printSteps(leftFoot->getSteps(), rightFoot->getSteps(),
 	     footstepsLFileName, footstepsRFileName);
 
@@ -377,7 +377,7 @@ bool interpolationTest()
   std::cerr << red << "New run" << def << ": start time " << initTime << " seconds" << std::endl;
   iDynTree::assertTrue(unicycle.setEndTime(initTime + conf.plannerHorizon));
   iDynTree::assertTrue(unicycle.getPersonPosition(initTime, initPosition));
-  
+
   // remove all desired trajectory point
   unicycle.clearDesiredTrajectory();
 
@@ -390,11 +390,11 @@ bool interpolationTest()
   startTime = clock();
   iDynTree::assertTrue(unicycle.reGenerateDCM(initTime, conf.dT, initTime + conf.plannerHorizon, boundaryConditionAtMergePoint));
   endTime = clock();
-  
+
   std::cerr << blue << "Total time " << (static_cast<double>(endTime - startTime) / CLOCKS_PER_SEC)
 	    << " seconds." << def <<std::endl;
 
-  // save data 
+  // save data
   pLFileName = "pL3.txt";
   pRFileName = "pR3.txt";
   footstepsLFileName = "footstepsL3.txt";
@@ -404,7 +404,7 @@ bool interpolationTest()
   DCMPosFileName = "DCMPos3.txt";
   DCMVelFileName = "DCMVel3.txt";
   mergePointsFileName = "mergePoints3.txt";
-  
+
   printSteps(leftFoot->getSteps(), rightFoot->getSteps(),
 	     footstepsLFileName, footstepsRFileName);
 
@@ -413,7 +413,7 @@ bool interpolationTest()
 		    heightFileName,  heightAccFileName,
 		    DCMPosFileName, DCMVelFileName,
 		    mergePointsFileName);
-  
+
   return true;
 }
 

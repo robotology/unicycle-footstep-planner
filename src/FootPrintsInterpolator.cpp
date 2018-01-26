@@ -1,8 +1,8 @@
 /*
  * Copyright (C) 2017 Fondazione Istituto Italiano di Tecnologia
  * Authors: Stefano Dafarra
+ *          Giulio Romualdi
  * CopyPolicy: Released under the terms of the LGPLv2.1 or later, see LGPL.TXT
- *
  */
 
 #include "FootPrintsInterpolator.h"
@@ -54,7 +54,7 @@ bool FeetInterpolator::createPhasesTimings()
     m_mergePoints.push_back(0); //attach a completely new trajectory
 
     std::shared_ptr<std::vector<StepPhase> > swing, stance;
-    
+
     if (m_orderedSteps.size() == 0){
         int endSwitchSamples = std::round(m_endSwitch/m_dT); //last shift to the center
 
@@ -866,7 +866,7 @@ bool FeetInterpolator::interpolate(const FootPrint &left, const FootPrint &right
 
     m_DCMTrajGenerator.setdT(m_dT);
     m_DCMTrajGenerator.setOmega(m_omega);
-    
+
     if (!orderSteps()){
         std::cerr << "[FEETINTERPOLATOR] Failed while ordering the steps." << std::endl;
         return false;
@@ -876,7 +876,7 @@ bool FeetInterpolator::interpolate(const FootPrint &left, const FootPrint &right
         std::cerr << "[FEETINTERPOLATOR] Failed while creating the standing periods." << std::endl;
         return false;
     }
-    
+
     fillFeetStandingPeriodsVectors();
     fillLeftFixedVector();
 
@@ -915,7 +915,7 @@ bool FeetInterpolator::interpolate(const FootPrint &left, const FootPrint &right
         std::cerr << "[FEETINTERPOLATOR] Failed while computing the CoM height trajectories." << std::endl;
         return false;
     }
-    
+
     return true;
 }
 
@@ -960,7 +960,7 @@ bool FeetInterpolator::interpolateDCM(const FootPrint &left, const FootPrint &ri
 
     m_DCMTrajGenerator.setdT(m_dT);
     m_DCMTrajGenerator.setOmega(m_omega);
-    
+
     if (!orderSteps()){
         std::cerr << "[FEETINTERPOLATOR] Failed while ordering the steps." << std::endl;
         return false;
@@ -970,7 +970,7 @@ bool FeetInterpolator::interpolateDCM(const FootPrint &left, const FootPrint &ri
         std::cerr << "[FEETINTERPOLATOR] Failed while creating the standing periods." << std::endl;
         return false;
     }
-    
+
     fillFeetStandingPeriodsVectors();
     fillLeftFixedVector();
 
@@ -998,7 +998,7 @@ bool FeetInterpolator::interpolateDCM(const FootPrint &left, const FootPrint &ri
 
     initDCMPosition = DCMBoundaryConditionAtMergePoint.initialPosition;
     initDCMVelocity = DCMBoundaryConditionAtMergePoint.initialVelocity;
-        
+
     if(!m_DCMTrajGenerator.generateDCMTrajectory(m_orderedSteps, firstStanceFoot, initDCMPosition, initDCMVelocity, m_phaseShift)){
        std::cerr << "[FEETINTERPOLATOR] Failed while computing the DCM trajectories." << std::endl;
        return false;
@@ -1126,7 +1126,7 @@ bool FeetInterpolator::setPauseConditions(double maxStepTime, double nominalStep
 
     // set pouse condition for te DCM trajectory generator
     m_DCMTrajGenerator.setPauseConditions(maxStepTime, nominalStepTime);
-    
+
     return true;
 }
 
@@ -1161,7 +1161,7 @@ bool FeetInterpolator::setCoMHeightSettings(double comHeight, double comHeightSt
 
 
     m_omega = sqrt(9.81/m_CoMHeight);
-    
+
     return true;
 }
 

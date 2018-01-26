@@ -1,8 +1,8 @@
 /*
  * Copyright (C) 2017 Fondazione Istituto Italiano di Tecnologia
  * Authors: Stefano Dafarra
+ *          Giulio Romualdi
  * CopyPolicy: Released under the terms of the LGPLv2.1 or later, see LGPL.TXT
- *
  */
 
 #ifndef FOOTPRINTSINTERPOLATOR_H
@@ -77,7 +77,7 @@ class FeetInterpolator {
 
     //3D-LIPM constant time
     double m_omega;
-    
+
     //DCM trajecectory generator
     DCMTrajectoryGenerator m_DCMTrajGenerator;
 
@@ -121,7 +121,7 @@ public:
     bool interpolateDCM(const FootPrint &left, const FootPrint &right, double initTime, double dT, const DCMInitialState &DCMBoundaryConditionAtMergePoint);
 
     bool interpolateDCM(const FootPrint &left, const FootPrint &right, double initTime, double dT);
-    
+
     //Settings
 
     bool setSwitchOverSwingRatio(double ratio); //indeed the swing time cannot be null, while the switch time can be very close to zero (but not zero)

@@ -1,5 +1,5 @@
 /**
- * @file DcmTrajectoryGenerator.h
+ * @file utils.h
  * @author Giulio Romualdi
  * @copyright 2018 iCub Facility - Istituto Italiano di Tecnologia
  *            Released under the terms of the LGPLv2.1 or later, see LGPL.TXT
@@ -10,7 +10,7 @@
 #define TEST_UTILS_H
 
 #include <ostream>
-#include <fstream> 
+#include <fstream>
 
 #include "UnicycleTrajectoryGenerator.h"
 
@@ -28,16 +28,16 @@ namespace Color {
     BG_BLUE     = 44,
     BG_DEFAULT  = 49
   };
-  
+
   /**
-   * Modifier class 
+   * Modifier class
    */
   class Modifier
   {
-    Code code /** < Color code. */; 
-    
+    Code code /** < Color code. */;
+
   public:
-    
+
     /**
      * Modifier constructor
      * @param pCode is the color code
@@ -55,8 +55,8 @@ namespace Color {
 
 /**
  * Print left and right footsteps into a file
- * @param leftFootsteps is a vector containing the left footsteps 
- * @param rightFootsteps is a vector containing the right footsteps 
+ * @param leftFootsteps is a vector containing the left footsteps
+ * @param rightFootsteps is a vector containing the right footsteps
  * @param leftFootstepsFileName is the name of the file that will contain the left footsteps
  * @param rightFootstepsFileName is the name of the file that will contain the right footsteps
  */
