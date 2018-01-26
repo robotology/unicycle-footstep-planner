@@ -129,10 +129,10 @@ bool configureInterpolator(FeetInterpolator& interpolator, const Configuration &
  * Save all the trajectories in files
  */
 void printTrajectories(const FeetInterpolator& interpolator, size_t& newMergePoint, size_t mergePoint, DCMInitialState& boundaryConditionAtMergePoint,
-		       const std::string& pLFileName, const std::string& pRFileName,
-		       const std::string& heightFileName, const std::string& heightAccFileName,
-		       const std::string& DCMPosFileName, const std::string& DCMVelFileName,
-		       const std::string& mergePointFileName)
+                       const std::string& pLFileName, const std::string& pRFileName,
+                       const std::string& heightFileName, const std::string& heightAccFileName,
+                       const std::string& DCMPosFileName, const std::string& DCMVelFileName,
+                       const std::string& mergePointFileName)
 {
     // instantiate ofstream
     std::ofstream posLeftStream, posRightStream;
@@ -163,13 +163,13 @@ void printTrajectories(const FeetInterpolator& interpolator, size_t& newMergePoi
     rFootTrajectory.resize(mergePoint + rFootTrajectoryInput.size());
 
     for (auto pose : lFootTrajectory){
-	posLeftStream << pose.getPosition()(0) << " " << pose.getPosition()(1) << " " <<
-	    " " << pose.getPosition()(2)<< " " << std::endl;
+        posLeftStream << pose.getPosition()(0) << " " << pose.getPosition()(1) << " " <<
+            " " << pose.getPosition()(2)<< " " << std::endl;
     }
 
     for (auto pose : rFootTrajectory){
-	posRightStream << pose.getPosition()(0) << " " << pose.getPosition()(1) << " " <<
-	    " " << pose.getPosition()(2)<< " " << std::endl;
+        posRightStream << pose.getPosition()(0) << " " << pose.getPosition()(1) << " " <<
+            " " << pose.getPosition()(2)<< " " << std::endl;
     }
 
     // print CoM height trajectory
@@ -291,7 +291,7 @@ bool interpolationTest()
     // add desired initial and final position dor the unicycle
     iDynTree::assertTrue(unicycle.addDesiredTrajectoryPoint(initTime, initPosition, initVelocity));
     iDynTree::assertTrue(unicycle.addDesiredTrajectoryPoint(initTime + conf.plannerHorizon,
-							    finalPosition, finalVelocity));
+                                                            finalPosition, finalVelocity));
 
     // generate the reference footprints and the trajectory for the DCM
     clock_t startTime, endTime;
@@ -299,12 +299,12 @@ bool interpolationTest()
     std::cerr << red << "First run" << def << ": start time " << initTime << " seconds" << std::endl;
 
     iDynTree::assertTrue(unicycle.generateAndInterpolateDCM(leftFoot, rightFoot,
-							    initTime,
-							    conf.dT, initTime + conf.plannerHorizon));
+                                                            initTime,
+                                                            conf.dT, initTime + conf.plannerHorizon));
     endTime = clock();
 
     std::cerr << blue << "Total time " << (static_cast<double>(endTime - startTime) / CLOCKS_PER_SEC)
-	      << " seconds." << def <<std::endl;
+              << " seconds." << def <<std::endl;
 
     size_t newMergePoint;
     std::string pLFileName("pL1.txt");
@@ -319,15 +319,15 @@ bool interpolationTest()
 
     // print footsteep in the files
     printSteps(leftFoot->getSteps(), rightFoot->getSteps(),
-	       footstepsLFileName, footstepsRFileName);
+               footstepsLFileName, footstepsRFileName);
 
     // print the trajectory in the files
     DCMInitialState boundaryConditionAtMergePoint;
     printTrajectories(unicycle, newMergePoint, 0, boundaryConditionAtMergePoint,
-		      pLFileName,  pRFileName,
-		      heightFileName,  heightAccFileName,
-		      DCMPosFileName, DCMVelFileName,
-		      mergePointsFileName);
+                      pLFileName,  pRFileName,
+                      heightFileName,  heightAccFileName,
+                      DCMPosFileName, DCMVelFileName,
+                      mergePointsFileName);
 
 
     // test merge points
@@ -350,7 +350,7 @@ bool interpolationTest()
     endTime = clock();
 
     std::cerr << blue << "Total time " << (static_cast<double>(endTime - startTime) / CLOCKS_PER_SEC)
-	      << " seconds." << def <<std::endl;
+              << " seconds." << def <<std::endl;
 
     // save data
     pLFileName = "pL2.txt";
@@ -364,13 +364,13 @@ bool interpolationTest()
     mergePointsFileName = "mergePoints2.txt";
 
     printSteps(leftFoot->getSteps(), rightFoot->getSteps(),
-	       footstepsLFileName, footstepsRFileName);
+               footstepsLFileName, footstepsRFileName);
 
     printTrajectories(unicycle, newMergePoint, newMergePoint, boundaryConditionAtMergePoint,
-		      pLFileName,  pRFileName,
-		      heightFileName,  heightAccFileName,
-		      DCMPosFileName, DCMVelFileName,
-		      mergePointsFileName);
+                      pLFileName,  pRFileName,
+                      heightFileName,  heightAccFileName,
+                      DCMPosFileName, DCMVelFileName,
+                      mergePointsFileName);
 
     // test merge points
     initTime = newMergePoint*conf.dT;
@@ -392,7 +392,7 @@ bool interpolationTest()
     endTime = clock();
 
     std::cerr << blue << "Total time " << (static_cast<double>(endTime - startTime) / CLOCKS_PER_SEC)
-	      << " seconds." << def <<std::endl;
+              << " seconds." << def <<std::endl;
 
     // save data
     pLFileName = "pL3.txt";
@@ -406,13 +406,13 @@ bool interpolationTest()
     mergePointsFileName = "mergePoints3.txt";
 
     printSteps(leftFoot->getSteps(), rightFoot->getSteps(),
-	       footstepsLFileName, footstepsRFileName);
+               footstepsLFileName, footstepsRFileName);
 
     printTrajectories(unicycle, newMergePoint, newMergePoint, boundaryConditionAtMergePoint,
-		      pLFileName,  pRFileName,
-		      heightFileName,  heightAccFileName,
-		      DCMPosFileName, DCMVelFileName,
-		      mergePointsFileName);
+                      pLFileName,  pRFileName,
+                      heightFileName,  heightAccFileName,
+                      DCMPosFileName, DCMVelFileName,
+                      mergePointsFileName);
 
     return true;
 }

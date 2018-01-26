@@ -15,7 +15,7 @@
 class UnicycleTrajectoryGenerator : public UnicyclePlanner, public FeetInterpolator
 {
     std::shared_ptr<FootPrint> m_left, m_right;
-public:
+ public:
     UnicycleTrajectoryGenerator();
 
     //DO NOT FORGET TO CALL ALL THE INITIALIZATION METHODS OF BOTH FEETINTERPOLATOR AND UNICYCLEPLANNER
@@ -36,7 +36,6 @@ public:
 
     bool reGenerate(double initTime, double dT, double endTime, const InitialState &weightInLeftAtMergePoint, bool correctLeft,
                     const iDynTree::Vector2 &measuredPosition, double measuredAngle);
-
 
     bool generateAndInterpolateDCM(double initTime, double dT, double endTime);
 

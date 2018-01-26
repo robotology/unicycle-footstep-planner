@@ -116,7 +116,7 @@ class FeetInterpolator {
     bool interpolate(const FootPrint &left, const FootPrint &right, double initTime, double dT);
 
     bool interpolateDCM(const FootPrint &left, const FootPrint &right, double initTime, double dT,
-			const DCMInitialState &DCMBoundaryConditionAtMergePoint, const Step &previousLeft, const Step &previousRight);
+                        const DCMInitialState &DCMBoundaryConditionAtMergePoint, const Step &previousLeft, const Step &previousRight);
 
     bool interpolateDCM(const FootPrint &left, const FootPrint &right, double initTime, double dT, const DCMInitialState &DCMBoundaryConditionAtMergePoint);
 

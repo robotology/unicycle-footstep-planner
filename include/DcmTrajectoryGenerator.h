@@ -107,10 +107,10 @@ class SingleSupportTrajectory : public GeneralSupportTrajectory
      * @param boundaryCondition is the boundary condition on the DCM trajectory.
      */
     SingleSupportTrajectory(const double &startTime,
-			    const double &endTime,
-			    const double &omega,
-			    const iDynTree::Vector2 &ZMP,
-			    const DCMTrajectoryPoint& boundaryCondition);
+                            const double &endTime,
+                            const double &omega,
+                            const iDynTree::Vector2 &ZMP,
+                            const DCMTrajectoryPoint& boundaryCondition);
     /**
      * ZMP getter.
      * @return the position of the ZMP.
@@ -159,21 +159,21 @@ class DoubleSupportTrajectory : public GeneralSupportTrajectory
      * @return the vector containing the coefficents of the 3-th order polynomial.
      */
     Eigen::Vector4d polinominalInterpolation(const iDynTree::Vector2 &positionBoundaryConds,
-					     const iDynTree::Vector2 &velocityBoundaryConds,
-					     const double &dsDuration);
+                                             const iDynTree::Vector2 &velocityBoundaryConds,
+                                             const double &dsDuration);
 
  public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
-	/**
-	 * Constructor.
-	 * @param initBoundaryCondition desired init position and velocity of the
-	 * double support trajectory
-	 * @param endBoundaryCondition desired final position and velocity of the
-	 * double support trajectory
-	 */
-	DoubleSupportTrajectory(const DCMTrajectoryPoint &initBoundaryCondition,
-				const DCMTrajectoryPoint &finalBoundaryCondition);
+        /**
+         * Constructor.
+         * @param initBoundaryCondition desired init position and velocity of the
+         * double support trajectory
+         * @param endBoundaryCondition desired final position and velocity of the
+         * double support trajectory
+         */
+        DoubleSupportTrajectory(const DCMTrajectoryPoint &initBoundaryCondition,
+                                const DCMTrajectoryPoint &finalBoundaryCondition);
 
     /**
      * Implementation of the getDCMPosition method of the
@@ -227,9 +227,9 @@ class DCMTrajectoryGenerator
      * @param singleSupportBoundaryConditionTime boundary condition time of the single support trajectory.
      */
     void getLastStepsTiming(double &singleSupportStartTime,
-			    double &singleSupportEndTime,
-			    double &doubleSupportEndTime,
-			    double &singleSupportBoundaryConditionTime);
+                            double &singleSupportEndTime,
+                            double &doubleSupportEndTime,
+                            double &singleSupportBoundaryConditionTime);
 
     /**
      * Evaluate the timings for a general step.
@@ -238,8 +238,8 @@ class DCMTrajectoryGenerator
      * @param singleSupportBoundaryConditionTime boundary condition time of the single support trajectory.
      */
     void getStepsTiming(double &singleSupportStartTime,
-			double &singleSupportEndTime,
-			double &singleSupportBoundaryConditionTime);
+                        double &singleSupportEndTime,
+                        double &singleSupportBoundaryConditionTime);
     /**
      * Evaluate the timings for the first double support phase.
      * @param doubleSupportStartTime start time of the Double Support trajectory.
@@ -258,10 +258,10 @@ class DCMTrajectoryGenerator
      * @return true / false in case of success / failure.
      */
     bool addLastStep(const double &singleSupportStartTime,
-		     const double &singleSupportEndTime,
-		     const double &doubleSupportEndTime,
-		     const iDynTree::Vector2 &ZMP,
-		     const DCMTrajectoryPoint& singleSupportBoundaryCondition);
+                     const double &singleSupportEndTime,
+                     const double &doubleSupportEndTime,
+                     const iDynTree::Vector2 &ZMP,
+                     const DCMTrajectoryPoint& singleSupportBoundaryCondition);
 
     /**
      * Add the Single and Double support phases for a general step.
@@ -274,9 +274,9 @@ class DCMTrajectoryGenerator
      * @return true / false in case of success / failure.
      */
     bool addNewStep(const double &singleSupportStartTime,
-		    const double &singleSupportEndTime,
-		    const iDynTree::Vector2 &ZMP,
-		    const DCMTrajectoryPoint &singleSupportBoundaryCondition);
+                    const double &singleSupportEndTime,
+                    const iDynTree::Vector2 &ZMP,
+                    const DCMTrajectoryPoint &singleSupportBoundaryCondition);
     /**
      * Add the Single and Double support phases for a general step
      * @param doubleSupportInitBoundaryCondition contains the boundary condition of the single support trajectory.
@@ -334,10 +334,10 @@ class DCMTrajectoryGenerator
      * @return true / false in case of success / failure.
      */
     bool generateDCMTrajectory(const std::vector<StepList::const_iterator> &orderedSteps,
-			       const StepList::const_iterator &firstStanceFoot,
-			       const iDynTree::Vector2 &initPosition,
-			       const iDynTree::Vector2 &initVelocity,
-			       const std::vector<size_t> &phaseShift);
+                               const StepList::const_iterator &firstStanceFoot,
+                               const iDynTree::Vector2 &initPosition,
+                               const iDynTree::Vector2 &initVelocity,
+                               const std::vector<size_t> &phaseShift);
 
     /**
      * Get the position of the Divergent Component of Motion.

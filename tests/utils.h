@@ -19,14 +19,14 @@
  */
 namespace Color {
     enum Code {
-	FG_RED      = 31,
-	FG_GREEN    = 32,
-	FG_BLUE     = 34,
-	FG_DEFAULT  = 39,
-	BG_RED      = 41,
-	BG_GREEN    = 42,
-	BG_BLUE     = 44,
-	BG_DEFAULT  = 49
+        FG_RED      = 31,
+        FG_GREEN    = 32,
+        FG_BLUE     = 34,
+        FG_DEFAULT  = 39,
+        BG_RED      = 41,
+        BG_GREEN    = 42,
+        BG_BLUE     = 44,
+        BG_DEFAULT  = 49
     };
 
     /**
@@ -34,22 +34,22 @@ namespace Color {
      */
     class Modifier
     {
-	Code code /** < Color code. */;
+        Code code /** < Color code. */;
 
     public:
 
-	/**
-	 * Modifier constructor
-	 * @param pCode is the color code
-	 */
+        /**
+         * Modifier constructor
+         * @param pCode is the color code
+         */
     Modifier(Code pCode):
-	code(pCode)
-	{}
+        code(pCode)
+        {}
 
-	/**
-	 * Overloading << operator.
-	 */
-	friend std::ostream& operator<<(std::ostream& os, const Modifier& mod);
+        /**
+         * Overloading << operator.
+         */
+        friend std::ostream& operator<<(std::ostream& os, const Modifier& mod);
     };
 }
 
@@ -61,7 +61,7 @@ namespace Color {
  * @param rightFootstepsFileName is the name of the file that will contain the right footsteps
  */
 void printSteps(const std::deque<Step>& leftFootsteps, const std::deque<Step>& rightFootsteps,
-		const std::string& leftFootstepsFileName, const std::string& rightFootstepsFileName);
+                const std::string& leftFootstepsFileName, const std::string& rightFootstepsFileName);
 
 /**
  * Print and iDynTree vector in the shell
@@ -70,7 +70,7 @@ void printSteps(const std::deque<Step>& leftFootsteps, const std::deque<Step>& r
 template<class object>
 void print_iDynTree(object& objectName){
     for (auto pose : objectName){
-	std::cerr << pose.toString() << std::endl;
+        std::cerr << pose.toString() << std::endl;
     }
 }
 
@@ -82,7 +82,7 @@ void print_iDynTree(object& objectName){
 template<class object>
 void print_iDynTree(object& objectName, std::ofstream& file){
     for (auto pose : objectName){
-	file << pose.toString() << std::endl;
+        file << pose.toString() << std::endl;
     }
 }
 
@@ -94,7 +94,7 @@ template<class object>
 void printVector(object& objectName){
     std::cerr << "[ " ;
     for (auto pose : objectName){
-	std::cerr << pose << " ";
+        std::cerr << pose << " ";
     }
     std::cerr << "]" << std::endl;
 }
@@ -107,7 +107,7 @@ void printVector(object& objectName){
 template<class object>
 void printVector(object& objectName, std::ofstream& file){
     for (auto pose : objectName){
-	file << pose << std::endl;
+        file << pose << std::endl;
     }
 }
 

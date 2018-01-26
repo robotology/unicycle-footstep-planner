@@ -921,7 +921,7 @@ bool FeetInterpolator::interpolate(const FootPrint &left, const FootPrint &right
 
 
 bool FeetInterpolator::interpolateDCM(const FootPrint &left, const FootPrint &right, double initTime, double dT,
-				      const DCMInitialState& DCMBoundaryConditionAtMergePoint, const Step &previousLeft, const Step &previousRight)
+                                      const DCMInitialState& DCMBoundaryConditionAtMergePoint, const Step &previousLeft, const Step &previousRight)
 {
     if (left.numberOfSteps() < 1){
         std::cerr << "[FEETINTERPOLATOR] No steps in the left pointer." << std::endl;

@@ -8,27 +8,28 @@
 
 #include "utils.h"
 
-namespace Color {
+namespace Color
+{
     std::ostream& operator<<(std::ostream& os, const Color::Modifier& mod)
     {
-	return os << "\033[" << mod.code << "m";
+        return os << "\033[" << mod.code << "m";
     }
 }
 
 void printStep(const std::deque<Step>& steps, std::ofstream& footsteps)
 {
     for (auto step : steps){
-	footsteps << step.position.toString() << " " << step.angle <<std::endl;
+        footsteps << step.position.toString() << " " << step.angle <<std::endl;
 
-	std::cerr << "Position: [ "<< step.position.toString() <<"]" << std::endl;
-	std::cerr << "Angle: "<< iDynTree::rad2deg(step.angle) << " degree"  << std::endl;
-	std::cerr << "Impact time:  "<< step.impactTime << " seconds" << std::endl;
+        std::cerr << "Position: [ "<< step.position.toString() <<"]" << std::endl;
+        std::cerr << "Angle: "<< iDynTree::rad2deg(step.angle) << " degree"  << std::endl;
+        std::cerr << "Impact time:  "<< step.impactTime << " seconds" << std::endl;
     }
 }
 
 void printSteps(const std::deque<Step>& leftSteps, const std::deque<Step>& rightSteps,
-		const std::string& footstepsL, const std::string& footstepsR){
-
+                const std::string& footstepsL, const std::string& footstepsR)
+{
     Color::Modifier green(Color::FG_GREEN);
     Color::Modifier def(Color::FG_DEFAULT);
 
