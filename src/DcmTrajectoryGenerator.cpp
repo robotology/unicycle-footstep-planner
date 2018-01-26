@@ -624,7 +624,7 @@ bool DCMTrajectoryGenerator::setPauseConditions(const double &maxDoubleSupportDu
       return false;
     }
     
-    if (nominalDoubleSupportDuration > maxDoubleSupportDuration / 2){
+    if (nominalDoubleSupportDuration > maxDoubleSupportDuration){
       std::cerr << "[DCM TRAJECTORY GENERATOR] The nominalDoubleSupportDuration cannot be greater than maxDoubleSupportDuration." << std::endl;
       m_pauseActive = false;
       return false;
