@@ -1,5 +1,5 @@
 /**
- * @file DcmTrajectoryGenerator.h
+ * @file DcmInterpolationTest.cpp
  * @author Giulio Romualdi
  * @copyright 2018 iCub Facility - Istituto Italiano di Tecnologia
  *            Released under the terms of the LGPLv2.1 or later, see LGPL.TXT
@@ -128,16 +128,16 @@ bool configureInterpolator(FeetInterpolator& interpolator, const Configuration &
 /**
  * Save all the trajectories in files
  */
-void printTrajectories(const FeetInterpolator& interpolator, size_t& newMergePoint, size_t mergePoint, DcmInitialState& boundaryConditionAtMergePoint,
+void printTrajectories(const FeetInterpolator& interpolator, size_t& newMergePoint, size_t mergePoint, DCMInitialState& boundaryConditionAtMergePoint,
 		       const std::string& pLFileName, const std::string& pRFileName,
 		       const std::string& heightFileName, const std::string& heightAccFileName,
-		       const std::string& dcmPosFileName, const std::string& dcmVelFileName,
+		       const std::string& DCMPosFileName, const std::string& DCMVelFileName,
 		       const std::string& mergePointFileName)
 {
   // instantiate ofstream
   std::ofstream posLeftStream, posRightStream;
   std::ofstream heightStream, heightAccelerationStream;
-  std::ofstream dcmPosStream, dcmVelStream;
+  std::ofstream DCMPosStream, DCMVelStream;
   std::ofstream mergePointsStream;
   
   // open files
@@ -147,8 +147,8 @@ void printTrajectories(const FeetInterpolator& interpolator, size_t& newMergePoi
   heightStream.open(heightFileName.c_str());
   heightAccelerationStream.open(heightAccFileName.c_str());
 
-  dcmPosStream.open(dcmPosFileName.c_str());
-  dcmVelStream.open(dcmVelFileName.c_str());
+  DCMPosStream.open(DCMPosFileName.c_str());
+  DCMVelStream.open(DCMVelFileName.c_str());
 
   mergePointsStream.open(mergePointFileName.c_str());
 
@@ -217,26 +217,26 @@ void printTrajectories(const FeetInterpolator& interpolator, size_t& newMergePoi
   printVector(mergePoints, mergePointsStream);
 
   // print the position of the DCM
-  static std::vector<iDynTree::Vector2> dcmPosVector;
-  std::vector<iDynTree::Vector2> dcmPosInput;
-  dcmPosInput = interpolator.getDcmPosition();
-  dcmPosVector.insert(dcmPosVector.begin() + mergePoint, dcmPosInput.begin(), dcmPosInput.end());
-  dcmPosVector.resize(mergePoint + dcmPosInput.size());
-  dcmPosStream << "dcm_x dcm_y" <<std::endl;
-  print_iDynTree(dcmPosVector, dcmPosStream);
+  static std::vector<iDynTree::Vector2> DCMPosVector;
+  std::vector<iDynTree::Vector2> DCMPosInput;
+  DCMPosInput = interpolator.getDCMPosition();
+  DCMPosVector.insert(DCMPosVector.begin() + mergePoint, DCMPosInput.begin(), DCMPosInput.end());
+  DCMPosVector.resize(mergePoint + DCMPosInput.size());
+  DCMPosStream << "DCM_x DCM_y" <<std::endl;
+  print_iDynTree(DCMPosVector, DCMPosStream);
 
   // print the velocity of the DCM
-  static std::vector<iDynTree::Vector2> dcmVelVector;
-  std::vector<iDynTree::Vector2> dcmVelInput;
-  dcmVelInput = interpolator.getDcmVelocity();
-  dcmVelVector.insert(dcmVelVector.begin() + mergePoint, dcmVelInput.begin(), dcmVelInput.end());
-  dcmVelVector.resize(mergePoint + dcmVelInput.size());
-  dcmVelStream << "dcm_vx dcm_vy" <<std::endl;
-  print_iDynTree(dcmVelVector, dcmVelStream);
+  static std::vector<iDynTree::Vector2> DCMVelVector;
+  std::vector<iDynTree::Vector2> DCMVelInput;
+  DCMVelInput = interpolator.getDCMVelocity();
+  DCMVelVector.insert(DCMVelVector.begin() + mergePoint, DCMVelInput.begin(), DCMVelInput.end());
+  DCMVelVector.resize(mergePoint + DCMVelInput.size());
+  DCMVelStream << "DCM_vx DCM_vy" <<std::endl;
+  print_iDynTree(DCMVelVector, DCMVelStream);
   
-  // evaluate the the new dcm boundary conditions
-  boundaryConditionAtMergePoint.initialPosition = dcmPosInput[mergePoints[1]];
-  boundaryConditionAtMergePoint.initialVelocity = dcmVelInput[mergePoints[1]];
+  // evaluate the the new DCM boundary conditions
+  boundaryConditionAtMergePoint.initialPosition = DCMPosInput[mergePoints[1]];
+  boundaryConditionAtMergePoint.initialVelocity = DCMVelInput[mergePoints[1]];
   
   std::cerr << "************************************" << std::endl;
   
@@ -247,8 +247,8 @@ void printTrajectories(const FeetInterpolator& interpolator, size_t& newMergePoi
   heightStream.close();
   heightAccelerationStream.close();
 
-  dcmPosStream.close();
-  dcmVelStream.close();
+  DCMPosStream.close();
+  DCMVelStream.close();
 
   mergePointsStream.close();
 }
@@ -298,7 +298,7 @@ bool interpolationTest()
   startTime = clock();
   std::cerr << red << "First run" << def << ": start time " << initTime << " seconds" << std::endl;
 
-  iDynTree::assertTrue(unicycle.generateAndInterpolateDcm(leftFoot, rightFoot,
+  iDynTree::assertTrue(unicycle.generateAndInterpolateDCM(leftFoot, rightFoot,
 							  initTime,
 							  conf.dT, initTime + conf.plannerHorizon));
   endTime = clock();
@@ -313,8 +313,8 @@ bool interpolationTest()
   std::string footstepsRFileName("footstepsR1.txt");
   std::string heightFileName("height1.txt");
   std::string heightAccFileName("heightAcc1.txt");
-  std::string dcmPosFileName("dcmPos1.txt");
-  std::string dcmVelFileName("dcmVel1.txt");
+  std::string DCMPosFileName("DCMPos1.txt");
+  std::string DCMVelFileName("DCMVel1.txt");
   std::string mergePointsFileName("mergePoints1.txt");
 
   // print footsteep in the files
@@ -322,11 +322,11 @@ bool interpolationTest()
 	     footstepsLFileName, footstepsRFileName);
   
   // print the trajectory in the files
-  DcmInitialState boundaryConditionAtMergePoint;
+  DCMInitialState boundaryConditionAtMergePoint;
   printTrajectories(unicycle, newMergePoint, 0, boundaryConditionAtMergePoint,
 		    pLFileName,  pRFileName,
 		    heightFileName,  heightAccFileName,
-		    dcmPosFileName, dcmVelFileName,
+		    DCMPosFileName, DCMVelFileName,
 		    mergePointsFileName);
     
 
@@ -346,7 +346,7 @@ bool interpolationTest()
 
   // evaluate the new trajectory
   startTime = clock();
-  iDynTree::assertTrue(unicycle.reGenerateDcm(initTime, conf.dT, initTime + conf.plannerHorizon, boundaryConditionAtMergePoint));
+  iDynTree::assertTrue(unicycle.reGenerateDCM(initTime, conf.dT, initTime + conf.plannerHorizon, boundaryConditionAtMergePoint));
   endTime = clock();
   
   std::cerr << blue << "Total time " << (static_cast<double>(endTime - startTime) / CLOCKS_PER_SEC)
@@ -359,8 +359,8 @@ bool interpolationTest()
   footstepsRFileName = "footstepsR2.txt";
   heightFileName = "height2.txt";
   heightAccFileName = "heightAcc2.txt";
-  dcmPosFileName = "dcmPos2.txt";
-  dcmVelFileName = "dcmVel2.txt";
+  DCMPosFileName = "DCMPos2.txt";
+  DCMVelFileName = "DCMVel2.txt";
   mergePointsFileName = "mergePoints2.txt";
   
   printSteps(leftFoot->getSteps(), rightFoot->getSteps(),
@@ -369,7 +369,7 @@ bool interpolationTest()
   printTrajectories(unicycle, newMergePoint, newMergePoint, boundaryConditionAtMergePoint,
 		    pLFileName,  pRFileName,
 		    heightFileName,  heightAccFileName,
-		    dcmPosFileName, dcmVelFileName,
+		    DCMPosFileName, DCMVelFileName,
 		    mergePointsFileName);
 
   // test merge points
@@ -388,7 +388,7 @@ bool interpolationTest()
 
   // evaluate the new trajectory
   startTime = clock();
-  iDynTree::assertTrue(unicycle.reGenerateDcm(initTime, conf.dT, initTime + conf.plannerHorizon, boundaryConditionAtMergePoint));
+  iDynTree::assertTrue(unicycle.reGenerateDCM(initTime, conf.dT, initTime + conf.plannerHorizon, boundaryConditionAtMergePoint));
   endTime = clock();
   
   std::cerr << blue << "Total time " << (static_cast<double>(endTime - startTime) / CLOCKS_PER_SEC)
@@ -401,8 +401,8 @@ bool interpolationTest()
   footstepsRFileName = "footstepsR3.txt";
   heightFileName = "height3.txt";
   heightAccFileName = "heightAcc3.txt";
-  dcmPosFileName = "dcmPos3.txt";
-  dcmVelFileName = "dcmVel3.txt";
+  DCMPosFileName = "DCMPos3.txt";
+  DCMVelFileName = "DCMVel3.txt";
   mergePointsFileName = "mergePoints3.txt";
   
   printSteps(leftFoot->getSteps(), rightFoot->getSteps(),
@@ -411,7 +411,7 @@ bool interpolationTest()
   printTrajectories(unicycle, newMergePoint, newMergePoint, boundaryConditionAtMergePoint,
 		    pLFileName,  pRFileName,
 		    heightFileName,  heightAccFileName,
-		    dcmPosFileName, dcmVelFileName,
+		    DCMPosFileName, DCMVelFileName,
 		    mergePointsFileName);
   
   return true;

@@ -35,7 +35,7 @@ typedef struct{
 typedef struct{
     iDynTree::Vector2 initialPosition;
     iDynTree::Vector2 initialVelocity;
-} DcmInitialState;
+} DCMInitialState;
 
 
 class FeetInterpolator {
@@ -79,7 +79,7 @@ class FeetInterpolator {
     double m_omega;
     
     //DCM trajecectory generator
-    DcmTrajectoryGenerator m_dcmTrajGenerator;
+    DCMTrajectoryGenerator m_DCMTrajGenerator;
 
     bool orderSteps();
     bool createPhasesTimings();
@@ -115,12 +115,12 @@ public:
 
     bool interpolate(const FootPrint &left, const FootPrint &right, double initTime, double dT);
 
-    bool interpolateDcm(const FootPrint &left, const FootPrint &right, double initTime, double dT,
-                     const DcmInitialState &dcmBoundaryConditionAtMergePoint, const Step &previousLeft, const Step &previousRight);
+    bool interpolateDCM(const FootPrint &left, const FootPrint &right, double initTime, double dT,
+                     const DCMInitialState &DCMBoundaryConditionAtMergePoint, const Step &previousLeft, const Step &previousRight);
 
-    bool interpolateDcm(const FootPrint &left, const FootPrint &right, double initTime, double dT, const DcmInitialState &dcmBoundaryConditionAtMergePoint);
+    bool interpolateDCM(const FootPrint &left, const FootPrint &right, double initTime, double dT, const DCMInitialState &DCMBoundaryConditionAtMergePoint);
 
-    bool interpolateDcm(const FootPrint &left, const FootPrint &right, double initTime, double dT);
+    bool interpolateDCM(const FootPrint &left, const FootPrint &right, double initTime, double dT);
     
     //Settings
 
@@ -178,8 +178,8 @@ public:
     void getMergePoints(std::vector<size_t>& mergePoints) const; //indexes in which is suitable to perform a merge of trajectories. The weight percentage is discontinuos in velocity
 
 
-    const std::vector<iDynTree::Vector2>& getDcmPosition() const;
-    const std::vector<iDynTree::Vector2>& getDcmVelocity() const;
+    const std::vector<iDynTree::Vector2>& getDCMPosition() const;
+    const std::vector<iDynTree::Vector2>& getDCMVelocity() const;
 
 };
 

@@ -130,24 +130,24 @@ bool UnicycleTrajectoryGenerator::reGenerate(double initTime, double dT, double 
 }
 
 
-// dcm functions
+// DCM functions
 
-bool UnicycleTrajectoryGenerator::generateAndInterpolateDcm(double initTime, double dT, double endTime)
+bool UnicycleTrajectoryGenerator::generateAndInterpolateDCM(double initTime, double dT, double endTime)
 {
     m_left->clearSteps();
     m_right->clearSteps();
-    return setEndTime(endTime) && computeNewSteps(m_left, m_right, initTime) && interpolateDcm(*m_left, *m_right, initTime, dT);
+    return setEndTime(endTime) && computeNewSteps(m_left, m_right, initTime) && interpolateDCM(*m_left, *m_right, initTime, dT);
 }
 
-bool UnicycleTrajectoryGenerator::generateAndInterpolateDcm(std::shared_ptr<FootPrint> leftFoot, std::shared_ptr<FootPrint> rightFoot, double initTime, double dT, double endTime)
+bool UnicycleTrajectoryGenerator::generateAndInterpolateDCM(std::shared_ptr<FootPrint> leftFoot, std::shared_ptr<FootPrint> rightFoot, double initTime, double dT, double endTime)
 {
     m_left = leftFoot;
     m_right = rightFoot;
-    return setEndTime(endTime) && computeNewSteps(m_left, m_right, initTime) && interpolateDcm(*m_left, *m_right, initTime, dT);
+    return setEndTime(endTime) && computeNewSteps(m_left, m_right, initTime) && interpolateDCM(*m_left, *m_right, initTime, dT);
 }
 
 
-bool UnicycleTrajectoryGenerator::reGenerateDcm(double initTime, double dT, double endTime, const DcmInitialState &dcmBoundaryConditionAtMergePoint)
+bool UnicycleTrajectoryGenerator::reGenerateDCM(double initTime, double dT, double endTime, const DCMInitialState &DCMBoundaryConditionAtMergePoint)
 {
     if (!m_left->keepOnlyPresentStep(initTime)){
         std::cerr << "The initTime is not compatible with previous runs. Call a method generateAndInterpolate instead." << std::endl;
@@ -160,5 +160,5 @@ bool UnicycleTrajectoryGenerator::reGenerateDcm(double initTime, double dT, doub
     }
 
     return setEndTime(endTime) && computeNewSteps(m_left, m_right, initTime) &&
-      interpolateDcm(*m_left, *m_right, initTime, dT, dcmBoundaryConditionAtMergePoint);
+      interpolateDCM(*m_left, *m_right, initTime, dT, DCMBoundaryConditionAtMergePoint);
 }

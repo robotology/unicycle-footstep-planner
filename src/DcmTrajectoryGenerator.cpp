@@ -46,75 +46,62 @@ const std::pair<double, double> &GeneralSupportTrajectory::getTrajectoryDomain()
 
 SingleSupportTrajectory::SingleSupportTrajectory(const double &startTime,
 						 const double &endTime,
-						 const double &t0,
-						 const double &stepDuration,
 						 const double &omega,
-						 const iDynTree::Vector2 &zmp,
-						 const iDynTree::Vector2 &nextDcmIos):
+						 const iDynTree::Vector2 &ZMP,
+						 const DCMTrajectoryPoint& boundaryCondition):
   GeneralSupportTrajectory(startTime, endTime),
-  m_t0(t0),
   m_omega(omega),
-  m_zmp(zmp)
+  m_ZMP(ZMP)
 {
-  setDcmIos(nextDcmIos, stepDuration);
+  m_boundaryConditionTime = boundaryCondition.time;
+  m_boundaryConditionDCMPosition = boundaryCondition.DCMPosition;
 }
 
-void SingleSupportTrajectory::setDcmIos(const iDynTree::Vector2 &nextDcmIos,
-					const double &stepDuration)
+const iDynTree::Vector2& SingleSupportTrajectory::getZMP() const
 {
-  // The position of the DCM at the beginning of the i-th step
-  // depends on the position of the DCM at the beginning of the steps i+1
-  // dcm_ios[i] = dcm_ios[i+1]
-  //              + exp(-omega * Ts[i]) * (1 - exp(-omega * Ts[i])) * zmp[i]
-  
-  iDynTree::toEigen(m_dcmIos) = iDynTree::toEigen(m_zmp) + exp(-m_omega * stepDuration) * (iDynTree::toEigen(nextDcmIos) - iDynTree::toEigen(m_zmp));
+  return m_ZMP;
 }
 
-const iDynTree::Vector2& SingleSupportTrajectory::getDcmIos() const
-{
-  return m_dcmIos;
-}
-
-const iDynTree::Vector2& SingleSupportTrajectory::getZmp() const
-{
-  return m_zmp;
-}
-
-bool SingleSupportTrajectory::getDcmPos(const double &t, iDynTree::Vector2 &dcmPos)
+bool SingleSupportTrajectory::getDCMPosition(const double &t, iDynTree::Vector2 &DCMPosition,
+					     const bool &checkDomainCondition)
 {
   // Evaluate the position of the DCM at time t
-  if (timeBelongsToDomain(t)){
-    iDynTree::toEigen(dcmPos) = iDynTree::toEigen(m_zmp)
-      + exp(m_omega * (t - m_t0)) * (iDynTree::toEigen(m_dcmIos) - iDynTree::toEigen(m_zmp));
-    return true;
-  }
-  std::cerr << "[SINGLE SUPPORT TRAJECTORY] the time t: " << t << " does not belong to the trajectory domain." <<
-    std::endl;
-  return false;  
+  if (checkDomainCondition)
+    if (!timeBelongsToDomain(t)){
+      std::cerr << "[SINGLE SUPPORT TRAJECTORY] the time t: " << t
+		<< " does not belong to the trajectory domain." << std::endl;
+      return false;
+    }
+  
+  iDynTree::toEigen(DCMPosition) = iDynTree::toEigen(m_ZMP) +
+    exp(m_omega * (t - m_boundaryConditionTime)) *
+    (iDynTree::toEigen(m_boundaryConditionDCMPosition) - iDynTree::toEigen(m_ZMP));
+  return true;
+
 }
 
-bool SingleSupportTrajectory::getDcmVel(const double &t, iDynTree::Vector2 &dcmVel)
+bool SingleSupportTrajectory::getDCMVelocity(const double &t, iDynTree::Vector2 &DCMVelocity,
+					     const bool &checkDomainCondition)
 {
   // Evaluate the velocity of the DCM at time t
-  if (timeBelongsToDomain(t)){
-    iDynTree::toEigen(dcmVel) = m_omega * exp(m_omega * (t - m_t0)) * (iDynTree::toEigen(m_dcmIos) - iDynTree::toEigen(m_zmp));
-    return true;
-  }
-  std::cerr << "[SINGLE SUPPORT TRAJECTORY] the time t: " << t << " does not belong to the trajectory domain." <<
-    std::endl;
-  return false;  
+  if (checkDomainCondition)
+    if (!timeBelongsToDomain(t)){
+      std::cerr << "[SINGLE SUPPORT TRAJECTORY] the time t: " << t
+		<< " does not belong to the trajectory domain." << std::endl;
+      return false;
+    }  
+  
+  iDynTree::toEigen(DCMVelocity) = m_omega * exp(m_omega * (t - m_boundaryConditionTime)) *
+    (iDynTree::toEigen(m_boundaryConditionDCMPosition) - iDynTree::toEigen(m_ZMP));
+  return true;  
 }
 
-DoubleSupportTrajectory::DoubleSupportTrajectory(const iDynTree::Vector2 &initPosition, 
-						 const iDynTree::Vector2 &initVelocity,
-						 const iDynTree::Vector2 &endPosition, 
-						 const iDynTree::Vector2 &endVelocity,
-						 const double &startTime,
-						 const double &endTime):
-  GeneralSupportTrajectory(startTime, endTime)
+DoubleSupportTrajectory::DoubleSupportTrajectory(const DCMTrajectoryPoint &initBoundaryCondition,
+						 const DCMTrajectoryPoint &finalBoundaryCondition):
+  GeneralSupportTrajectory(initBoundaryCondition.time, finalBoundaryCondition.time)
 {
 
-  double dsDuration = endTime - startTime;
+  double dsDuration = finalBoundaryCondition.time - initBoundaryCondition.time;
   
   // get the boundary conditions
   iDynTree::Vector2 positionBoundaryCondsX;
@@ -122,15 +109,23 @@ DoubleSupportTrajectory::DoubleSupportTrajectory(const iDynTree::Vector2 &initPo
   iDynTree::Vector2 velocityBoundaryCondsX;
   iDynTree::Vector2 velocityBoundaryCondsY;
 
-  positionBoundaryCondsX.setVal(0, initPosition(0));
-  positionBoundaryCondsX.setVal(1, endPosition(0));
-  positionBoundaryCondsY.setVal(0, initPosition(1));
-  positionBoundaryCondsY.setVal(1, endPosition(1));
+  iDynTree::Vector2 initPosition = initBoundaryCondition.DCMPosition;
+  iDynTree::Vector2 initVelocity = initBoundaryCondition.DCMVelocity;
 
-  velocityBoundaryCondsX.setVal(0, initVelocity(0));
-  velocityBoundaryCondsX.setVal(1, endVelocity(0));
-  velocityBoundaryCondsY.setVal(0, initVelocity(1));
-  velocityBoundaryCondsY.setVal(1, endVelocity(1));
+  iDynTree::Vector2 endPosition = finalBoundaryCondition.DCMPosition;
+  iDynTree::Vector2 endVelocity = finalBoundaryCondition.DCMVelocity;
+
+  // set X boundary conditions
+  positionBoundaryCondsX(0) = initPosition(0);
+  positionBoundaryCondsX(1) = endPosition(0);
+  velocityBoundaryCondsX(0) = initVelocity(0);
+  velocityBoundaryCondsX(1) = endVelocity(0);
+
+  // set Y boundary conditions
+  positionBoundaryCondsY(0) = initPosition(1);
+  positionBoundaryCondsY(1) = endPosition(1);
+  velocityBoundaryCondsY(0) = initVelocity(1);
+  velocityBoundaryCondsY(1) = endVelocity(1);
 
   // evaluate the coefficents of the X and Y polinomials
   m_coefficentsX = polinominalInterpolation(positionBoundaryCondsX, velocityBoundaryCondsX,
@@ -169,119 +164,119 @@ Eigen::Vector4d DoubleSupportTrajectory::polinominalInterpolation(const iDynTree
   return coefficents;
 }
 
-bool DoubleSupportTrajectory::getDcmPos(const double &t, iDynTree::Vector2 &dcmPos)
+bool DoubleSupportTrajectory::getDCMPosition(const double &t, iDynTree::Vector2 &DCMPosition,
+					     const bool &checkDomainCondition)
 {
-  if (timeBelongsToDomain(t)){
-    // Evaluate the position of the desired DCM at time t
-    double startTime = std::get<0>(m_trajectoryDomain);
-    double time = t - startTime;
-    Eigen::Vector4d tVector;
-    tVector<< pow(time,3),
-      pow(time,2),
-      time,
-      1;
-    
-    // evaluate booth x and y coordinates
-    double dcmPosX = tVector.dot(m_coefficentsX);
-    double dcmPosY = tVector.dot(m_coefficentsY);
+  if(checkDomainCondition)
+    if (!timeBelongsToDomain(t)){
+      std::cerr << "[DOUBLE SUPPORT TRAJECTORY] the time t: " << t
+		<< " does not belong to the trajectory domain." << std::endl;
+      return false;
+    }
 
-    // store the DCM position into the iDyntree vector
-    dcmPos.setVal(0, dcmPosX);
-    dcmPos.setVal(1, dcmPosY);
-    
-    return true;
-  }
+  // Evaluate the position of the desired DCM at time t
+  double startTime = std::get<0>(m_trajectoryDomain);
+  double time = t - startTime;
+  Eigen::Vector4d tVector;
+  tVector<< pow(time,3),
+    pow(time,2),
+    time,
+    1;
   
-  std::cerr << "[DOUBLE SUPPORT TRAJECTORY] the time t: " << t << " does not belong to the trajectory domain." <<
-    std::endl;
-  return false;
+  // evaluate booth x and y coordinates
+  DCMPosition(0) = tVector.dot(m_coefficentsX);
+  DCMPosition(1) = tVector.dot(m_coefficentsY);
+  
+  return true;
 }
 
-bool DoubleSupportTrajectory::getDcmVel(const double &t, iDynTree::Vector2 &dcmVel)
+
+bool DoubleSupportTrajectory::getDCMVelocity(const double &t, iDynTree::Vector2 &DCMVelocity,
+					     const bool &checkDomainCondition)
 {
-  if (timeBelongsToDomain(t)){
-    // Evaluate the position of the desired DCM at time t
-    double startTime = std::get<0>(m_trajectoryDomain);
-    double time = t - startTime;
-    Eigen::Vector4d tVector;
-    tVector<< 3 * pow(time,2),
-      2 * time,
-      1,
-      0;
+  if(checkDomainCondition)
+    if (!timeBelongsToDomain(t)){
+        std::cerr << "[DOUBLE SUPPORT TRAJECTORY] the time t: " << t
+		  << "does not belong to the trajectory domain." << std::endl;
+	return false;
+    }
 
-    // evaluate booth x and y coordinates
-    double dcmVelX = tVector.dot(m_coefficentsX);
-    double dcmVelY = tVector.dot(m_coefficentsY);
-
-    // store the DCM velocity into the iDyntree vector
-    dcmVel.setVal(0, dcmVelX);
-    dcmVel.setVal(1, dcmVelY);
-    
-    return true;
-  }
+  // Evaluate the position of the desired DCM at time t
+  double startTime = std::get<0>(m_trajectoryDomain);
+  double time = t - startTime;
+  Eigen::Vector4d tVector;
+  tVector<< 3 * pow(time,2),
+    2 * time,
+    1,
+    0;
   
-  std::cerr << "[DOUBLE SUPPORT TRAJECTORY] the time t: " << t << "does not belong to the trajectory domain." <<
-    std::endl;
-  return false;  
+  // evaluate booth x and y coordinates
+  DCMVelocity(0) = tVector.dot(m_coefficentsX);
+  DCMVelocity(1) = tVector.dot(m_coefficentsY);
+  
+  return true;
 }
 
-DcmTrajectoryGenerator::DcmTrajectoryGenerator():
+
+DCMTrajectoryGenerator::DCMTrajectoryGenerator():
   m_pauseActive(false)
 {}
 
-DcmTrajectoryGenerator::DcmTrajectoryGenerator(const double &dT, const double &omega):
+DCMTrajectoryGenerator::DCMTrajectoryGenerator(const double &dT, const double &omega):
   m_omega(omega),
   m_dT(dT),
   m_pauseActive(false)
 {}
 
-void DcmTrajectoryGenerator::setOmega(const double &omega)
+void DCMTrajectoryGenerator::setOmega(const double &omega)
 {
   m_omega = omega;
 }
 
-void DcmTrajectoryGenerator::setdT(const double &dT)
+void DCMTrajectoryGenerator::setdT(const double &dT)
 {
   m_dT = dT;
 }
 
-bool DcmTrajectoryGenerator::addLastStep(const double &singleSupportStartTime,
+bool DCMTrajectoryGenerator::addLastStep(const double &singleSupportStartTime,
 					 const double &singleSupportEndTime,
-					 const double &singleSupportDuration,
 					 const double &doubleSupportEndTime,
-					 const double &t0,
-					 const iDynTree::Vector2 &comPosition,
-					 const iDynTree::Vector2 &zmp)
+					 const iDynTree::Vector2 &ZMP,
+					 const DCMTrajectoryPoint &singleSupportBoundaryCondition)
 {
   // evaluate the Single Support trajectory parameters
   std::shared_ptr<GeneralSupportTrajectory> newSingleSupport = nullptr;
   newSingleSupport = std::make_shared<SingleSupportTrajectory>(singleSupportStartTime, singleSupportEndTime,
-							       t0, singleSupportDuration, m_omega,
-							       zmp, comPosition);
+							       m_omega, ZMP, singleSupportBoundaryCondition);
   
   // instantiate position and velocity boundary conditions vectors
-  iDynTree::Vector2 initPosition, initVelocity;
-  iDynTree::Vector2 endPosition, endVelocity;
+  DCMTrajectoryPoint doubleSupportInitBoundaryCondition;
+  DCMTrajectoryPoint doubleSupportFinalBoundaryCondition;
 
+  doubleSupportInitBoundaryCondition.time = singleSupportEndTime;
+  doubleSupportFinalBoundaryCondition.time = doubleSupportEndTime;
+  
   // set boundary conditions
-  if(!newSingleSupport->getDcmPos(singleSupportEndTime, initPosition)){
+  if(!newSingleSupport->getDCMPosition(doubleSupportInitBoundaryCondition.time,
+				       doubleSupportInitBoundaryCondition.DCMPosition)){
     std::cerr << "[DCM TRAJECTORY GENERATOR] Error when the position of the DCM in the next SS phase is evaluated." <<std::endl;
     return false;
   }
 
-  if(!newSingleSupport->getDcmVel(singleSupportEndTime, initVelocity)){
+  if(!newSingleSupport->getDCMVelocity(doubleSupportInitBoundaryCondition.time,
+				       doubleSupportInitBoundaryCondition.DCMVelocity)){
     std::cerr << "[DCM TRAJECTORY GENERATOR] Error when the velocity of the DCM in the next SS phase is evaluated." <<std::endl;
     return false;
   }
 
-  endPosition = comPosition;
-  endVelocity.zero();
+  // only for the last step the final position of the DCM coincides with le initial position
+  doubleSupportFinalBoundaryCondition.DCMPosition = doubleSupportInitBoundaryCondition.DCMPosition;
+  doubleSupportFinalBoundaryCondition.DCMVelocity.zero();
+
   double doubleSupportStartTime = singleSupportEndTime;
   std::shared_ptr<GeneralSupportTrajectory> newDoubleSupport = nullptr;
-  newDoubleSupport = std::make_shared<DoubleSupportTrajectory>(initPosition, initVelocity,
-							       endPosition, endVelocity,
-							       doubleSupportStartTime,
-							       doubleSupportEndTime);
+  newDoubleSupport = std::make_shared<DoubleSupportTrajectory>(doubleSupportInitBoundaryCondition,
+							       doubleSupportFinalBoundaryCondition);
   // add the new Double Support phase
   m_trajectory.push_back(newDoubleSupport);
 
@@ -291,118 +286,105 @@ bool DcmTrajectoryGenerator::addLastStep(const double &singleSupportStartTime,
   return true;
 }
 
-bool DcmTrajectoryGenerator::addNewStep(const double &singleSupportStartTime,
+bool DCMTrajectoryGenerator::addNewStep(const double &singleSupportStartTime,
 					const double &singleSupportEndTime,
-					const double &singleSupportDuration,
-					const double &t0,
-					const iDynTree::Vector2 &zmp)
-{
-  // get the next Single Support trajectory
-  std::shared_ptr<GeneralSupportTrajectory> nextSingleSupport = m_trajectory.back();
+					const iDynTree::Vector2 &ZMP,
+					const DCMTrajectoryPoint &singleSupportBoundaryCondition)
+{  
+  // evaluate the new Single Support trajectory parameters
+  std::shared_ptr<GeneralSupportTrajectory> newSingleSupportTrajectory = nullptr;
+  newSingleSupportTrajectory = std::make_shared<SingleSupportTrajectory>(singleSupportStartTime, singleSupportEndTime,
+									 m_omega, ZMP, singleSupportBoundaryCondition);
+  
+  // instantiate boundary conditions structs
+  DCMTrajectoryPoint doubleSupportInitBoundaryCondition;
+  DCMTrajectoryPoint doubleSupportFinalBoundaryCondition;
 
+  // the end time of the Double Support phase coinceds with the beginning of the next Single Support phase
+  std::shared_ptr<GeneralSupportTrajectory> nextSingleSupport = m_trajectory.back();
+  
   // get the domain of the next SingleSupport trajectory
   const std::pair<double, double> nextSubTrajectoryDomain = nextSingleSupport->getTrajectoryDomain();
+  doubleSupportFinalBoundaryCondition.time = std::get<0>(nextSubTrajectoryDomain);
 
-  // get the DCM init of step parameter of the next SingleSupport trajectory
-  std::shared_ptr<SingleSupportTrajectory> nextSingleSupport_cast = std::static_pointer_cast<SingleSupportTrajectory>(nextSingleSupport);
-  iDynTree::Vector2 nextDcmIos = nextSingleSupport_cast->getDcmIos();
+  doubleSupportInitBoundaryCondition.time = singleSupportEndTime;
   
-  // evaluate the new Single Support trajectory parameters
-  std::shared_ptr<GeneralSupportTrajectory> currentSingleSupport = nullptr;
-  currentSingleSupport = std::make_shared<SingleSupportTrajectory>(singleSupportStartTime, singleSupportEndTime,
-								   t0, singleSupportDuration, m_omega,
-								   zmp, nextDcmIos);
-  
-  // instantiate position and velocity boundary conditions vectors
-  iDynTree::Vector2 initPosition, initVelocity;
-  iDynTree::Vector2 endPosition, endVelocity;
-
-  // the begining time of the Double Support phase coinceds with the beginning of the next Single Support phase
-  double doubleSupportEndTime = std::get<0>(nextSubTrajectoryDomain);
-
   // set the boundary conditions
-  if(!currentSingleSupport->getDcmPos(singleSupportEndTime, initPosition)){
+  if(!newSingleSupportTrajectory->getDCMPosition(doubleSupportInitBoundaryCondition.time,
+						 doubleSupportInitBoundaryCondition.DCMPosition)){
     std::cerr << "[DCM TRAJECTORY GENERATOR] Error when the position of the DCM in the next SS phase is evaluated." <<std::endl;
     return false;
   }
   
-  if(!currentSingleSupport->getDcmVel(singleSupportEndTime, initVelocity)){
+  if(!newSingleSupportTrajectory->getDCMVelocity(doubleSupportInitBoundaryCondition.time,
+						 doubleSupportInitBoundaryCondition.DCMVelocity)){
     std::cerr << "[DCM TRAJECTORY GENERATOR] Error when the velocity of the DCM in the next SS phase is evaluated." <<std::endl;
     return false;
   }
   
-  if(!nextSingleSupport->getDcmPos(doubleSupportEndTime, endPosition)){
+  if(!nextSingleSupport->getDCMPosition(doubleSupportFinalBoundaryCondition.time,
+					doubleSupportFinalBoundaryCondition.DCMPosition)){
     std::cerr << "[DCM TRAJECTORY GENERATOR] Error when the position of the DCM in the previous SS phase is evaluated." <<std::endl;
     return false;
   }
 
-  if(!nextSingleSupport->getDcmVel(doubleSupportEndTime, endVelocity)){
+  if(!nextSingleSupport->getDCMVelocity(doubleSupportFinalBoundaryCondition.time,
+					doubleSupportFinalBoundaryCondition.DCMVelocity)){
     std::cerr << "[DCM TRAJECTORY GENERATOR] Error when the velocity of the DCM in the previous SS phase is evaluated." <<std::endl;
     return false;
   }
 
   // evaluate the new Double Support phase
-  double doubleSupportStartTime = singleSupportEndTime;
-  std::shared_ptr<GeneralSupportTrajectory> currentDoubleSupport = nullptr;
+  std::shared_ptr<GeneralSupportTrajectory> newDoubleSupport = nullptr;
 
   // check if pause features is active and if it is needed
-  if (m_pauseActive && (doubleSupportEndTime - doubleSupportStartTime > m_maxDoubleSupportDuration)){
+  if (m_pauseActive &&
+      (doubleSupportFinalBoundaryCondition.time - doubleSupportInitBoundaryCondition.time > m_maxDoubleSupportDuration)){
     // in this case the DS phase is splitted in three DS phase
     // In the first one the DCM of the robot has to reach the center of the feet convex hull
     // In the second one the robot has to stop (stance phase)
     // In the third one the DCM has to reach the "endPosition" with the "endVelocity"
+    
+    // evaluate the stance position boundary constraints
+    DCMTrajectoryPoint doubleSupportStanceInitBoundaryCondition;
+    DCMTrajectoryPoint doubleSupportStanceFinalBoundaryCondition;
 
-    // evaluate the stance position constrain
-    iDynTree::Vector2 stancePosition, stanceVelocity;
-    stanceVelocity.zero();
-    iDynTree::toEigen(stancePosition) = (iDynTree::toEigen(zmp) + iDynTree::toEigen(nextSingleSupport_cast->getZmp())) / 2;
+    std::shared_ptr<SingleSupportTrajectory> nextSingleSupport_cast = std::static_pointer_cast<SingleSupportTrajectory>(nextSingleSupport);
+    iDynTree::toEigen(doubleSupportStanceInitBoundaryCondition.DCMPosition) = (iDynTree::toEigen(ZMP) + iDynTree::toEigen(nextSingleSupport_cast->getZMP())) / 2;
+    doubleSupportStanceInitBoundaryCondition.DCMVelocity.zero();
+    // the constraints at the beginning and at the end of the double support stance phases are equal except for the times
+    doubleSupportStanceFinalBoundaryCondition = doubleSupportStanceInitBoundaryCondition;
+    
+    doubleSupportStanceInitBoundaryCondition.time = doubleSupportInitBoundaryCondition.time + m_nominalDoubleSupportDuration / 2;
+    doubleSupportStanceFinalBoundaryCondition.time = doubleSupportFinalBoundaryCondition.time - m_nominalDoubleSupportDuration / 2;
 
-    // evaluate the start and the end time of the Stance phase
-    double doubleSupportStanceStartTime = doubleSupportStartTime + m_nominalDoubleSupportDuration / 2;
-    double doubleSupportStanceEndTime = doubleSupportEndTime - m_nominalDoubleSupportDuration / 2;
-
-    if(fabs(doubleSupportStanceStartTime - doubleSupportStanceEndTime) < MIN_DURATION_DOUBLE_SUPPORT_STANCE_PHASE){
-      std::cerr << "[DCM TRAJECTORY GENERATOR] The duration of the DS stance phase has to be greater than " <<
-	MIN_DURATION_DOUBLE_SUPPORT_STANCE_PHASE << "." << std::endl;
-      return false;
-    }    
     // add the 3-th part of the Double Support phase
-    currentDoubleSupport = std::make_shared<DoubleSupportTrajectory>(stancePosition, stanceVelocity,
-								     endPosition, endVelocity,
-								     doubleSupportStanceEndTime,
-								     doubleSupportEndTime);
-    m_trajectory.push_back(currentDoubleSupport);
+    newDoubleSupport = std::make_shared<DoubleSupportTrajectory>(doubleSupportStanceFinalBoundaryCondition,
+								 doubleSupportFinalBoundaryCondition);
+    m_trajectory.push_back(newDoubleSupport);
 
     // add 2-th part of the Double Support phase (stance phase)
-    currentDoubleSupport = std::make_shared<DoubleSupportTrajectory>(stancePosition, stanceVelocity,
-								     stancePosition, stanceVelocity,
-								     doubleSupportStanceStartTime,
-								     doubleSupportStanceEndTime);
-    m_trajectory.push_back(currentDoubleSupport);
+    newDoubleSupport = std::make_shared<DoubleSupportTrajectory>(doubleSupportStanceInitBoundaryCondition,
+								 doubleSupportStanceFinalBoundaryCondition);
+    m_trajectory.push_back(newDoubleSupport);
     
     // add 1-th part of the Double Support phase
-    currentDoubleSupport = std::make_shared<DoubleSupportTrajectory>(initPosition, initVelocity,
-								     stancePosition, stanceVelocity,
-								     doubleSupportStartTime,
-								     doubleSupportStanceStartTime);
-    m_trajectory.push_back(currentDoubleSupport);
+    newDoubleSupport = std::make_shared<DoubleSupportTrajectory>(doubleSupportFinalBoundaryCondition,
+								 doubleSupportStanceInitBoundaryCondition);
+    m_trajectory.push_back(newDoubleSupport);
   }else{
     // add the new Double Support phase
-    currentDoubleSupport = std::make_shared<DoubleSupportTrajectory>(initPosition, initVelocity,
-								     endPosition, endVelocity,
-								     doubleSupportStartTime,
-								     doubleSupportEndTime);
-    m_trajectory.push_back(currentDoubleSupport);
+    newDoubleSupport = std::make_shared<DoubleSupportTrajectory>(doubleSupportInitBoundaryCondition,
+								 doubleSupportFinalBoundaryCondition);
+    m_trajectory.push_back(newDoubleSupport);
   }
   // add the new Single Support phase
-  m_trajectory.push_back(currentSingleSupport);
+  m_trajectory.push_back(newSingleSupportTrajectory);
 
   return true; 
 }
 
-bool DcmTrajectoryGenerator::addFirstDoubleSupportPhase(const double &doubleSupportStartTime,
-							const iDynTree::Vector2 &initPosition,
-							const iDynTree::Vector2 &initVelocity)
+bool DCMTrajectoryGenerator::addFirstDoubleSupportPhase(const DCMTrajectoryPoint &doubleSupportInitBoundaryCondition)
 {
   // get the next Single Support trajectory
   std::shared_ptr<GeneralSupportTrajectory> nextSingleSupport = m_trajectory.back();
@@ -410,38 +392,38 @@ bool DcmTrajectoryGenerator::addFirstDoubleSupportPhase(const double &doubleSupp
   // get the domain of the next SingleSupport trajectory
   const std::pair<double, double> nextSubTrajectoryDomain = nextSingleSupport->getTrajectoryDomain();
 
-  // instantiate position and velocity boundary conditions vectors
-  iDynTree::Vector2 endPosition, endVelocity;
+  // instantiate the final boundary condition struct
+  DCMTrajectoryPoint doubleSupportFinalBoundaryCondition;
 
   // the begining time of the Double Support phase coinceds with the beginning of the next Single Support phase
-  double doubleSupportEndTime = std::get<0>(nextSubTrajectoryDomain);
+  doubleSupportFinalBoundaryCondition.time = std::get<0>(nextSubTrajectoryDomain);
 
   // set the boundary conditions
-  if(!nextSingleSupport->getDcmPos(doubleSupportEndTime, endPosition)){
+  if(!nextSingleSupport->getDCMPosition(doubleSupportFinalBoundaryCondition.time,
+					doubleSupportFinalBoundaryCondition.DCMPosition)){
     std::cerr << "[DCM TRAJECTORY GENERATOR] Error when the position of the DCM in the next SS phase is evaluated." <<std::endl;
     return false;
   }
 
-  if(!nextSingleSupport->getDcmVel(doubleSupportEndTime, endVelocity)){
+  if(!nextSingleSupport->getDCMVelocity(doubleSupportFinalBoundaryCondition.time,
+					doubleSupportFinalBoundaryCondition.DCMVelocity)){
     std::cerr << "[DCM TRAJECTORY GENERATOR] Error when the velocity of the DCM in the next SS phase is evaluated." <<std::endl;
     return false;
   }
 
   // evaluate the new Double Support phase
-  std::shared_ptr<GeneralSupportTrajectory> currentDoubleSupport = std::make_shared<DoubleSupportTrajectory>(initPosition, initVelocity,
-													     endPosition, endVelocity,
-													     doubleSupportStartTime,
-													     doubleSupportEndTime);
+  std::shared_ptr<GeneralSupportTrajectory> newDoubleSupport = nullptr;
+  newDoubleSupport = std::make_shared<DoubleSupportTrajectory>(doubleSupportInitBoundaryCondition,
+							       doubleSupportFinalBoundaryCondition);
   // add the new Double Support phase
-  m_trajectory.push_back(currentDoubleSupport);
+  m_trajectory.push_back(newDoubleSupport);
   return true;
 }
 
-void DcmTrajectoryGenerator::getLastStepsTiming(double &singleSupportStartTime,
+void DCMTrajectoryGenerator::getLastStepsTiming(double &singleSupportStartTime,
 						double &singleSupportEndTime,
-						double &singleSupportDuration,
 						double &doubleSupportEndTime,
-						double &singleSupportT0)
+						double &singleSupportBoundaryConditionTime)
 {
   doubleSupportEndTime = m_phaseShift.back() * m_dT;
   m_phaseShift.pop_back();
@@ -451,16 +433,17 @@ void DcmTrajectoryGenerator::getLastStepsTiming(double &singleSupportStartTime,
   
   singleSupportStartTime = m_phaseShift.back() * m_dT;
   m_phaseShift.pop_back();
- 
-  singleSupportT0  =  (singleSupportStartTime + m_phaseShift.back() * m_dT)/2;
-  singleSupportDuration = singleSupportEndTime  - singleSupportT0;
+
+  // note: the boundary condition of the single support trajectory
+  //       coincides with the end time of the single support trajectory
+  //       (valid only for the last step)
+  singleSupportBoundaryConditionTime = singleSupportEndTime;
 }
 
 
-void DcmTrajectoryGenerator::getStepsTiming(double &singleSupportStartTime,
+void DCMTrajectoryGenerator::getStepsTiming(double &singleSupportStartTime,
 					    double &singleSupportEndTime,
-					    double &singleSupportDuration,
-					    double &singleSupportT0)
+					    double &singleSupportBoundaryConditionTime)
 {
   singleSupportEndTime = m_phaseShift.back() * m_dT;
   m_phaseShift.pop_back();
@@ -468,30 +451,24 @@ void DcmTrajectoryGenerator::getStepsTiming(double &singleSupportStartTime,
   singleSupportStartTime = m_phaseShift.back() * m_dT;
   m_phaseShift.pop_back();
   
-  singleSupportT0  =  (singleSupportStartTime + m_phaseShift.back() * m_dT) / 2;
-
-  std::shared_ptr<GeneralSupportTrajectory> lastDoubleSupportPhase = m_trajectory.back();
-  std::pair<double, double> subtrajectoryDomain = lastDoubleSupportPhase->getTrajectoryDomain();
-  double doubleSupportEndTime = std::get<1>(subtrajectoryDomain);
-  singleSupportDuration = (singleSupportEndTime + doubleSupportEndTime) / 2 - singleSupportT0;
+  std::shared_ptr<GeneralSupportTrajectory> nextSingleSupportTrajectory = m_trajectory.back();
+  std::pair<double, double> nextSingleSupportTrajectoryDomain = nextSingleSupportTrajectory->getTrajectoryDomain();
+  double nextsingleSupportStartTime = std::get<0>(nextSingleSupportTrajectoryDomain);
+  singleSupportBoundaryConditionTime = (nextsingleSupportStartTime + singleSupportEndTime) / 2;
 }
 
-
-
-void DcmTrajectoryGenerator::getFirstDoubleSupportTiming(double &doubleSupportStartTime)
+void DCMTrajectoryGenerator::getFirstDoubleSupportTiming(double &doubleSupportStartTime)
 {
   doubleSupportStartTime = m_phaseShift.back() * m_dT;
   m_phaseShift.pop_back();
 }
 
-
-bool DcmTrajectoryGenerator::generateDcmTrajectory(const std::vector<StepList::const_iterator> &orderedSteps,
+bool DCMTrajectoryGenerator::generateDCMTrajectory(const std::vector<StepList::const_iterator> &orderedSteps,
 						   const StepList::const_iterator &firstStanceFoot,
 						   const iDynTree::Vector2 &initPosition,
 						   const iDynTree::Vector2 &initVelocity,
 						   const std::vector<size_t> &phaseShift)
 {
-
   m_trajectoryDomain = std::make_pair(phaseShift.front(), phaseShift.back());
   m_phaseShift = phaseShift;
   m_orderedSteps = orderedSteps;
@@ -502,68 +479,75 @@ bool DcmTrajectoryGenerator::generateDcmTrajectory(const std::vector<StepList::c
   // add the first stance foot at the beginning of the orderedStep vector
   m_orderedSteps.insert(m_orderedSteps.begin(), firstStanceFoot);
   
-
   double singleSupportStartTime;
   double singleSupportEndTime;
-  double singleSupportDuration;
   double doubleSupportEndTime;
-  double singleSupportT0;
-
+  double singleSupportBoundaryConditionTime;
+  DCMTrajectoryPoint singleSupportBoundaryCondition;
+  
   // evaluate times for the last step
-  getLastStepsTiming(singleSupportStartTime, singleSupportEndTime,
-		     singleSupportDuration, doubleSupportEndTime,
-		     singleSupportT0);
+  getLastStepsTiming(singleSupportStartTime,
+		     singleSupportEndTime,
+		     doubleSupportEndTime,
+		     singleSupportBoundaryConditionTime);
 
-
-  iDynTree::Vector2 lastZmp = m_orderedSteps.back()->position;
+  iDynTree::Vector2 lastZMP = m_orderedSteps.back()->position;
   m_orderedSteps.pop_back();
 
   // evaluate the position of the Center of mass at the end of the trajectory 
   iDynTree::Vector2 comPosition;
-  iDynTree::toEigen(comPosition)  = (iDynTree::toEigen(lastZmp) + iDynTree::toEigen(m_orderedSteps.back()->position)) / 2;
+  iDynTree::toEigen(comPosition)  = (iDynTree::toEigen(lastZMP) + iDynTree::toEigen(m_orderedSteps.back()->position)) / 2;
 
-  lastZmp = m_orderedSteps.back()->position;
+  singleSupportBoundaryCondition.time = singleSupportBoundaryConditionTime;
+  singleSupportBoundaryCondition.DCMPosition = comPosition;
+  singleSupportBoundaryCondition.DCMVelocity.zero();
+  
+  lastZMP = m_orderedSteps.back()->position;
   m_orderedSteps.pop_back();
 
-  // evaluate the last step
+  // evaluate the last step  
   if(!addLastStep(singleSupportStartTime, singleSupportEndTime,
-		  singleSupportDuration, doubleSupportEndTime,
-		  singleSupportT0,
-		  comPosition, lastZmp)){
+		  doubleSupportEndTime, lastZMP, singleSupportBoundaryCondition)){
     std::cerr << "[DCM TRAJECTORY GENERATOR] Error when the DCM trajectory of the last step is generated." << std::endl;
     return false;
   }
   
-  while (m_orderedSteps.size() > 0){
-    
+  while (m_orderedSteps.size() > 0){    
     getStepsTiming(singleSupportStartTime, singleSupportEndTime,
-  		   singleSupportDuration, singleSupportT0);
+  		   singleSupportBoundaryConditionTime);
 
-    
-    lastZmp = m_orderedSteps.back()->position;
+    lastZMP = m_orderedSteps.back()->position;
     m_orderedSteps.pop_back();
+
+    // get the next Single Support trajectory
+    std::shared_ptr<GeneralSupportTrajectory> nextSingleSupport = m_trajectory.back();
+
+    // evaluate the single support boundary condition
+    singleSupportBoundaryCondition.time = singleSupportBoundaryConditionTime;
+    // NOTE: the DCM at the boundary condition time is outside the SS subtrajectory
+    nextSingleSupport->getDCMPosition(singleSupportBoundaryConditionTime, singleSupportBoundaryCondition.DCMPosition, false);
+    // the DCM velocity is not taken into account in the new SS trajectory generation
+    singleSupportBoundaryCondition.DCMVelocity.zero();
     
     if(!addNewStep(singleSupportStartTime, singleSupportEndTime,
-  		   singleSupportDuration, singleSupportT0, 
-  		   lastZmp)){
+		   lastZMP, singleSupportBoundaryCondition)){
       std::cerr << "[DCM TRAJECTORY GENERATOR] Error when the DCM trajectory of a new step is generated." << std::endl;
       return false;
     }
   }
 
   // evaluate the first Double support phase
-  double doubleSupportStartTime;
-  getFirstDoubleSupportTiming(doubleSupportStartTime);
-
-  if(!addFirstDoubleSupportPhase(doubleSupportStartTime,
-  				 initPosition,
-  				 initVelocity)){
+  DCMTrajectoryPoint firstDoubleSupportBoundaryCondition;
+  firstDoubleSupportBoundaryCondition.DCMPosition = initPosition;
+  firstDoubleSupportBoundaryCondition.DCMVelocity = initVelocity;
+  getFirstDoubleSupportTiming(firstDoubleSupportBoundaryCondition.time);
+  if(!addFirstDoubleSupportPhase(firstDoubleSupportBoundaryCondition)){
     std::cerr << "[DCM TRAJECTORY GENERATOR] Error when the DCM trajectory of the first DS phase is generated." << std::endl;
     return false;
   }
 
   // evaluate the DCM trajectory
-  if(!evaluateDcmTrajectory()){
+  if(!evaluateDCMTrajectory()){
     std::cerr << "[DCM TRAJECTORY GENERATOR] Error when the whole DCM trajectory is evaluated." << std::endl;
     return false;
   }
@@ -571,7 +555,7 @@ bool DcmTrajectoryGenerator::generateDcmTrajectory(const std::vector<StepList::c
   return true;
 }
 
-bool DcmTrajectoryGenerator::evaluateDcmTrajectory()
+bool DCMTrajectoryGenerator::evaluateDCMTrajectory()
 {
   size_t timeVectorLength = std::get<1>(m_trajectoryDomain) - std::get<0>(m_trajectoryDomain);
   std::vector<size_t> timeVector(timeVectorLength);
@@ -580,14 +564,14 @@ bool DcmTrajectoryGenerator::evaluateDcmTrajectory()
   std::iota(std::begin(timeVector), std::end(timeVector), std::get<0>(m_trajectoryDomain));
 
   // clear all the previous DCM position 
-  m_dcmPos.clear();
-  m_dcmPos.reserve(timeVectorLength);
+  m_DCMPosition.clear();
+  m_DCMPosition.reserve(timeVectorLength);
 
   // clear all the previous DCM velocity 
-  m_dcmVel.clear();
-  m_dcmVel.reserve(timeVectorLength);
+  m_DCMVelocity.clear();
+  m_DCMVelocity.reserve(timeVectorLength);
 
-  iDynTree::Vector2 dcmPos, dcmVel;
+  iDynTree::Vector2 DCMPosition, DCMVelocity;
   double time;
   std::vector<std::shared_ptr<GeneralSupportTrajectory>>::reverse_iterator subTrajectory = m_trajectory.rbegin();
   
@@ -598,35 +582,35 @@ bool DcmTrajectoryGenerator::evaluateDcmTrajectory()
       subTrajectory++;
     }
     
-    if(!(*subTrajectory)->getDcmPos(time, dcmPos)){
+    if(!(*subTrajectory)->getDCMPosition(time, DCMPosition)){
       std::cerr << "[DCM TRAJECTORY GENERATOR] Error when the position of the DCM is evaluated." << std::endl;
       return false;
     }
 
-    if(!(*subTrajectory)->getDcmVel(time, dcmVel)){
+    if(!(*subTrajectory)->getDCMVelocity(time, DCMVelocity)){
       std::cerr << "[DCM TRAJECTORY GENERATOR] Error when the velocity of the DCM is evaluated." << std::endl;
       return false;
     }
-    m_dcmPos.push_back(dcmPos);
-    m_dcmVel.push_back(dcmVel);
+    m_DCMPosition.push_back(DCMPosition);
+    m_DCMVelocity.push_back(DCMVelocity);
   }
   return true;
 }
 
-const std::vector<iDynTree::Vector2>& DcmTrajectoryGenerator::getDcmPosition() const
+const std::vector<iDynTree::Vector2>& DCMTrajectoryGenerator::getDCMPosition() const
 {
-  return m_dcmPos;
+  return m_DCMPosition;
 }
 
-const std::vector<iDynTree::Vector2>& DcmTrajectoryGenerator::getDcmVelocity() const
+const std::vector<iDynTree::Vector2>& DCMTrajectoryGenerator::getDCMVelocity() const
 {
-  return m_dcmVel;
+  return m_DCMVelocity;
 }
 
-bool DcmTrajectoryGenerator::setPauseConditions(const double &maxDoubleSupportDuration, const double &nominalDoubleSupportDuration)
+bool DCMTrajectoryGenerator::setPauseConditions(const double &maxDoubleSupportDuration, const double &nominalDoubleSupportDuration)
 {
   if (maxDoubleSupportDuration < 0){
-    std::cerr << "[DCM TRAJECTORY GENERATOR] If the maxDoubleSupportDuration  is negative, the robot won't pause in middle stance." << std::endl;
+    std::cerr << "[DCM TRAJECTORY GENERATOR] If the maxDoubleSupportDuration is negative, the robot won't pause in middle stance." << std::endl;
     m_pauseActive = false;
   }
   

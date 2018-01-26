@@ -22,11 +22,17 @@
 
 #include "FootPrint.h"
 
-# define MIN_DURATION_DOUBLE_SUPPORT_STANCE_PHASE 0.001
+struct DCMTrajectoryPoint {
+  double time;
+  iDynTree::Vector2 DCMPosition;
+  iDynTree::Vector2 DCMVelocity;
+};
+
+typedef struct DCMTrajectoryPoint DCMTrajectoryPoint;
 
 /**
- * Virtual class that represents a coordiante (x or y) of the Divergent Component
- * of Motion trajectory during a general support phase (Single or Double support).
+ * GeneralSupportTrajectory is a virtual class that represents the trajectory of the  Divergent Component
+ * of Motion during a general support phase (Single or Double support).
  */
 class GeneralSupportTrajectory
 {
@@ -46,19 +52,21 @@ class GeneralSupportTrajectory
    * Pure virtual method. It returns the position of the DCM 
    * trajectory evaluated at time t.
    * @param t is the trajectory evaluation time;
-   * @param dcmPos cartesian position of the Diverget Component of Motion.
+   * @param DCMPosition cartesian position of the Diverget Component of Motion;
+   * @param checkDomainCondition flag used to check if the time belongs to the trajectory domain (default value true).
    * @return true / false in case of success / failure.
    */
-  virtual bool getDcmPos(const double &t, iDynTree::Vector2& dcmPos) = 0;
+  virtual bool getDCMPosition(const double &t, iDynTree::Vector2& DCMPosition, const bool &checkDomainCondition = true) = 0;
 
   /**
    * Pure virtual method. It returns the velocity of the DCM 
    * trajectory evaluated at time t.
    * @param t is the trajectory evaluation time;
-   * @param dcmVel cartesian velocity of the Diverget Component of Motion.
+   * @param DCMVelocity cartesian velocity of the Diverget Component of Motion;
+   * @param checkDomainCondition flag used to check if the time belongs to the trajectory domain (default value true).
    * @return true / false in case of success / failure.
    */
-  virtual bool getDcmVel(const double &t, iDynTree::Vector2& dcmVel) = 0;
+  virtual bool getDCMVelocity(const double &t, iDynTree::Vector2& DCMVelocity, const bool &checkDomainCondition = true) = 0;
 
   /**
    * Return true if the time t belongs to the trajectory time 
@@ -76,87 +84,63 @@ class GeneralSupportTrajectory
 };
 
 /**
- * This class represents a coordiante (x or y) of the Divergent Component
- * of Motion trajectory during a single support phase.
+ * SingleSupportTrajectory class represents the trajectory of the Divergent Component
+ * of Motion during a single support phase.
  */
 class SingleSupportTrajectory : public GeneralSupportTrajectory
 {
  private:
   
-  iDynTree::Vector2 m_dcmIos; /**< Desired position of the DCM at the beginning of the step */
-  iDynTree::Vector2 m_zmp; /**< Desired position of the ZMP at the beginning of the step */
+  iDynTree::Vector2 m_ZMP; /**< Desired position of the ZMP at the beginning of the step */
   double m_omega; /**< Time constant of the 3D-LIPM */
 
-  /** 
-   * Absolute "init" time of the Single Support phase
-   * it is important to notice that t0 is equal to the absolute time of the previous half
-   * DS phase. 
-   * Note that m_t0 is NOT equal to the start_time (aka the time of the beginning
-   * of the SS trajectory. Because the SS trajectory is obtained under the hypotesis of
-   * no DS phase).
-   */
-  double m_t0;
-
-  /**
-   * Evaluate the position of the DCM at the beginning of the trajectory.
-   * @param nextDcmIos is the position of the DCM at the beginning of the next step;
-   * @param stepDuration is the duration of the step.
-   */
-  void setDcmIos(const iDynTree::Vector2 &nextDcmIos,
-		 const double &stepDuration);
-    
+  double m_boundaryConditionTime; /**< Absolute time of the DCM boundary condition */
+  iDynTree::Vector2 m_boundaryConditionDCMPosition; /**< Boundary condition of the DCM trajectory */
+      
  public:
   /**
    * Constructor.
    * @param startTime is the init time of the trajectory;
    * @param endTime is the end time of the trajectory;
-   * @param zmp is the desired position of the ZMP in the SS phase trajejctory;
-   * @param t0 is the "init" time of the SS phase;
-   * @param omega time constant of the 3D-LIPM.
+   * @param omega time constant of the 3D-LIPM;
+   * @param ZMP is the desired position of the ZMP in the SS phase trajejctory;
+   * @param boundaryCondition is the boundary condition on the DCM trajectory.
    */
   SingleSupportTrajectory(const double &startTime,
 			  const double &endTime,
-			  const double &t0,
-			  const double &stepDuration,
 			  const double &omega,
-			  const iDynTree::Vector2 &zmp,
-			  const iDynTree::Vector2 &nextDcmIos);
-
-
-  /**
-   * DCM init of step getter.
-   * @return the position of the DCM at the beginning of SS phase.
-   */
-  const iDynTree::Vector2& getDcmIos() const;
-
+			  const iDynTree::Vector2 &ZMP,
+			  const DCMTrajectoryPoint& boundaryCondition);
   /**
    * ZMP getter.
    * @return the position of the ZMP.
    */
-  const iDynTree::Vector2& getZmp() const;
+  const iDynTree::Vector2& getZMP() const;
   
   /**
-   * Implementation of the getDcmPos method of the
+   * Implementation of the getDCMPosition method of the
    * GeneralSupportTrajectory class.
    * @param t is the trajectory evaluation time;
-   * @param dcmPos is the cartesian position of the Diverget Component of Motion.
+   * @param DCMPosition is the cartesian position of the Diverget Component of Motion;
+   * @param checkDomainCondition flag used to check if the time belongs to the trajectory domain (default value true).
    * @return true / false in case of success / failure.
    */
-  bool getDcmPos(const double &t, iDynTree::Vector2& dcmPos) override;
+  bool getDCMPosition(const double &t, iDynTree::Vector2& DCMPosition, const bool &checkDomainCondition = true) override;
 
   /**
-   * Implementation of the getDcmVel method of the
+   * Implementation of the getDCMVelocity method of the
    * GeneralSupportTrajectory class.
    * @param t is the trajectory evaluation time;
-   * @param dcmVel is cartesian velocity of the Diverget Component of Motion;
+   * @param DCMVelocity cartesian velocity of the Diverget Component of Motion;
+   * @param checkDomainCondition flag used to check if the time belongs to the trajectory domain (default value true).
    * @return true / false in case of success / failure.
    */
-  bool getDcmVel(const double &t, iDynTree::Vector2& dcmVel) override;
+  bool getDCMVelocity(const double &t, iDynTree::Vector2& DCMVelocity, const bool &checkDomainCondition = true) override;
 };
 
 /**
- * This class represents a coordiante (x or y) of the Divergent Component
- * of Motion trajectory during a double support phase.
+ * DoubleSupportTrajectory class represents the trajectory of the Divergent Component
+ * of Motion during a double support phase.
  */
 class DoubleSupportTrajectory : public GeneralSupportTrajectory
 {
@@ -181,48 +165,40 @@ class DoubleSupportTrajectory : public GeneralSupportTrajectory
  public:
   /**
    * Constructor.
-   * @param initPosition vector containing the position at the beginning of the
-   * Double Support phase;
-   * @param initVelocity vector containing the velocity at the beginning of the
-   * Double Support phase;
-   * @param endPosition vector containing the position at the end of the
-   * Double Support phase;
-   * @param endVelocity vector containing the velocity at the end of the
-   * Double Support phase;
-   * @param startTime is the start time of the trajectory;
-   * @param endTime is the end time of the trajectory.
+   * @param initBoundaryCondition desired init position and velocity of the 
+   * double support trajectory
+   * @param endBoundaryCondition desired final position and velocity of the 
+   * double support trajectory
    */
-  DoubleSupportTrajectory(const iDynTree::Vector2 &initPosition, 
-			  const iDynTree::Vector2 &initVelocity,
-			  const iDynTree::Vector2 &endPosition, 
-			  const iDynTree::Vector2 &endVelocity,
-			  const double &startTime,
-			  const double &endTime);
+  DoubleSupportTrajectory(const DCMTrajectoryPoint &initBoundaryCondition,
+			  const DCMTrajectoryPoint &finalBoundaryCondition);
   
   /**
-   * Implementation of the getDcmPos method of the
+   * Implementation of the getDCMPosition method of the
    * GeneralSupportTrajectory class.
    * @param t is the trajectory evaluation time;
-   * @param dcmPos is the cartesian position of the Diverget Component of Motion.
+   * @param DCMPosition is the cartesian position of the Diverget Component of Motion;
+   * @param checkDomainCondition flag used to check if the time belongs to the trajectory domain (default value true).
    * @return true / false in case of success / failure.
    */
-  bool getDcmPos(const double &t, iDynTree::Vector2& dcmPos) override;
+  bool getDCMPosition(const double &t, iDynTree::Vector2& DCMPosition, const bool &checkDomainCondition = true) override;
 
   /**
-   * Implementation of the getDcmVel method of the
+   * Implementation of the getDCMVelocity method of the
    * GeneralSupportTrajectory class.
    * @param t is the trajectory evaluation time;
-   * @param dcmVel is the cartesian velocity of the Diverget Component of Motion.
+   * @param DCMVelocity is the cartesian velocity of the Diverget Component of Motion;
+   * @param checkDomainCondition flag used to check if the time belongs to the trajectory domain (default value true).
    * @return true / false in case of success / failure.
    */
-  bool getDcmVel(const double &t, iDynTree::Vector2& dcmVel) override;
+  bool getDCMVelocity(const double &t, iDynTree::Vector2& DCMVelocity, const bool &checkDomainCondition = true) override;
 };
 
 /**
- * This class represents the Divergent Component of Motion trajectory 
- * during the whole walking patern
+ * DCMTrajectoryGenerator class that represents the Divergent Component of Motion trajectory 
+ * during the whole walking patern.
  */
-class DcmTrajectoryGenerator
+class DCMTrajectoryGenerator
 {
  private:
 
@@ -238,35 +214,30 @@ class DcmTrajectoryGenerator
  
   std::vector<StepList::const_iterator> m_orderedSteps;  /**< Vector containing the both left and right footprint sorted into ascending order. */
   std::vector<size_t> m_phaseShift; /**< Vector containing the index when a change of phase (SS -> DS and viceversa) occours. */
-  std::vector<iDynTree::Vector2> m_dcmPos; /**< Vector containing the position of the DCM. */
-  std::vector<iDynTree::Vector2> m_dcmVel; /**< Vector containing the velocity of the DCM. */
+  std::vector<iDynTree::Vector2> m_DCMPosition; /**< Vector containing the position of the DCM. */
+  std::vector<iDynTree::Vector2> m_DCMVelocity; /**< Vector containing the velocity of the DCM. */
 
   /**
    * Evaluate the timings for the last step.
    * @param singleSupportStartTime start time of the Single Support trajectory;
    * @param singleSupportEndTime end time of the Single Support trajectory;
-   * @param singleSupportDuration difference between the sungleSupportEndTime and singleSupportT0;
    * @param doubleSupportEndTime end time of the Single Support trajectory;
-   * @param singleSupportT0 "fictitious" init time of the Single Support trajectory.
+   * @param singleSupportBoundaryConditionTime boundary condition time of the single support trajectory.
    */
   void getLastStepsTiming(double &singleSupportStartTime,
 			  double &singleSupportEndTime,
-			  double &singleSupportDuration,
 			  double &doubleSupportEndTime,
-			  double &singleSupportT0);
+			  double &singleSupportBoundaryConditionTime);
 
   /**
    * Evaluate the timings for a general step.
    * @param singleSupportStartTime start time of the Single Support trajectory;
    * @param singleSupportEndTime end time of the Single Support trajectory;
-   * @param singleSupportDuration difference between the sungleSupportEndTime and singleSupportT0;
-   * @param singleSupportT0 "fictitious" init time of the Single Support trajectory.
+   * @param singleSupportBoundaryConditionTime boundary condition time of the single support trajectory.
    */
   void getStepsTiming(double &singleSupportStartTime,
 		      double &singleSupportEndTime,
-		      double &singleSupportDuration,
-		      double &singleSupportT0);
-  
+		      double &singleSupportBoundaryConditionTime);  
   /**
    * Evaluate the timings for the first double support phase.
    * @param doubleSupportStartTime start time of the Double Support trajectory.
@@ -277,54 +248,45 @@ class DcmTrajectoryGenerator
    * Add the last Single and Double support phases.
    * @param singleSupportStartTime start time of the Single Support trajectory;
    * @param singleSupportEndTime end time of the Single Support trajectory;
-   * @param singleSupportDuration difference between the sungleSupportEndTime and singleSupportT0;
    * @param doubleSupportEndTime end time of the Single Support trajectory;
-   * @param singleSupportT0 "fictitious" init time of the Single Support trajectory;
-   * @param comPosition contains the desired position of the CoM at the end of the last step;
-   * @param zmp contains the position of the ZMP at the beginning of the single support phase,
-   * it is assumed coincedent with the center of the reference foot.
+   * @param ZMP contains the position of the ZMP at the beginning of the single support phase,
+   * it is assumed coincedent with the center of the reference foot;
+   * @param singleSupportBoundaryCondition contains the boundary position and time
+   * of the single support trajectory.
    * @return true / false in case of success / failure.
    */
   bool addLastStep(const double &singleSupportStartTime,
 		   const double &singleSupportEndTime,
-		   const double &singleSupportDuration,
 		   const double &doubleSupportEndTime,
-		   const double &singleSupportT0,
-		   const iDynTree::Vector2 &comPosition,
-		   const iDynTree::Vector2 &zmp);
-
+		   const iDynTree::Vector2 &ZMP,
+		   const DCMTrajectoryPoint& singleSupportBoundaryCondition);
+		   
   /**
    * Add the Single and Double support phases for a general step.
    * @param singleSupportStartTime start time of the Single Support trajectory;
    * @param singleSupportEndTime end time of the Single Support trajectory;
-   * @param singleSupportDuration difference between the sungleSupportEndTime and singleSupportT0;
-   * @param singleSupportT0 "fictitious" init time of the Single Support trajectory;
-   * @param zmp contains the position of the ZMP at the beginning of the single support phase,
-   * it is assumed coincedent with the center of the reference foot.
+   * @param ZMP contains the position of the ZMP at the beginning of the single support phase,
+   * it is assumed coincedent with the center of the reference foot;
+   * @param singleSupportBoundaryCondition contains the position and the time of the boundary
+   * of the single support trajectory.
    * @return true / false in case of success / failure.
    */
   bool addNewStep(const double &singleSupportStartTime,
 		  const double &singleSupportEndTime,
-		  const double &singleSupportDuration,
-		  const double &singleSupportT0,
-		  const iDynTree::Vector2 &zmp);
-
-  /**
+		  const iDynTree::Vector2 &ZMP,
+		  const DCMTrajectoryPoint &singleSupportBoundaryCondition);
+    /**
    * Add the Single and Double support phases for a general step
-   * @param doubleSupportStartTime start time of the first Double Support trajectory;
-   * @param initPosition position of the DCM at the beginning of the Double Support trajectory;
-   * @param initVelocity velocity of the DCM at the beginning of the Double Support trajectory.
+   * @param doubleSupportInitBoundaryCondition contains the boundary condition of the single support trajectory.
    * @return true / false in case of success / failure.
    */
-  bool addFirstDoubleSupportPhase(const double &doubleSupportStartTime,
-				  const iDynTree::Vector2 &initPosition,
-				  const iDynTree::Vector2 &initVelocity);  
+  bool addFirstDoubleSupportPhase(const DCMTrajectoryPoint &doubleSupportInitBoundaryCondition);
 
   /**
    * Evaluate the DCM position for all time.
    * @return true / false in case of success / failure.
    */
-  bool evaluateDcmTrajectory();
+  bool evaluateDCMTrajectory();
 
  public:
 
@@ -333,12 +295,12 @@ class DcmTrajectoryGenerator
    * @param dT is the period of the Trajectory generator planner;
    * @param omega time constant of the 3D-LIPM.
    */
-  DcmTrajectoryGenerator(const double &dT, const double &omega);
+  DCMTrajectoryGenerator(const double &dT, const double &omega);
 
   /**
    * Constructor.
    */
-  DcmTrajectoryGenerator();
+  DCMTrajectoryGenerator();
   
   /**
    * Set the time constant of the 3D-LIPM-
@@ -369,7 +331,7 @@ class DcmTrajectoryGenerator
    * @param phaseShift vector containing the index when a change of phase (SS -> DS and viceversa) occours.
    * @return true / false in case of success / failure.
    */
-  bool generateDcmTrajectory(const std::vector<StepList::const_iterator> &orderedSteps,
+  bool generateDCMTrajectory(const std::vector<StepList::const_iterator> &orderedSteps,
 			     const StepList::const_iterator &firstStanceFoot,
 			     const iDynTree::Vector2 &initPosition,
 			     const iDynTree::Vector2 &initVelocity,
@@ -379,13 +341,13 @@ class DcmTrajectoryGenerator
    * Get the position of the Divergent Component of Motion.
    * @return a vector containing the DCM position during all the trajectory domain.
    */  
-  const std::vector<iDynTree::Vector2>& getDcmPosition() const;
+  const std::vector<iDynTree::Vector2>& getDCMPosition() const;
 
   /**
    * Get the velocity of the Divergent Component of Motion.
    * @return a vector containing the DCM velocity during all the trajectory domain.
    */  
-  const std::vector<iDynTree::Vector2>& getDcmVelocity() const;
+  const std::vector<iDynTree::Vector2>& getDCMVelocity() const;
 };
 
 #endif

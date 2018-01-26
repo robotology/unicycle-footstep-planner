@@ -813,7 +813,7 @@ FeetInterpolator::FeetInterpolator()
     ,m_pauseActive(false)
     ,m_CoMHeight(-1.0)
     ,m_CoMHeightDelta(0.0)
-    ,m_dcmTrajGenerator()
+    ,m_DCMTrajGenerator()
 {
     m_leftStanceZMP.zero();
     m_leftSwitchZMP.zero();
@@ -864,8 +864,8 @@ bool FeetInterpolator::interpolate(const FootPrint &left, const FootPrint &right
     m_dT = dT;
     m_initTime = initTime;
 
-    m_dcmTrajGenerator.setdT(m_dT);
-    m_dcmTrajGenerator.setOmega(m_omega);
+    m_DCMTrajGenerator.setdT(m_dT);
+    m_DCMTrajGenerator.setOmega(m_omega);
     
     if (!orderSteps()){
         std::cerr << "[FEETINTERPOLATOR] Failed while ordering the steps." << std::endl;
@@ -920,8 +920,8 @@ bool FeetInterpolator::interpolate(const FootPrint &left, const FootPrint &right
 }
 
 
-bool FeetInterpolator::interpolateDcm(const FootPrint &left, const FootPrint &right, double initTime, double dT,
-				      const DcmInitialState& dcmBoundaryConditionAtMergePoint, const Step &previousLeft, const Step &previousRight)
+bool FeetInterpolator::interpolateDCM(const FootPrint &left, const FootPrint &right, double initTime, double dT,
+				      const DCMInitialState& DCMBoundaryConditionAtMergePoint, const Step &previousLeft, const Step &previousRight)
 {
     if (left.numberOfSteps() < 1){
         std::cerr << "[FEETINTERPOLATOR] No steps in the left pointer." << std::endl;
@@ -958,8 +958,8 @@ bool FeetInterpolator::interpolateDcm(const FootPrint &left, const FootPrint &ri
     m_dT = dT;
     m_initTime = initTime;
 
-    m_dcmTrajGenerator.setdT(m_dT);
-    m_dcmTrajGenerator.setOmega(m_omega);
+    m_DCMTrajGenerator.setdT(m_dT);
+    m_DCMTrajGenerator.setOmega(m_omega);
     
     if (!orderSteps()){
         std::cerr << "[FEETINTERPOLATOR] Failed while ordering the steps." << std::endl;
@@ -994,12 +994,12 @@ bool FeetInterpolator::interpolateDcm(const FootPrint &left, const FootPrint &ri
     firstStanceFoot = (m_left.getSteps()[1].impactTime > m_right.getSteps()[1].impactTime) ? m_left.getSteps().cbegin() : m_right.getSteps().cbegin();
     firstSwingFoot = (m_left.getSteps()[1].impactTime > m_right.getSteps()[1].impactTime) ? m_right.getSteps().cbegin() : m_left.getSteps().cbegin();
 
-    iDynTree::Vector2 initDcmPosition, initDcmVelocity;
+    iDynTree::Vector2 initDCMPosition, initDCMVelocity;
 
-    initDcmPosition = dcmBoundaryConditionAtMergePoint.initialPosition;
-    initDcmVelocity = dcmBoundaryConditionAtMergePoint.initialVelocity;
+    initDCMPosition = DCMBoundaryConditionAtMergePoint.initialPosition;
+    initDCMVelocity = DCMBoundaryConditionAtMergePoint.initialVelocity;
         
-    if(!m_dcmTrajGenerator.generateDcmTrajectory(m_orderedSteps, firstStanceFoot, initDcmPosition, initDcmVelocity, m_phaseShift)){
+    if(!m_DCMTrajGenerator.generateDCMTrajectory(m_orderedSteps, firstStanceFoot, initDCMPosition, initDCMVelocity, m_phaseShift)){
        std::cerr << "[FEETINTERPOLATOR] Failed while computing the DCM trajectories." << std::endl;
        return false;
     }
@@ -1008,14 +1008,14 @@ bool FeetInterpolator::interpolateDcm(const FootPrint &left, const FootPrint &ri
 }
 
 
-const std::vector<iDynTree::Vector2>& FeetInterpolator::getDcmPosition() const
+const std::vector<iDynTree::Vector2>& FeetInterpolator::getDCMPosition() const
 {
-  return m_dcmTrajGenerator.getDcmPosition();
+  return m_DCMTrajGenerator.getDCMPosition();
 }
 
-const std::vector<iDynTree::Vector2>& FeetInterpolator::getDcmVelocity() const
+const std::vector<iDynTree::Vector2>& FeetInterpolator::getDCMVelocity() const
 {
-  return m_dcmTrajGenerator.getDcmVelocity();
+  return m_DCMTrajGenerator.getDCMVelocity();
 }
 
 
@@ -1034,20 +1034,20 @@ bool FeetInterpolator::interpolate(const FootPrint &left, const FootPrint &right
     return interpolate(left, right, initTime, dT, alpha0);
 }
 
-bool FeetInterpolator::interpolateDcm(const FootPrint &left, const FootPrint &right, double initTime, double dT, const DcmInitialState &dcmBoundaryConditionAtMergePoint)
+bool FeetInterpolator::interpolateDCM(const FootPrint &left, const FootPrint &right, double initTime, double dT, const DCMInitialState &DCMBoundaryConditionAtMergePoint)
 {
-  return interpolateDcm(left, right, initTime, dT, dcmBoundaryConditionAtMergePoint, left.getSteps().front(), right.getSteps().front());
+  return interpolateDCM(left, right, initTime, dT, DCMBoundaryConditionAtMergePoint, left.getSteps().front(), right.getSteps().front());
 }
 
-bool FeetInterpolator::interpolateDcm(const FootPrint &left, const FootPrint &right, double initTime, double dT)
+bool FeetInterpolator::interpolateDCM(const FootPrint &left, const FootPrint &right, double initTime, double dT)
 {
-    DcmInitialState dcmBoundaryConditionAtMergePoint;
+    DCMInitialState DCMBoundaryConditionAtMergePoint;
     iDynTree::Vector2 leftFootPosition = left.getSteps().front().position;
     iDynTree::Vector2 rightFootPosition = right.getSteps().front().position;
-    iDynTree::toEigen(dcmBoundaryConditionAtMergePoint.initialPosition) = (iDynTree::toEigen(leftFootPosition) + iDynTree::toEigen(rightFootPosition)) / 2;
-    dcmBoundaryConditionAtMergePoint.initialVelocity.zero();
+    iDynTree::toEigen(DCMBoundaryConditionAtMergePoint.initialPosition) = (iDynTree::toEigen(leftFootPosition) + iDynTree::toEigen(rightFootPosition)) / 2;
+    DCMBoundaryConditionAtMergePoint.initialVelocity.zero();
 
-    return interpolateDcm(left, right, initTime, dT, dcmBoundaryConditionAtMergePoint);
+    return interpolateDCM(left, right, initTime, dT, DCMBoundaryConditionAtMergePoint);
 }
 
 
@@ -1125,7 +1125,7 @@ bool FeetInterpolator::setPauseConditions(double maxStepTime, double nominalStep
     m_nominalStepTime = nominalStepTime;
 
     // set pouse condition for te DCM trajectory generator
-    m_dcmTrajGenerator.setPauseConditions(maxStepTime, nominalStepTime);
+    m_DCMTrajGenerator.setPauseConditions(maxStepTime, nominalStepTime);
     
     return true;
 }

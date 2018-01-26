@@ -38,11 +38,11 @@ public:
                     const iDynTree::Vector2 &measuredPosition, double measuredAngle);
 
 
-    bool generateAndInterpolateDcm(double initTime, double dT, double endTime);
+    bool generateAndInterpolateDCM(double initTime, double dT, double endTime);
 
-    bool generateAndInterpolateDcm(std::shared_ptr<FootPrint> leftFoot, std::shared_ptr<FootPrint> rightFoot, double initTime, double dT, double endTime);
+    bool generateAndInterpolateDCM(std::shared_ptr<FootPrint> leftFoot, std::shared_ptr<FootPrint> rightFoot, double initTime, double dT, double endTime);
     
-    bool reGenerateDcm(double initTime, double dT, double endTime, const DcmInitialState &dcmBoundaryConditionAtMergePoint);
+    bool reGenerateDCM(double initTime, double dT, double endTime, const DCMInitialState &DCMBoundaryConditionAtMergePoint);
 };
 
 #endif // UNICYCLETRAJECTORYGENERATOR_H
