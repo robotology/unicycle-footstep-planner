@@ -13,7 +13,7 @@ include(AddWarningsConfigurationToTargets)
 include(CMakePackageConfigHelpers)
 
 
-project(unicyclePlanner CXX)
+project(UnicyclePlanner CXX)
 
 option(ENABLE_RPATH "Enable RPATH for this library" ON)
 mark_as_advanced(ENABLE_RPATH)
