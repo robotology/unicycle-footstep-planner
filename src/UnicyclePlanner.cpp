@@ -461,6 +461,27 @@ bool UnicyclePlanner::setNominalWidth(double nominalWidth)
     return true;
 }
 
+bool UnicyclePlanner::setWidthSetting(double minWidth, double nominalWidth)
+{
+    if (nominalWidth < 0){
+        std::cerr << "The nominal width is supposed to be non-negative." << std::endl;
+        return false;
+    }
+
+    if (nominalWidth < minWidth){
+        std::cerr << "The nominal width is expected to be grater than the minimum width." << std::endl;
+        return false;
+    }
+
+    if (!m_unicycleProblem.setMinWidth(minWidth)){
+        return false;
+    }
+
+    m_nominalWidth = nominalWidth;
+
+    return true;
+}
+
 void UnicyclePlanner::addTerminalStep(bool addStep)
 {
     m_addTerminalStep = addStep;

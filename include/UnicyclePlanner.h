@@ -65,6 +65,7 @@ public:
     //Constraints
     bool setMaxStepLength(double maxLength);
 
+    [[deprecated("use the method setWidthSettings instead.")]]
     bool setMinStepWidth(double minWidth);
 
     bool setMaxAngleVariation(double maxAngleInRad); //in radians!
@@ -81,7 +82,10 @@ public:
 
     bool setMinimumStepLength(double minLength);
 
+    [[deprecated("use the method setWidthSettings instead.")]]
     bool setNominalWidth(double nominalWidth);
+
+    bool setWidthSetting(double minWidth, double nominalWidth);
 
     void addTerminalStep(bool addStep);
 

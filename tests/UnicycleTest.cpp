@@ -155,14 +155,13 @@ bool plannerTest(){
     iDynTree::assertTrue(planner.setEndTime(conf.endTime));
     iDynTree::assertTrue(planner.setMaximumIntegratorStepSize(conf.dT));
     iDynTree::assertTrue(planner.setMaxStepLength(conf.maxL));
-    iDynTree::assertTrue(planner.setMinStepWidth(conf.minW));
+    iDynTree::assertTrue(planner.setWidthSetting(conf.minW, conf.nominalW));
     iDynTree::assertTrue(planner.setMaxAngleVariation(conf.maxAngle));
     iDynTree::assertTrue(planner.setCostWeights(conf.positionWeight, conf.timeWeight));
     iDynTree::assertTrue(planner.setStepTimings(conf.minT, conf.maxT, conf.nominalT));
     iDynTree::assertTrue(planner.setPlannerPeriod(conf.dT));
     iDynTree::assertTrue(planner.setMinimumAngleForNewSteps(conf.minAngle));
     iDynTree::assertTrue(planner.setMinimumStepLength(conf.minL));
-    iDynTree::assertTrue(planner.setNominalWidth(conf.nominalW));
     iDynTree::assertTrue(planner.setSlowWhenTurnGain(conf.slowWhenTurnGain));
 
     planner.addTerminalStep(true);
