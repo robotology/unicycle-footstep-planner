@@ -27,5 +27,7 @@ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$UnicyclePlanner_DIR/lib
 export UnicyclePlanner_DIR=/path/where/you/installed/
 export DYLD_LIBRARY_PATH=$LD_LIBRARY_PATH:$UnicyclePlanner_DIR/lib
 ```
-## Basic Idea & Implementation
-See https://github.com/robotology/unicycle-footstep-planner/issues/7
+## Basic Idea
+<img src="https://user-images.githubusercontent.com/18591940/35742336-68cbf374-083a-11e8-8393-c0a5ea268866.gif">
+## Implementation
+<img src="https://user-images.githubusercontent.com/18591940/35742348-71071cb2-083a-11e8-97a7-3577d997df8f.gif">

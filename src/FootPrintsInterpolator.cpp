@@ -618,11 +618,7 @@ bool FeetInterpolator::computeLocalZMP(const std::vector<StepPhase> &stepPhase,
 
 iDynTree::Position FeetInterpolator::pos3D(const iDynTree::Vector2 &xy)
 {
-    iDynTree::Position output;
-    output.zero();
-    output(0) = xy(0);
-    output(1) = xy(1);
-    return output;
+    return iDynTree::Position(xy(0), xy(1), 0.0);
 }
 
 iDynTree::Position FeetInterpolator::pos3D(const iDynTree::Transform &H, const iDynTree::Vector2 &xy)

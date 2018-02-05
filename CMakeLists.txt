@@ -1,11 +1,11 @@
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 3.1)
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
-# Enable C++11
+# Enable C++14
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_CXX_STANDARD 14)
-set(CMAKE_CXX_STANDARD_REQUIRED 14)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # include macros for warnings
 include(AddWarningsConfigurationToTargets)
@@ -52,7 +52,7 @@ target_include_directories(UnicyclePlanner PUBLIC $<INSTALL_INTERFACE:${CMAKE_IN
 target_link_libraries(UnicyclePlanner ${iDynTree_LIBRARIES})
 
 set_property(TARGET UnicyclePlanner PROPERTY PUBLIC_HEADER ${UCPLANNER_HEADERS})
-
+target_compile_features(UnicyclePlanner PUBLIC cxx_attribute_deprecated)
 
 # install
 install(TARGETS UnicyclePlanner
