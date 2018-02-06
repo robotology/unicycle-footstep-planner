@@ -15,6 +15,9 @@
 class UnicycleTrajectoryGenerator : public UnicyclePlanner, public FeetInterpolator
 {
     std::shared_ptr<FootPrint> m_left, m_right;
+
+    bool clearAndAddMeasuredStep(std::shared_ptr<FootPrint> foot, Step& previousStep, const iDynTree::Vector2 &measuredPosition, double measuredAngle);
+
 public:
     UnicycleTrajectoryGenerator();
 
@@ -34,6 +37,10 @@ public:
 
     bool reGenerate(double initTime, double dT, double endTime, const InitialState &weightInLeftAtMergePoint, bool correctLeft,
                     const iDynTree::Vector2 &measuredPosition, double measuredAngle);
+
+    bool reGenerate(double initTime, double dT, double endTime, const InitialState &weightInLeftAtMergePoint,
+                    const iDynTree::Vector2 &measuredLeftPosition, double measuredLeftAngle,
+                    const iDynTree::Vector2 &measuredRightPosition, double measuredRightAngle);
 };
 
 #endif // UNICYCLETRAJECTORYGENERATOR_H
