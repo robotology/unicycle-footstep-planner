@@ -43,6 +43,7 @@ UnicyleController::UnicyleController()
     ,m_maxVelocity(-1) //negative value -> don't saturate
     ,m_maxAngularVelocity(-1) //negative value -> don't saturate
     ,m_time(0)
+    ,m_slowWhenTurnGain(0.0)
 {
     m_personDistance(0) = 0.2;
     m_personDistance(1) = 0.0;
@@ -89,9 +90,9 @@ bool UnicyleController::doControl(iDynTree::VectorDynSize &controllerOutput)
     iDynTree::toEigen(controllerOutput) = iDynTree::toEigen(m_inverseB) * (iDynTree::toEigen(yDotDesired) -
                                           m_gain * (iDynTree::toEigen(m_y) - iDynTree::toEigen(yDesired)));
 
-    controllerOutput(0) = saturate(controllerOutput(0), m_maxVelocity);
     controllerOutput(1) = saturate(controllerOutput(1), m_maxAngularVelocity);
-
+    double velocitySaturation = m_maxVelocity / (1.0 + m_slowWhenTurnGain * (std::sqrt(controllerOutput(1) * controllerOutput(1))));
+    controllerOutput(0) = saturate(controllerOutput(0), velocitySaturation);
 
     return true;
 }
@@ -163,6 +164,17 @@ bool UnicyleController::setSaturations(double maxVelocity, double maxAngularVelo
     m_maxVelocity = maxVelocity;
     m_maxAngularVelocity = maxAngularVelocity;
 
+    return true;
+}
+
+bool UnicyleController::setSlowWhenTurnGain(double slowWhenTurnGain)
+{
+    if (slowWhenTurnGain < 0){
+        std::cerr << "The slowWhenTurn gain is supposed to be non-negative." << std::endl;
+        return false;
+    }
+
+    m_slowWhenTurnGain = slowWhenTurnGain;
     return true;
 }
 

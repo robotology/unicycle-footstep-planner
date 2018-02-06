@@ -47,6 +47,8 @@ public:
 
     bool setControllerGain(double controllerGain); //optional
 
+    bool setSlowWhenTurnGain(double slowWhenTurnGain); //if >0 the unicycle progress more slowly when also turning.
+
     bool addDesiredTrajectoryPoint(double initTime, const iDynTree::Vector2& yDesired, const iDynTree::Vector2& yDotDesired); //If two points have the same initTime it is an undefined behavior. It keeps the desired values constant from initTime to the initTime of the next desired point (they are automatically ordered)
 
     bool addDesiredTrajectoryPoint(double initTime, const iDynTree::Vector2& yDesired);// like the above but assumes zero velocity
@@ -63,6 +65,7 @@ public:
     //Constraints
     bool setMaxStepLength(double maxLength);
 
+    [[deprecated("use the method setWidthSettings instead.")]]
     bool setMinStepWidth(double minWidth);
 
     bool setMaxAngleVariation(double maxAngleInRad); //in radians!
@@ -79,7 +82,10 @@ public:
 
     bool setMinimumStepLength(double minLength);
 
+    [[deprecated("use the method setWidthSettings instead.")]]
     bool setNominalWidth(double nominalWidth);
+
+    bool setWidthSetting(double minWidth, double nominalWidth);
 
     void addTerminalStep(bool addStep);
 

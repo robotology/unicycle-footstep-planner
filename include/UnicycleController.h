@@ -28,6 +28,7 @@ class UnicyleController : public iDynTree::optimalcontrol::Controller{
     iDynTree::MatrixDynSize m_inverseB, m_R;
     std::deque<TrajectoryPoint> m_desiredTrajectory;
     double m_gain, m_maxVelocity, m_maxAngularVelocity, m_time;
+    double m_slowWhenTurnGain;
 
     double saturate(double input, double saturation);
 
@@ -54,6 +55,8 @@ public:
     bool setGain(double controllerGain);
 
     bool setSaturations(double maxVelocity, double maxAngularVelocity);
+
+    bool setSlowWhenTurnGain(double slowWhenTurnGain); //if >0 the unicycle progress more slowly when also turning.
 
     bool setDesiredPoint(const TrajectoryPoint &desiredPoint);
 

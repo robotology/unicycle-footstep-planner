@@ -21,6 +21,7 @@ typedef struct {
     double maxL = 0.2, minL = 0.05, minW = 0.08, maxAngle = iDynTree::deg2rad(45), minAngle = iDynTree::deg2rad(5);
     double nominalW = 0.14, maxT = 10, minT = 3, nominalT = 4, timeWeight = 2.5, positionWeight = 1;
     bool swingLeft = true;
+    double slowWhenTurnGain = 0.5;
 } Configuration;
 
 bool printSteps(std::deque<Step> leftSteps, std::deque<Step> rightSteps){
@@ -144,6 +145,7 @@ bool plannerTest(){
     conf.timeWeight = 2.5;
     conf.positionWeight = 1;
     conf.swingLeft = true;
+    conf.slowWhenTurnGain = 0.5;
 
     UnicyclePlanner planner;
 
@@ -153,14 +155,15 @@ bool plannerTest(){
     iDynTree::assertTrue(planner.setEndTime(conf.endTime));
     iDynTree::assertTrue(planner.setMaximumIntegratorStepSize(conf.dT));
     iDynTree::assertTrue(planner.setMaxStepLength(conf.maxL));
-    iDynTree::assertTrue(planner.setMinStepWidth(conf.minW));
+    iDynTree::assertTrue(planner.setWidthSetting(conf.minW, conf.nominalW));
     iDynTree::assertTrue(planner.setMaxAngleVariation(conf.maxAngle));
     iDynTree::assertTrue(planner.setCostWeights(conf.positionWeight, conf.timeWeight));
     iDynTree::assertTrue(planner.setStepTimings(conf.minT, conf.maxT, conf.nominalT));
     iDynTree::assertTrue(planner.setPlannerPeriod(conf.dT));
     iDynTree::assertTrue(planner.setMinimumAngleForNewSteps(conf.minAngle));
     iDynTree::assertTrue(planner.setMinimumStepLength(conf.minL));
-    iDynTree::assertTrue(planner.setNominalWidth(conf.nominalW));
+    iDynTree::assertTrue(planner.setSlowWhenTurnGain(conf.slowWhenTurnGain));
+
     planner.addTerminalStep(true);
     planner.startWithLeft(conf.swingLeft);
 

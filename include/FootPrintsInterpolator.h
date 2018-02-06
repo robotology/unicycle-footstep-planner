@@ -44,13 +44,17 @@ class FeetInterpolator {
     std::vector<bool> m_lFootContact, m_rFootContact, m_leftFixed;
 
     //Feet Trajectory related variables
-    double m_switchPercentage, m_dT, m_endSwitch, m_initTime, m_stepHeight, m_swingApex;
+    double m_switchPercentage, m_dT, m_endSwitch, m_initTime, m_stepHeight, m_swingApex, m_landingVelocity;
     std::vector<iDynTree::Transform> m_leftTrajectory, m_rightTrajectory;
 
     //ZMP related variables
     iDynTree::Vector2 m_leftStanceZMP, m_leftSwitchZMP, m_rightStanceZMP, m_rightSwitchZMP;
     std::vector<double> m_weightInLeft, m_weightInRight;
-    std::vector<iDynTree::Vector2> m_leftZMP, m_rightZMP, m_globalZMP;
+    std::vector<double> m_weightInLeftVelocity, m_weightInRightVelocity;
+    std::vector<double> m_weightInLeftAcceleration, m_weightInRightAcceleration;
+    std::vector<iDynTree::Vector2> m_leftZMP, m_rightZMP, m_worldZMP;
+    std::vector<iDynTree::Vector2> m_leftZMPVelocity, m_rightZMPVelocity, m_worldZMPVelocity;
+    std::vector<iDynTree::Vector2> m_leftZMPAcceleration, m_rightZMPAcceleration, m_worldZMPAcceleration;
 
     //Pause conditions
     double m_maxSwitchTime, m_nominalSwitchTime;
@@ -61,20 +65,28 @@ class FeetInterpolator {
     //CoM height related variables
     double m_CoMHeight;
     double m_CoMHeightDelta;
-    std::vector<double> m_CoMHeightTrajectory, m_CoMHeightAcceleration;
+    std::vector<double> m_CoMHeightTrajectory, m_CoMHeightVelocity, m_CoMHeightAcceleration;
 
     bool orderSteps();
     bool createPhasesTimings();
     void fillFeetStandingPeriodsVectors();
     void fillLeftFixedVector();
-    bool interpolateFoot(const std::vector<StepPhase>& stepPhase, const FootPrint& foot, std::vector<iDynTree::Transform>& output);
-    bool computeFootWeightPortion(const std::vector<StepPhase> &stepPhase, const InitialState& alpha0, std::vector<double> &output); //the i-th element in output is in [0,1]
-    void mirrorWeightPortion(const std::vector<double>& original, std::vector<double>& mirrored);
-    bool computeLocalZMP(const std::vector<StepPhase>& stepPhase,
+    bool interpolateFoot(const std::vector<StepPhase> &stepPhase, const FootPrint &foot, std::vector<iDynTree::Transform> &output);
+    bool computeFootWeightPortion(const std::vector<StepPhase> &stepPhase, const InitialState &alpha0,
+                                  std::vector<double> &output, std::vector<double> &outputVelocity,
+                                  std::vector<double> &outputAcceleration); //the i-th element in output is in [0,1]
+    void mirrorWeightPortion(const std::vector<double> &original, const std::vector<double> &originalVelocity,
+                             const std::vector<double> &originalAcceleration,std::vector<double> &mirrored,
+                             std::vector<double> &mirroredVelocity, std::vector<double> &mirroredAcceleration);
+    bool computeLocalZMP(const std::vector<StepPhase> &stepPhase,
                          const iDynTree::Vector2 &stanceZmpPosition,
                          const iDynTree::Vector2 &swingZmpInitPosition,
-                         std::vector<iDynTree::Vector2> &output);
-    void computeGlobalZMP();
+                         std::vector<iDynTree::Vector2> &output,
+                         std::vector<iDynTree::Vector2> &outputVelocity,
+                         std::vector<iDynTree::Vector2> &outputAcceleration);
+    iDynTree::Position pos3D(const iDynTree::Vector2 &xy);
+    iDynTree::Position pos3D(const iDynTree::Transform &H, const iDynTree::Vector2 &xy);
+    void computeGlobalZMP(const Step &previousLeft, const Step &previousRight);
     bool computeCoMHeightTrajectory();
 
 
@@ -82,7 +94,10 @@ public:
     FeetInterpolator();
 
     bool interpolate(const FootPrint &left, const FootPrint &right, double initTime, double dT,
-                     const InitialState &weightInLeftAtMergePoint); //both feet are supposed to start on the ground at zero velocity. The initTime must be greater than the maximum of the first impactTime of the two feet. The first step has half switch time. The FootPrints needs to be ordered!
+                     const InitialState &weightInLeftAtMergePoint, const Step &previousLeft, const Step &previousRight); //both feet are supposed to start on the ground at zero velocity. The initTime must be greater than the maximum of the first impactTime of the two feet. The first step has half switch time. The FootPrints needs to be ordered! previousLeft and previouRight are needed to compensate eventual discontinuities on the ZMP when the foot lands not at the specified point
+
+    bool interpolate(const FootPrint &left, const FootPrint &right, double initTime, double dT,
+                     const InitialState &weightInLeftAtMergePoint);
 
     bool interpolate(const FootPrint &left, const FootPrint &right, double initTime, double dT);
 
@@ -95,6 +110,8 @@ public:
     bool setStepHeight(double stepHeight);
 
     bool setFootApexTime(double swingTimeRatio = 0.5);
+
+    bool setFootLandingVelocity(double landingVelocity = 0.0);
 
     bool setPauseConditions(double maxStepTime, double nominalStepTime);
 
@@ -110,11 +127,24 @@ public:
 
     void getWeightPercentage(std::vector<double>& weightInLeft, std::vector<double>& weightInRight) const;
 
-    void getZMPTrajectory(std::vector<iDynTree::Vector2>& ZMPTrajectory) const;
+    void getWeightPercentage(std::vector<double> &weightInLeft, std::vector<double> &weightInLeftFirstDerivative,
+                             std::vector<double> &weightInLeftSecondDerivative,std::vector<double> &weightInRight,
+                             std::vector<double> &weightInRightFirstDerivative, std::vector<double> &weightInRightSecondDerivative) const;
+
+    void getZMPTrajectory(std::vector<iDynTree::Vector2> &ZMPTrajectory) const;
+
+    void getZMPTrajectory(std::vector<iDynTree::Vector2> &ZMPTrajectory, std::vector<iDynTree::Vector2> &ZMPVelocity,
+                          std::vector<iDynTree::Vector2> &ZMPAcceleration) const;
 
     void getLocalZMPTrajectories(std::vector<iDynTree::Vector2>& leftZMPTrajectory, std::vector<iDynTree::Vector2>& rightZMPTrajectory) const;
 
+    void getLocalZMPTrajectories(std::vector<iDynTree::Vector2> &leftZMPTrajectory, std::vector<iDynTree::Vector2> &leftZMPVelocity,
+                                 std::vector<iDynTree::Vector2> &leftZMPAcceleration, std::vector<iDynTree::Vector2>& rightZMPTrajectory,
+                                 std::vector<iDynTree::Vector2> &rightZMPVelocity, std::vector<iDynTree::Vector2> &rightZMPAcceleration) const;
+
     void getCoMHeightTrajectory(std::vector<double>& CoMHeightTrajectory) const;
+
+    void getCoMHeightVelocity(std::vector<double>& CoMHeightVelocity) const;
 
     void getCoMHeightAccelerationProfile(std::vector<double>& CoMHeightAccelerationProfile) const;
 

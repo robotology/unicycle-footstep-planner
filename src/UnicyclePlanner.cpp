@@ -315,6 +315,11 @@ bool UnicyclePlanner::setControllerGain(double controllerGain)
     return m_controller->setGain(controllerGain);
 }
 
+bool UnicyclePlanner::setSlowWhenTurnGain(double slowWhenTurnGain)
+{
+    return m_controller->setSlowWhenTurnGain(slowWhenTurnGain);
+}
+
 bool UnicyclePlanner::addDesiredTrajectoryPoint(double initTime, const iDynTree::Vector2 &yDesired)
 {
     TrajectoryPoint newPoint;
@@ -456,6 +461,27 @@ bool UnicyclePlanner::setNominalWidth(double nominalWidth)
     return true;
 }
 
+bool UnicyclePlanner::setWidthSetting(double minWidth, double nominalWidth)
+{
+    if (nominalWidth < 0){
+        std::cerr << "The nominal width is supposed to be non-negative." << std::endl;
+        return false;
+    }
+
+    if (nominalWidth < minWidth){
+        std::cerr << "The nominal width is expected to be grater than the minimum width." << std::endl;
+        return false;
+    }
+
+    if (!m_unicycleProblem.setMinWidth(minWidth)){
+        return false;
+    }
+
+    m_nominalWidth = nominalWidth;
+
+    return true;
+}
+
 void UnicyclePlanner::addTerminalStep(bool addStep)
 {
     m_addTerminalStep = addStep;
@@ -476,8 +502,8 @@ bool UnicyclePlanner::computeNewSteps(std::shared_ptr< FootPrint > leftFoot, std
     m_left.reset(new UnicycleFoot(leftFoot));
     m_right.reset(new UnicycleFoot(rightFoot));
 
-    double maxVelocity = std::sqrt(std::pow(m_maxLength,2) - std::pow(m_nominalWidth,2))/m_minTime * 0.75;
-    double maxAngVelocity = m_maxAngle/m_minTime*0.75;
+    double maxVelocity = std::sqrt(std::pow(m_maxLength,2) - std::pow(m_nominalWidth,2))/m_minTime * 0.70;
+    double maxAngVelocity = m_maxAngle/m_minTime*0.70;
     if (!m_controller->setSaturations(maxVelocity, maxAngVelocity))
         return false;
 
