@@ -543,7 +543,7 @@ bool UnicyclePlanner::computeNewSteps(std::shared_ptr< FootPrint > leftFoot, std
 
         deltaAngle = std::abs(prevStep.angle - unicycleAngle);
 
-        if (deltaTime >= m_minTime){ //The step is not too fast
+        if ((deltaTime >= m_minTime) && (t > (initTime + m_minTime))){ //The step is not too fast
             if (!(swingFoot->isTinyStep(unicyclePosition, unicycleAngle)) || (deltaAngle > m_minAngle)){ //the step is not tiny
                 deltaTime -= pauseTime;
                 if ((deltaTime > m_maxTime) || (t == m_endTime)){ //the step is not too slow
@@ -605,7 +605,7 @@ bool UnicyclePlanner::computeNewSteps(std::shared_ptr< FootPrint > leftFoot, std
                         return false;
                     }
 
-                    if((deltaTime > m_minTime) && (m_unicycleProblem.areConstraintsSatisfied(rPl, deltaAngle, deltaTime))){ //constraints are satisfied
+                    if((deltaTime > 0) && (m_unicycleProblem.areConstraintsSatisfied(rPl, deltaAngle, deltaTime))){ //constraints are satisfied
 
                         if(!m_unicycleProblem.getCostValue(rPl, deltaAngle, deltaTime, cost)){
                             std::cerr << "Error while evaluating the cost function." << std::endl;
