@@ -95,7 +95,7 @@ bool FeetInterpolator::createPhasesTimings(const InitialState &weightInLeftAtMer
             return false;
         }
 
-        if ((nextStepindex == m_orderedSteps.front()) && (weightInLeftAtMergePoint.initialVelocity > 0.01)){ //first half step
+        if ((nextStepindex == m_orderedSteps.front()) && (std::abs(weightInLeftAtMergePoint.initialVelocity) > 0.01)){ //first half step
             //Timings
             switchTime = (m_switchPercentage/(1 - (m_switchPercentage/2.0)) * stepTime)/2.0; //half switch
         } else { //general case
