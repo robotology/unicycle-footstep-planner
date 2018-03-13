@@ -132,7 +132,7 @@ bool UnicycleTrajectoryGenerator::reGenerate(double initTime, double dT, double 
 
 bool UnicycleTrajectoryGenerator::reGenerate(double initTime, double dT, double endTime, const InitialState &weightInLeftAtMergePoint, const iDynTree::Vector2 &measuredLeftPosition, double measuredLeftAngle, const iDynTree::Vector2 &measuredRightPosition, double measuredRightAngle)
 {
-    Step previousL, previousR, correctedStep;
+    Step previousL, previousR;
 
     if (!m_left->keepOnlyPresentStep(initTime)){
         std::cerr << "The initTime is not compatible with previous runs. Call a method generateAndInterpolate instead." << std::endl;

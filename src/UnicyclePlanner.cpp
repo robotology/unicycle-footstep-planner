@@ -499,16 +499,18 @@ bool UnicyclePlanner::computeNewSteps(std::shared_ptr< FootPrint > leftFoot, std
         return false;
     }
 
+    if (m_nominalWidth > m_maxLength){
+        std::cerr << "Error: the maxLength parameter seems to be too restrictive. Notice that it represents the cartesian distance between the two feet (width included)." <<std::endl;
+        return false;
+    }
+
     m_left.reset(new UnicycleFoot(leftFoot));
     m_right.reset(new UnicycleFoot(rightFoot));
 
-    double maxVelocity = std::sqrt(std::pow(m_maxLength,2) - std::pow(m_nominalWidth,2))/m_minTime * 0.70;
+    double maxVelocity = std::sqrt(std::pow(m_maxLength,2) - std::pow(m_nominalWidth,2))/m_minTime * 0.90;
     double maxAngVelocity = m_maxAngle/m_minTime*0.70;
     if (!m_controller->setSaturations(maxVelocity, maxAngVelocity))
         return false;
-
-    if (m_nominalWidth > m_maxLength)
-        std::cerr << "Warning: the maxLength parameter seems to be too restrictive. Notice that it represents the cartesian distance between the two feet (width included)." <<std::endl;
 
     if (!initializePlanner(initTime)){
         std::cerr << "Error during planner initialization." <<std::endl;
@@ -603,7 +605,7 @@ bool UnicyclePlanner::computeNewSteps(std::shared_ptr< FootPrint > leftFoot, std
                         return false;
                     }
 
-                    if(m_unicycleProblem.areConstraintsSatisfied(rPl, deltaAngle, deltaTime)){ //constraints are satisfied
+                    if((deltaTime > m_minTime) && (m_unicycleProblem.areConstraintsSatisfied(rPl, deltaAngle, deltaTime))){ //constraints are satisfied
 
                         if(!m_unicycleProblem.getCostValue(rPl, deltaAngle, deltaTime, cost)){
                             std::cerr << "Error while evaluating the cost function." << std::endl;
