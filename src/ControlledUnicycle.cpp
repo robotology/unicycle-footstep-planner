@@ -77,7 +77,7 @@ const iDynTree::VectorDynSize &ControlledUnicycle::initialState() const
 
 bool ControlledUnicycle::setController(std::shared_ptr<UnicyleController> controller)
 {
-    if (controller->controlSpaceSize() != m_controlSize){
+    if (controller->controlSpaceSize() != controlSpaceSize()){
         std::cerr << "The controller dimension is not coherent with the controlSpaceSize." << std::endl;
         return false;
     }
