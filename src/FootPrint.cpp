@@ -90,6 +90,12 @@ void FootPrint::clearSteps()
     m_steps->clear();
 }
 
+void FootPrint::clearLastStep()
+{
+    if (numberOfSteps() != 0)
+        m_steps->pop_back();
+}
+
 size_t FootPrint::numberOfSteps() const
 {
     if (!m_steps)
