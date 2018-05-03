@@ -296,6 +296,7 @@ UnicyclePlanner::UnicyclePlanner()
     ,m_left(nullptr)
     ,m_right(nullptr)
     ,m_swingLeft(true)
+    ,m_resetTimings(false)
 {
     m_unicycle->setController(m_controller);
     m_integrator.setMaximumStepSize(0.01);
@@ -492,6 +493,11 @@ void UnicyclePlanner::startWithLeft(bool startLeft)
     m_startLeft = startLeft;
 }
 
+void UnicyclePlanner::resetTimingsIfStill(bool resetTimings)
+{
+    m_resetTimings = resetTimings;
+}
+
 bool UnicyclePlanner::computeNewSteps(std::shared_ptr< FootPrint > leftFoot, std::shared_ptr< FootPrint > rightFoot, double initTime)
 {
     if (!leftFoot || !rightFoot){
@@ -523,6 +529,9 @@ bool UnicyclePlanner::computeNewSteps(std::shared_ptr< FootPrint > leftFoot, std
     iDynTree::Vector2 unicyclePosition, rPl;
     double unicycleAngle;
     std::shared_ptr<UnicycleFoot> stanceFoot, swingFoot;
+
+    size_t numberOfStepsLeft = leftFoot->numberOfSteps();
+    size_t numberOfStepsRight = rightFoot->numberOfSteps();
 
     stanceFoot = m_swingLeft ? m_right : m_left;
     swingFoot = m_swingLeft ? m_left : m_right;
@@ -639,6 +648,23 @@ bool UnicyclePlanner::computeNewSteps(std::shared_ptr< FootPrint > leftFoot, std
         if(!addTerminalStep(unicyclePosition, unicycleAngle)){
             std::cerr << "Error while adding the terminal step." << std::endl;
             return false;
+        }
+
+        if (m_resetTimings && (numberOfStepsLeft == leftFoot->numberOfSteps()) && (numberOfStepsRight == rightFoot->numberOfSteps())){ //no steps have been added
+            Step lastLeft, lastRight;
+
+            leftFoot->getLastStep(lastLeft);
+            rightFoot->getLastStep(lastRight);
+
+            if (lastLeft.impactTime > lastRight.impactTime){
+                lastRight.impactTime = lastLeft.impactTime;
+                rightFoot->clearLastStep();
+                rightFoot->addStep(lastRight);
+            } else if (lastLeft.impactTime < lastRight.impactTime){
+                lastLeft.impactTime = lastRight.impactTime;
+                leftFoot->clearLastStep();
+                leftFoot->addStep(lastLeft);
+            }
         }
     }
 

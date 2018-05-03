@@ -21,7 +21,7 @@ class UnicyclePlanner {
     iDynTree::optimalcontrol::integrators::RK4 m_integrator;
     UnicycleOptimization m_unicycleProblem;
     double m_endTime, m_minTime, m_maxTime, m_nominalTime, m_dT, m_minAngle, m_nominalWidth, m_maxLength, m_minLength, m_maxAngle;
-    bool m_addTerminalStep, m_startLeft;
+    bool m_addTerminalStep, m_startLeft, m_resetTimings;
 
     std::shared_ptr<UnicycleFoot> m_left, m_right;
 
@@ -90,6 +90,8 @@ public:
     void addTerminalStep(bool addStep);
 
     void startWithLeft(bool startLeft);
+
+    void resetTimingsIfStill(bool resetTimings);
 
     bool computeNewSteps(std::shared_ptr<FootPrint> leftFoot, std::shared_ptr<FootPrint> rightFoot, double initTime); //if the inputs are empty, the initTime is obtained from the first trajectory point, otherwise the initTime is the latest impactTime
 

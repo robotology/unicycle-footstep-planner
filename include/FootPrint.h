@@ -41,6 +41,8 @@ public:
 
     void clearSteps();
 
+    void clearLastStep();
+
     size_t numberOfSteps() const;
 
     const StepList& getSteps() const;
