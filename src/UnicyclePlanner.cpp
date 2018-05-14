@@ -551,13 +551,11 @@ bool UnicyclePlanner::computeNewSteps(std::shared_ptr< FootPrint > leftFoot, std
     double t = initTime, tOptim = -1.0;
     pauseTime = t - prevStep.impactTime;
 
-    double minTime, timeOffset;
+    double timeOffset;
 
     if (m_firstStep){
-        minTime = m_nominalTime;
-        timeOffset = minTime;
+        timeOffset = m_nominalTime;
     } else {
-        minTime = m_minTime;
         timeOffset = 0;
     }
 
@@ -570,7 +568,7 @@ bool UnicyclePlanner::computeNewSteps(std::shared_ptr< FootPrint > leftFoot, std
 
         deltaAngle = std::abs(prevStep.angle - unicycleAngle);
 
-        if ((deltaTime >= minTime) && (t > (initTime + timeOffset))){ //The step is not too fast
+        if ((deltaTime >= m_minTime) && (t > (initTime + timeOffset))){ //The step is not too fast
             if (!(swingFoot->isTinyStep(unicyclePosition, unicycleAngle)) || (deltaAngle > m_minAngle)){ //the step is not tiny
                 deltaTime -= pauseTime;
                 if ((deltaTime > m_maxTime) || (t == m_endTime)){ //the step is not too slow
@@ -616,7 +614,6 @@ bool UnicyclePlanner::computeNewSteps(std::shared_ptr< FootPrint > leftFoot, std
                     //reset
                     tOptim = -1.0;
                     m_firstStep = false;
-                    minTime = m_minTime;
                     timeOffset = 0;
 
                     m_swingLeft = !m_swingLeft;
