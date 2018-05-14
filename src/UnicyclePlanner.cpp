@@ -32,6 +32,7 @@ bool UnicyclePlanner::getInitialStateFromFeet(double initTime)
         m_left->addStepFromUnicycle(initialUnicycle, initialAngle, initTime);
         m_right->addStepFromUnicycle(initialUnicycle, initialAngle, initTime);
 
+        m_firstStep = true;
         m_swingLeft = m_startLeft;
 
     } else {
@@ -47,6 +48,7 @@ bool UnicyclePlanner::getInitialStateFromFeet(double initTime)
             initialAngle = lastFoot.angle;
             initTimeFromFeet = lastFoot.impactTime;
             m_swingLeft = true;
+            m_firstStep = false;
 
         } else if (m_right->numberOfSteps() == 0){
             Step lastFoot;
@@ -60,6 +62,8 @@ bool UnicyclePlanner::getInitialStateFromFeet(double initTime)
             initialAngle = lastFoot.angle;
             initTimeFromFeet = lastFoot.impactTime;
             m_swingLeft = false;
+            m_firstStep = false;
+
         } else {
             Step lastFootL, lastFootR;
 
@@ -81,12 +85,14 @@ bool UnicyclePlanner::getInitialStateFromFeet(double initTime)
                     m_swingLeft = false;
                 }
                 initTimeFromFeet = lastFootL.impactTime;
+                m_firstStep = true;
             } else if (lastFootL.impactTime < lastFootR.impactTime) {
                 if (!(m_right->getUnicyclePositionFromFoot(lastFootR.position, lastFootR.angle, initialUnicycle)))
                     return false;
 
                 initialAngle = lastFootR.angle;
                 m_swingLeft = true;
+                m_firstStep = false;
                 initTimeFromFeet = lastFootR.impactTime;
             } else {
                 if (!(m_left->getUnicyclePositionFromFoot(lastFootL.position, lastFootL.angle, initialUnicycle)))
@@ -94,6 +100,7 @@ bool UnicyclePlanner::getInitialStateFromFeet(double initTime)
 
                 initialAngle = lastFootL.angle;
                 m_swingLeft = false;
+                m_firstStep = false;
                 initTimeFromFeet = lastFootL.impactTime;
             }
         }
@@ -293,10 +300,11 @@ UnicyclePlanner::UnicyclePlanner()
     ,m_maxAngle(iDynTree::deg2rad(45))
     ,m_addTerminalStep(true)
     ,m_startLeft(true)
+    ,m_resetTimings(false)
+    ,m_firstStep(false)
     ,m_left(nullptr)
     ,m_right(nullptr)
     ,m_swingLeft(true)
-    ,m_resetTimings(false)
 {
     m_unicycle->setController(m_controller);
     m_integrator.setMaximumStepSize(0.01);
@@ -543,6 +551,16 @@ bool UnicyclePlanner::computeNewSteps(std::shared_ptr< FootPrint > leftFoot, std
     double t = initTime, tOptim = -1.0;
     pauseTime = t - prevStep.impactTime;
 
+    double minTime, timeOffset;
+
+    if (m_firstStep){
+        minTime = m_nominalTime;
+        timeOffset = minTime;
+    } else {
+        minTime = m_minTime;
+        timeOffset = 0;
+    }
+
     while (t <= m_endTime){
         deltaTime = t - prevStep.impactTime;
 
@@ -552,7 +570,7 @@ bool UnicyclePlanner::computeNewSteps(std::shared_ptr< FootPrint > leftFoot, std
 
         deltaAngle = std::abs(prevStep.angle - unicycleAngle);
 
-        if ((deltaTime >= m_minTime) && (t > (initTime + m_minTime))){ //The step is not too fast
+        if ((deltaTime >= minTime) && (t > (initTime + timeOffset))){ //The step is not too fast
             if (!(swingFoot->isTinyStep(unicyclePosition, unicycleAngle)) || (deltaAngle > m_minAngle)){ //the step is not tiny
                 deltaTime -= pauseTime;
                 if ((deltaTime > m_maxTime) || (t == m_endTime)){ //the step is not too slow
@@ -597,6 +615,9 @@ bool UnicyclePlanner::computeNewSteps(std::shared_ptr< FootPrint > leftFoot, std
                     }
                     //reset
                     tOptim = -1.0;
+                    m_firstStep = false;
+                    minTime = m_minTime;
+                    timeOffset = 0;
 
                     m_swingLeft = !m_swingLeft;
                     stanceFoot = m_swingLeft ? m_right : m_left;
