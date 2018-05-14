@@ -119,6 +119,15 @@ bool UnicyclePlanner::getInitialStateFromFeet(double initTime)
             std::cerr <<"Failed to set a the intial reference given the provided FootPrints." <<std::endl;
             return false;
         }
+
+        if (m_firstStep) {
+            initialPoint.initTime = initTime + m_nominalTime - m_minTime;
+
+            if (!(m_controller->setDesiredPoint(initialPoint))){
+                std::cerr <<"Failed to set a the intial dummy reference to have a slower first step." <<std::endl;
+                return false;
+            }
+        }
     }
 
     if(!(m_unicycle->setInitialState(initialUnicycle, initialAngle))){
