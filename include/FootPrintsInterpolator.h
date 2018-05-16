@@ -68,7 +68,7 @@ class FeetInterpolator {
     std::vector<double> m_CoMHeightTrajectory, m_CoMHeightVelocity, m_CoMHeightAcceleration;
 
     bool orderSteps();
-    bool createPhasesTimings(const InitialState &weightInLeftAtMergePoint);
+    bool createPhasesTimings(const double velocityAtMergePoint);
     void fillFeetStandingPeriodsVectors();
     void fillLeftFixedVector();
     bool interpolateFoot(const std::vector<StepPhase> &stepPhase, const FootPrint &foot, std::vector<iDynTree::Transform> &output);
