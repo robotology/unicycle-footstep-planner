@@ -68,7 +68,7 @@ set(UCPLANNER_HEADERS include/ControlledUnicycle.h
                       include/FootPrintsInterpolator.h
                       include/UnicycleTrajectoryGenerator.h)
 
-add_library(UnicyclePlanner  SHARED ${UCPLANNER_HEADERS} ${UCPLANNER_SOURCES})
+add_library(UnicyclePlanner ${UCPLANNER_HEADERS} ${UCPLANNER_SOURCES})
 target_include_directories(UnicyclePlanner PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>)
 target_include_directories(UnicyclePlanner PUBLIC $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
 target_link_libraries(UnicyclePlanner ${iDynTree_LIBRARIES})
