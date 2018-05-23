@@ -1,7 +1,5 @@
 cmake_minimum_required(VERSION 3.1)
 
-
-
 # ouptut paths
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_BINDIR}")
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_LIBDIR}")
@@ -14,7 +12,7 @@ if(MSVC)
     set(CMAKE_DEBUG_POSTFIX "d")
 endif()
 
-
+option(BUILD_SHARED_LIBS "Build libraries as shared as opposed to static" ON)
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
@@ -38,6 +36,14 @@ add_install_rpath_support(BIN_DIRS "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_BIND
                           LIB_DIRS "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}"
                           DEPENDS ENABLE_RPATH
                           USE_LINK_PATH)
+
+# Encourage user to specify a build type (e.g. Release, Debug, etc.), otherwise set it to Release.
+if(NOT CMAKE_CONFIGURATION_TYPES)
+  if(NOT CMAKE_BUILD_TYPE)
+      message(STATUS "Setting build type to 'Release' as none was specified.")
+      set_property(CACHE CMAKE_BUILD_TYPE PROPERTY VALUE "Release")
+  endif()
+endif()
 
 find_package(iDynTree 0.9.2 REQUIRED)
 find_package(Eigen3 REQUIRED)
