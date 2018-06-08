@@ -65,6 +65,7 @@ class FeetInterpolator {
     //CoM height related variables
     double m_CoMHeight;
     double m_CoMHeightDelta;
+    double m_pitchDelta;
     std::vector<double> m_CoMHeightTrajectory, m_CoMHeightVelocity, m_CoMHeightAcceleration;
 
     bool orderSteps();
@@ -112,6 +113,8 @@ public:
     bool setFootApexTime(double swingTimeRatio = 0.5);
 
     bool setFootLandingVelocity(double landingVelocity = 0.0);
+
+    bool setPitchDelta(double pitchAngle = 0.0); //DEGREES
 
     bool setPauseConditions(double maxStepTime, double nominalStepTime);
 

@@ -204,8 +204,8 @@ bool FeetInterpolator::interpolateFoot(const std::vector<StepPhase> &stepPhase, 
     if (output.size() != stepPhase.size())
         output.resize(stepPhase.size());
 
-    static iDynTree::VectorDynSize xPositionsBuffer(2), yPositionsBuffer(2), zPositionsBuffer(3), yawsBuffer(2), timesBuffer(2), zTimesBuffer(3);
-    static iDynTree::CubicSpline xSpline(2), ySpline(2), zSpline(3), yawSpline(2);
+    static iDynTree::VectorDynSize xPositionsBuffer(2), yPositionsBuffer(2), zPositionsBuffer(3), yawsBuffer(2), pitchAnglesBuffer(3), timesBuffer(2), zTimesBuffer(3);
+    static iDynTree::CubicSpline xSpline(2), ySpline(2), zSpline(3), yawSpline(2), pitchSpline(3);
 
     const StepList& steps = foot.getSteps();
     StepList::const_iterator footState = steps.begin();
@@ -230,11 +230,13 @@ bool FeetInterpolator::interpolateFoot(const std::vector<StepPhase> &stepPhase, 
             xPositionsBuffer(0) = footState->position(0);
             yPositionsBuffer(0) = footState->position(1);
             yawsBuffer(0) = footState->angle;
+            pitchAnglesBuffer(0) = 0.0;
             timesBuffer(0) = 0.0;
-            zPositionsBuffer(0) = 0.0;
-             zTimesBuffer(0) = 0.0;
-            zPositionsBuffer(1) = m_stepHeight; //the z has an additional midpoint
-             zTimesBuffer(1) = m_swingApex*swingLength;
+            zTimesBuffer(0) = 0.0;
+
+            zPositionsBuffer(1) = m_stepHeight;
+            pitchAnglesBuffer(1) = m_pitchDelta;
+            zTimesBuffer(1) = m_swingApex * swingLength;
 
             if (footState + 1 == steps.cend()){
                 std::cerr << "[FEETINTERPOLATOR] Something went wrong. stepPhase and foot don't seem to be coherent." << std::endl;
@@ -244,10 +246,12 @@ bool FeetInterpolator::interpolateFoot(const std::vector<StepPhase> &stepPhase, 
 
             xPositionsBuffer(1) = footState->position(0);
             yPositionsBuffer(1) = footState->position(1);
+            pitchAnglesBuffer(2) = 0.0;
+
             yawsBuffer(1) = footState->angle;
             timesBuffer(1) = swingLength;
-            zPositionsBuffer(2) = 0.0;
-             zTimesBuffer(2) = swingLength;
+            zPositionsBuffer(2) = 0.0;            
+            zTimesBuffer(2) = swingLength;
 
             //preparation for splines
 
@@ -255,11 +259,13 @@ bool FeetInterpolator::interpolateFoot(const std::vector<StepPhase> &stepPhase, 
             ySpline.setInitialConditions(0.0, 0.0);
             zSpline.setInitialConditions(0.0, 0.0);
             yawSpline.setInitialConditions(0.0, 0.0);
+            pitchSpline.setInitialConditions(0.0, 0.0);
 
             xSpline.setFinalConditions(0.0, 0.0);
             ySpline.setFinalConditions(0.0, 0.0);
             zSpline.setFinalConditions(m_landingVelocity, 0.0); //we may think of non-null final acceleration for the z
             yawSpline.setFinalConditions(0.0, 0.0);
+            pitchSpline.setInitialConditions(0.0, 0.0);
 
             if (!xSpline.setData(timesBuffer, xPositionsBuffer)){
                 std::cerr << "[FEETINTERPOLATOR] Failed to initialize the x-dimension spline." << std::endl;
@@ -277,6 +283,10 @@ bool FeetInterpolator::interpolateFoot(const std::vector<StepPhase> &stepPhase, 
                 std::cerr << "[FEETINTERPOLATOR] Failed to initialize the yaw-dimension spline." << std::endl;
                 return false;
             }
+            if (!pitchSpline.setData(zTimesBuffer, pitchAnglesBuffer)){
+                std::cerr << "[FEETINTERPOLATOR] Failed to initialize the yaw-dimension spline." << std::endl;
+                return false;
+            }
 
             size_t startSwingInstant = instant;
             double interpolationTime;
@@ -286,7 +296,7 @@ bool FeetInterpolator::interpolateFoot(const std::vector<StepPhase> &stepPhase, 
                 newPosition(1) = ySpline.evaluatePoint(interpolationTime);
                 newPosition(2) = zSpline.evaluatePoint(interpolationTime);
                 newTransform.setPosition(newPosition);
-                newTransform.setRotation(iDynTree::Rotation::RPY(0.0, 0.0, yawSpline.evaluatePoint(interpolationTime)));
+                newTransform.setRotation(iDynTree::Rotation::RPY(0.0, pitchSpline.evaluatePoint(interpolationTime), yawSpline.evaluatePoint(interpolationTime)));
 
                 if (newPosition(2) < 0){
                     std::cerr << "[FEETINTERPOLATOR] The z of the foot is negative at time " << instant*m_dT + m_initTime;
@@ -808,6 +818,7 @@ FeetInterpolator::FeetInterpolator()
     ,m_pauseActive(false)
     ,m_CoMHeight(-1.0)
     ,m_CoMHeightDelta(0.0)
+    ,m_pitchDelta(0.0)
 {
     m_leftStanceZMP.zero();
     m_leftSwitchZMP.zero();
@@ -971,6 +982,12 @@ bool FeetInterpolator::setFootApexTime(double swingTimeRatio)
 bool FeetInterpolator::setFootLandingVelocity(double landingVelocity)
 {
     m_landingVelocity = landingVelocity;
+    return true;
+}
+
+bool FeetInterpolator::setPitchDelta(double pitchAngle)
+{
+    m_pitchDelta = iDynTree::deg2rad(pitchAngle);
     return true;
 }
 
