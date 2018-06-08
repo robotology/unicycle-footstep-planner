@@ -267,7 +267,8 @@ bool UnicyclePlanner::addTerminalStep(const iDynTree::Vector2& lastUnicyclePosit
         }
     } else {
         if (!constraintsSatisfied){
-            std::cerr << "Unable to satisfy constraints on the last step." << std::endl;
+            std::cerr << "Unable to satisfy constraints on the last step. The following constraints are not satisfied:" << std::endl;
+            m_unicycleProblem.printViolatedConstraints(rPl, deltaAngle, deltaTime);
         } else {
             iDynTree::Vector2 previousUnicycle;
 
@@ -527,6 +528,11 @@ bool UnicyclePlanner::computeNewSteps(std::shared_ptr< FootPrint > leftFoot, std
         return false;
     }
 
+    if (m_minAngle >= m_maxAngle) {
+        std::cerr << "Error: the minAngle parameter is supposed to be lower than the maxAngle. Otherwise, when the feet start parallel, it would be impossible to rotate the swing foot." << std::endl;
+        return false;
+    }
+
     m_left.reset(new UnicycleFoot(leftFoot));
     m_right.reset(new UnicycleFoot(rightFoot));
 
@@ -542,8 +548,9 @@ bool UnicyclePlanner::computeNewSteps(std::shared_ptr< FootPrint > leftFoot, std
 
     double cost, minCost = 1e10; //this big number is actually not necessary since there is a check on tOptim also
     double deltaTime = 0, pauseTime = 0;
-    double deltaAngle;
+    double deltaAngle = 0;
     iDynTree::Vector2 unicyclePosition, rPl;
+    rPl.zero();
     double unicycleAngle;
     std::shared_ptr<UnicycleFoot> stanceFoot, swingFoot;
 
@@ -568,6 +575,9 @@ bool UnicyclePlanner::computeNewSteps(std::shared_ptr< FootPrint > leftFoot, std
         timeOffset = 0;
     }
 
+    bool pauseActivated = false;
+    bool avoidPause = false;
+
     while (t <= m_endTime){
         deltaTime = t - prevStep.impactTime;
 
@@ -578,7 +588,8 @@ bool UnicyclePlanner::computeNewSteps(std::shared_ptr< FootPrint > leftFoot, std
         deltaAngle = std::abs(prevStep.angle - unicycleAngle);
 
         if ((deltaTime >= m_minTime) && (t > (initTime + timeOffset))){ //The step is not too fast
-            if (!(swingFoot->isTinyStep(unicyclePosition, unicycleAngle)) || (deltaAngle > m_minAngle)){ //the step is not tiny
+            if (avoidPause || (!(swingFoot->isTinyStep(unicyclePosition, unicycleAngle)) || (deltaAngle > m_minAngle))){ //the step is not tiny
+                pauseActivated = false;
                 deltaTime -= pauseTime;
                 if ((deltaTime > m_maxTime) || (t == m_endTime)){ //the step is not too slow
                     if (tOptim > 0){  //a feasible point has been found
@@ -594,31 +605,52 @@ bool UnicyclePlanner::computeNewSteps(std::shared_ptr< FootPrint > leftFoot, std
 
                         t = tOptim;
                         pauseTime = 0;
+                        avoidPause = false;
 
                     } else { //if (tOptim > 0)
-                        std::cerr << "Unable to satisfy constraints" << std::endl;
+                        if (pauseActivated) {
+                            std::cerr << "Ignoring pause conditions to try to satisfy constraints." << std::endl;
+                            avoidPause = true;
+                            t = std::max(initTime, t - pauseTime);
+                        } else {
 
-                        t = prevStep.impactTime + m_nominalTime + pauseTime;
+                            std::cerr << "Unable to satisfy constraints given the specified maxStepTime. In the last evaluation of constraints, the following where not satisfied:" << std::endl;
 
-                        if(!stanceFoot->getUnicyclePositionFromFoot(prevStep.position, prevStep.angle, unicyclePosition)){
-                            std::cerr << "Error while computing the unicycle position." << std::endl;
-                            return false;
-                        }
+                            m_unicycleProblem.printViolatedConstraints(rPl, deltaAngle, deltaTime);
 
-                        bool isTiny = swingFoot->isTinyStep(unicyclePosition, prevStep.angle);
-                        //bool isTiny = false;
-
-                        if(!isTiny){
-                            if(!swingFoot->addParallelStep(*(stanceFoot), t)){
-                                std::cerr << "Error while inserting new step." << std::endl;
+                            if(!stanceFoot->getUnicyclePositionFromFoot(prevStep.position, prevStep.angle, unicyclePosition)){
+                                std::cerr << "Error while computing the unicycle position." << std::endl;
                                 return false;
                             }
 
-                            pauseTime = 0;
-                        } else {
+                            bool isTiny = swingFoot->isTinyStep(unicyclePosition, prevStep.angle);
+                            //bool isTiny = false;
 
-                            pauseTime += m_nominalTime;
+                            if(!isTiny){
+                                if(!swingFoot->addParallelStep(*(stanceFoot), t)){
+                                    std::cerr << "Error while inserting new step." << std::endl;
+                                    return false;
+                                }
+
+                                pauseTime = 0;
+                            } else {
+
+                                pauseTime += m_nominalTime;
+                            }
+
+                            Step lastSwingStep;
+                            if (!(swingFoot->getLastStep(lastSwingStep))){
+                                std::cerr << "Error getting last swing step" << std::endl;
+                                return false;
+                            }
+                            t = std::max(prevStep.impactTime, lastSwingStep.impactTime) + m_nominalTime + pauseTime;
+
+                            if (t < initTime) {
+                                std::cerr << "Something went wrong when updating time variable." << std::endl;
+                                return false;
+                            }
                         }
+
                     }
                     //reset
                     tOptim = -1.0;
@@ -656,6 +688,7 @@ bool UnicyclePlanner::computeNewSteps(std::shared_ptr< FootPrint > leftFoot, std
                 }
             } else { //Arrive here if the step is tiny
                 pauseTime += m_dT;
+                pauseActivated = true;
             }
         }
 

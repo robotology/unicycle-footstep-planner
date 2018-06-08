@@ -17,7 +17,7 @@
 typedef struct {
     double initTime = 0.0, endTime = 10.0, dT = 0.016, K = 10, dX = 0.05, dY = 0.0;
     double maxL = 0.05, minL = 0.005, minW = 0.03, maxAngle = iDynTree::deg2rad(40), minAngle = iDynTree::deg2rad(5);
-    double nominalW = 0.04, maxT = 8, minT = 2.9, nominalT = 4, timeWeight = 2.5, positionWeight = 1;
+    double nominalW = 0.05, maxT = 8, minT = 2.9, nominalT = 4, timeWeight = 2.5, positionWeight = 1;
 
     double nominalSwitchTime = 1.0, endSwitchTime = 0.5, maxSwitch = 3.0;
     double stepHeight = 0.005;
