@@ -13,17 +13,17 @@
 bool FeetInterpolator::orderSteps()
 {
     m_orderedSteps.clear();
-    m_orderedSteps.reserve(m_left.numberOfSteps() + m_right.numberOfSteps() - 2);
+    m_orderedSteps.reserve(m_left.numberOfSteps() + m_right.numberOfSteps());
     if (m_orderedSteps.capacity() > 0){
-        for (StepsIndex footL = m_left.getSteps().cbegin() + 1; footL != m_left.getSteps().cend(); ++footL)
-            m_orderedSteps.push_back(footL);
-        for (StepsIndex footR = m_right.getSteps().cbegin() + 1; footR != m_right.getSteps().cend(); ++footR)
-            m_orderedSteps.push_back(footR);
+        for (StepsIndex footL = m_left.getSteps().cbegin(); footL != m_left.getSteps().cend(); ++footL)
+            m_orderedSteps.push_back(&*footL);
+        for (StepsIndex footR = m_right.getSteps().cbegin(); footR != m_right.getSteps().cend(); ++footR)
+            m_orderedSteps.push_back(&*footR);
 
         std::sort(m_orderedSteps.begin(), m_orderedSteps.end(),
-                  [](const StepsIndex&a, const StepsIndex&b) { return a->impactTime < b->impactTime;});
-        auto duplicate = std::adjacent_find(m_orderedSteps.begin(), m_orderedSteps.end(),
-                                            [](const StepsIndex&a, const StepsIndex&b) { return a->impactTime == b->impactTime;});
+                  [](const Step *a, const Step *b) { return a->impactTime < b->impactTime;});
+        auto duplicate = std::adjacent_find(m_orderedSteps.begin() + 2, m_orderedSteps.end(),
+                                            [](const Step *a, const Step *b) { return a->impactTime == b->impactTime;});
 
         if (duplicate != m_orderedSteps.end()){
             std::cerr << "[FEETINTERPOLATOR] Two entries of the FootPrints pointers have the same impactTime. (The head is not considered)"
@@ -54,7 +54,7 @@ bool FeetInterpolator::createPhasesTimings(const double velocityAtMergePoint)
 
     std::shared_ptr<std::vector<StepPhase> > swing, stance;
 
-    if (m_orderedSteps.size() == 0){
+    if (m_orderedSteps.size() == 2){
         int endSwitchSamples = std::round(m_endSwitch/m_dT); //last shift to the center
 
         m_lFootPhases->reserve(endSwitchSamples);
@@ -80,10 +80,10 @@ bool FeetInterpolator::createPhasesTimings(const double velocityAtMergePoint)
     double stepTime, switchTime, pauseTime;
     int stepSamples, switchSamples, swingSamples;
 
-    StepsIndex leftIndex = m_left.getSteps().cbegin() + 1;
-    StepsIndex rightIndex = m_right.getSteps().cbegin() + 1;
-    size_t orderedStepIndex = 0;
-    StepsIndex nextStepindex;
+    const Step* leftIndex = &*(m_left.getSteps().cbegin() + 1);
+    const Step* rightIndex = &*(m_right.getSteps().cbegin() + 1);
+    size_t orderedStepIndex = 2;
+    const Step* nextStepindex;
     double previouStepTime = m_initTime;
 
     while (orderedStepIndex < m_orderedSteps.size()){

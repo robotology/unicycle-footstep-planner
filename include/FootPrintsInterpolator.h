@@ -33,7 +33,7 @@ typedef struct{
 
 class FeetInterpolator {
 
-    std::vector<StepsIndex> m_orderedSteps;
+    std::vector<const Step*> m_orderedSteps;
     FootPrint m_left, m_right;
 
     //Step phase related variables
