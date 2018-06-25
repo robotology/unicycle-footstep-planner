@@ -35,7 +35,7 @@ bool FeetInterpolator::orderSteps()
     return true;
 }
 
-bool FeetInterpolator::createPhasesTimings(const double velocityAtMergePoint)
+bool FeetInterpolator::createPhasesTimings()
 {
     //NOTE this method must be called after orderSteps to work properly
     if (m_switchPercentage < 0){
@@ -95,7 +95,7 @@ bool FeetInterpolator::createPhasesTimings(const double velocityAtMergePoint)
             return false;
         }
 
-        if ((nextStepindex == m_orderedSteps.front()) && (std::abs(velocityAtMergePoint) > 0.01)){ //first half step
+        if ((nextStepindex == m_orderedSteps.front()) && (m_left.getSteps().front().impactTime != m_right.getSteps().front().impactTime)) { //first half step
             //Timings
             switchTime = (m_switchPercentage/(1 - (m_switchPercentage/2.0)) * stepTime)/2.0; //half switch
         } else { //general case
@@ -875,7 +875,7 @@ bool FeetInterpolator::interpolate(const FootPrint &left, const FootPrint &right
         return false;
     }
 
-    if (!createPhasesTimings(weightInLeftAtMergePoint.initialVelocity)){
+    if (!createPhasesTimings()){
         std::cerr << "[FEETINTERPOLATOR] Failed while creating the standing periods." << std::endl;
         return false;
     }
