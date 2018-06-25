@@ -310,7 +310,7 @@ UnicyclePlanner::UnicyclePlanner()
     ,m_maxAngle(iDynTree::deg2rad(45))
     ,m_addTerminalStep(true)
     ,m_startLeft(true)
-    ,m_resetTimings(false)
+    ,m_resetStartingFoot(false)
     ,m_firstStep(false)
     ,m_left(nullptr)
     ,m_right(nullptr)
@@ -511,9 +511,9 @@ void UnicyclePlanner::startWithLeft(bool startLeft)
     m_startLeft = startLeft;
 }
 
-void UnicyclePlanner::resetTimingsIfStill(bool resetTimings)
+void UnicyclePlanner::resetStartingFootIfStill(bool resetStartingFoot)
 {
-    m_resetTimings = resetTimings;
+    m_resetStartingFoot = resetStartingFoot;
 }
 
 bool UnicyclePlanner::computeNewSteps(std::shared_ptr< FootPrint > leftFoot, std::shared_ptr< FootPrint > rightFoot, double initTime)
@@ -710,22 +710,33 @@ bool UnicyclePlanner::computeNewSteps(std::shared_ptr< FootPrint > leftFoot, std
             return false;
         }
 
-        if (m_resetTimings && (numberOfStepsLeft == leftFoot->numberOfSteps()) && (numberOfStepsRight == rightFoot->numberOfSteps())){ //no steps have been added
-            Step lastLeft, lastRight;
+    }
 
-            leftFoot->getLastStep(lastLeft);
-            rightFoot->getLastStep(lastRight);
+    if ((numberOfStepsLeft == leftFoot->numberOfSteps()) && (numberOfStepsRight == rightFoot->numberOfSteps())){ //no steps have been added
+        Step lastLeft, lastRight;
 
-            if (lastLeft.impactTime > lastRight.impactTime){
-                lastRight.impactTime = lastLeft.impactTime;
-                rightFoot->clearLastStep();
-                rightFoot->addStep(lastRight);
-            } else if (lastLeft.impactTime < lastRight.impactTime){
-                lastLeft.impactTime = lastRight.impactTime;
-                leftFoot->clearLastStep();
-                leftFoot->addStep(lastLeft);
+        leftFoot->getLastStep(lastLeft);
+        rightFoot->getLastStep(lastRight);
+
+        if (lastLeft.impactTime > lastRight.impactTime){
+            lastRight.impactTime = lastLeft.impactTime;
+            rightFoot->clearLastStep();
+            rightFoot->addStep(lastRight);
+
+            if (!m_resetStartingFoot) {
+                m_startLeft = false;
+            }
+
+        } else if (lastLeft.impactTime < lastRight.impactTime){
+            lastLeft.impactTime = lastRight.impactTime;
+            leftFoot->clearLastStep();
+            leftFoot->addStep(lastLeft);
+
+            if (!m_resetStartingFoot) {
+                m_startLeft = true;
             }
         }
+
     }
 
     return true;
