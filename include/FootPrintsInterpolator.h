@@ -9,6 +9,7 @@
 #define FOOTPRINTSINTERPOLATOR_H
 
 #include "FootPrint.h"
+#include <StepPhase.h>
 #include "iDynTree/Core/VectorFixSize.h"
 #include "iDynTree/Core/VectorDynSize.h"
 #include "iDynTree/Core/Transform.h"
@@ -17,13 +18,6 @@
 #include <vector>
 
 typedef StepList::const_iterator StepsIndex;
-
-enum class StepPhase{
-    Stance,
-    SwitchIn,
-    SwitchOut,
-    Swing
-};
 
 typedef struct{
     double initialPosition;
