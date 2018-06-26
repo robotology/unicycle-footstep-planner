@@ -16,21 +16,21 @@
 
 class ZMPTrajectoryGenerator::ZMPTrajectoryGeneratorImplementation {
 public:
-    WeightInitialState initialState;
-    std::vector<WeightInitialState> m_initStates;
+    InitialState initialState;
+    std::vector<InitialState> m_initStates;
 
 
     double nominalSwitchTime, maxSwitchTime, maxSwingTime, nominalSwingTime;
-    iDynTree::Vector2 m_leftStanceZMP, m_leftSwitchZMP, m_rightStanceZMP, m_rightSwitchZMP;
+    iDynTree::Vector2 leftStanceZMP, leftSwitchZMP, rightStanceZMP, rightSwitchZMP;
 
     Step previousLeft, previousRight;
 
-    std::vector<double> m_weightInLeft, m_weightInRight;
-    std::vector<double> m_weightInLeftVelocity, m_weightInRightVelocity;
-    std::vector<double> m_weightInLeftAcceleration, m_weightInRightAcceleration;
-    std::vector<iDynTree::Vector2> m_leftZMP, m_rightZMP, m_worldZMP;
-    std::vector<iDynTree::Vector2> m_leftZMPVelocity, m_rightZMPVelocity, m_worldZMPVelocity;
-    std::vector<iDynTree::Vector2> m_leftZMPAcceleration, m_rightZMPAcceleration, m_worldZMPAcceleration;
+    std::vector<double> weightInLeft, weightInRight;
+    std::vector<double> weightInLeftVelocity, weightInRightVelocity;
+    std::vector<double> weightInLeftAcceleration, weightInRightAcceleration;
+    std::vector<iDynTree::Vector2> leftZMP, rightZMP, worldZMP;
+    std::vector<iDynTree::Vector2> leftZMPVelocity, rightZMPVelocity, worldZMPVelocity;
+    std::vector<iDynTree::Vector2> leftZMPAcceleration, rightZMPAcceleration, worldZMPAcceleration;
 
     bool initialWeightSpecified = false, previousStepsSpecified = false;
 
@@ -351,113 +351,153 @@ public:
         return H * pos3D(xy);
     }
 
-//    void computeGlobalZMP(double dT, const std::vector<size_t>& phaseShift, const std::vector<const Step*>& orderedSteps) {
-//        //NOTE This must be called after that both the local ZMPs, the weight portions and the feet are computed
-//        iDynTree::Position leftWorldZMP, rightWorldZMP;
-//        iDynTree::Position leftWorldZMPVelocity, rightWorldZMPVelocity;
-//        iDynTree::Position leftWorldZMPAcceleration, rightWorldZMPAcceleration;
+    void computeGlobalZMP(double initTime, double dT, const std::vector<size_t>& phaseShift, const std::vector<const Step*>& orderedSteps, const FootPrint &left, const FootPrint &right) {
+        //NOTE This must be called after that both the local ZMPs, the weight portions and the feet are computed
+        iDynTree::Position leftWorldZMP, rightWorldZMP;
+        iDynTree::Position leftWorldZMPVelocity, rightWorldZMPVelocity;
+        iDynTree::Position leftWorldZMPAcceleration, rightWorldZMPAcceleration;
 
-//        m_worldZMP.resize(m_leftZMP.size());
-//        m_worldZMPVelocity.resize(m_leftZMPVelocity.size());
-//        m_worldZMPAcceleration.resize(m_leftZMPAcceleration.size());
+        worldZMP.resize(leftZMP.size());
+        worldZMPVelocity.resize(leftZMPVelocity.size());
+        worldZMPAcceleration.resize(leftZMPAcceleration.size());
 
-//        iDynTree::CubicSpline correctionSpline(2);
-//        static iDynTree::VectorDynSize correctionBuffer(2), timeBuffer(2);
+        iDynTree::CubicSpline correctionSpline(2);
+        static iDynTree::VectorDynSize correctionBuffer(2), timeBuffer(2);
 
-//        correctionBuffer(0) = 1.0;
-//        timeBuffer(0) = 0.0;
-//        correctionBuffer(1) = 0.0;
-//        timeBuffer(1) = phaseShift[1] * dT;
-//        correctionSpline.setInitialConditions(0.0, 0.0);
-//        correctionSpline.setFinalConditions(0.0, 0.0);
-//        correctionSpline.setData(timeBuffer, correctionBuffer);
+        correctionBuffer(0) = 1.0;
+        timeBuffer(0) = 0.0;
+        correctionBuffer(1) = 0.0;
+        timeBuffer(1) = phaseShift[1] * dT;
+        correctionSpline.setInitialConditions(0.0, 0.0);
+        correctionSpline.setFinalConditions(0.0, 0.0);
+        correctionSpline.setData(timeBuffer, correctionBuffer);
 
-//        iDynTree::Transform oldLeftH, oldRightH;
-//        oldLeftH.setPosition(pos3D(previousLeft.position));
-//        oldLeftH.setRotation(iDynTree::Rotation::RotZ(previousLeft.angle));
-//        oldRightH.setPosition(pos3D(previousRight.position));
-//        oldRightH.setRotation(iDynTree::Rotation::RotZ(previousRight.angle));
-//        iDynTree::Position deltaL, deltaR;
+        iDynTree::Transform oldLeftH, oldRightH;
+        oldLeftH.setPosition(pos3D(previousLeft.position));
+        oldLeftH.setRotation(iDynTree::Rotation::RotZ(previousLeft.angle));
+        oldRightH.setPosition(pos3D(previousRight.position));
+        oldRightH.setRotation(iDynTree::Rotation::RotZ(previousRight.angle));
+        iDynTree::Position deltaL, deltaR;
 
-
-//        double correction = 0.0, correctionVelocity = 0.0, correctionAcceleration = 0.0;
-
-//        for (size_t instant = 0; instant < m_leftZMP.size(); ++instant){
-
-//            leftWorldZMP = pos3D(m_leftTrajectory[instant], m_leftZMP[instant]);
-//            rightWorldZMP = pos3D(m_rightTrajectory[instant], m_rightZMP[instant]);
-
-//            if (instant < phaseShift[1]){
-//                correction = correctionSpline.evaluatePoint(instant*m_dT, correctionVelocity, correctionAcceleration);
-//            } else {
-//                correction = 0.0;
-//                correctionVelocity = 0.0;
-//                correctionAcceleration = 0.0;
-//            }
-
-//            if (instant < phaseShift[1]){ //first half switch
-//                deltaL = pos3D(oldLeftH, m_leftZMP[instant]) - leftWorldZMP;
-//                deltaR = pos3D(oldRightH, m_rightZMP[instant]) - rightWorldZMP;
-//                for (unsigned int i = 0; i < 2; ++i){
-//                    m_worldZMP[instant](i) = m_weightInLeft[instant] * (leftWorldZMP(i) + correction * deltaL(i)) +
-//                            m_weightInRight[instant] * (rightWorldZMP(i) + correction * deltaR(i));
-//                }
-//            } else {
-//                for (unsigned int i = 0; i < 2; ++i){
-//                    m_worldZMP[instant](i) = m_weightInLeft[instant] * leftWorldZMP(i) + m_weightInRight[instant] * rightWorldZMP(i);
-//                }
-//            }
+        std::string leftName = left.getFootName();
+        std::string rightName = right.getFootName();
+        assert(leftName != rightName);
 
 
-//            leftWorldZMPVelocity = pos3D(m_leftTrajectory[instant], m_leftZMPVelocity[instant]);
-//            rightWorldZMPVelocity = pos3D(m_rightTrajectory[instant], m_rightZMPVelocity[instant]);
+        double correction = 0.0, correctionVelocity = 0.0, correctionAcceleration = 0.0;
+        size_t currentLeftIndex = orderedSteps.size() - 1, currentRightIndex = orderedSteps.size() - 1;
 
-//            if (instant < phaseShift[1]){
-//                for (unsigned int i = 0; i < 2; ++i){ //NOTE!! HERE WE ARE ASSUMING THAT NEITHER THE FEET, NOR THE LOCAL ZMPs ARE MOVING (only for the first phase)
-//                    m_worldZMPVelocity[instant](i) = m_weightInLeftVelocity[instant] * (leftWorldZMP(i) + correction * deltaL(i)) +
-//                            m_weightInLeft[instant] * correctionVelocity * deltaL(i) +
-//                            m_weightInRightVelocity[instant] * (rightWorldZMP(i) + correction * deltaR(i)) +
-//                            m_weightInRight[instant] * correctionVelocity * deltaR(i);
-//                }
-//            } else {
-//                for (unsigned int i = 0; i < 2; ++i){
-//                    m_worldZMPVelocity[instant](i) = m_weightInLeftVelocity[instant] * leftWorldZMP(i) +
-//                            m_weightInLeft[instant] * leftWorldZMPVelocity(i) +
-//                            m_weightInRightVelocity[instant] * rightWorldZMP(i) +
-//                            m_weightInRight[instant] * rightWorldZMPVelocity(i);
-//                }
-//            }
+        while (orderedSteps[currentLeftIndex]->footName != leftName) { //find last left step (there should be at least one left step)
+            currentLeftIndex--;
+        }
 
-//            leftWorldZMPAcceleration = pos3D(m_leftTrajectory[instant], m_leftZMPAcceleration[instant]);
-//            rightWorldZMPAcceleration = pos3D(m_rightTrajectory[instant], m_rightZMPAcceleration[instant]);
+        while (orderedSteps[currentRightIndex]->footName != rightName) { //find last left step (there should be at least one left step)
+            currentRightIndex--;
+        }
 
-//            if (instant < phaseShift[1]){
-//                for (unsigned int i = 0; i < 2; ++i){ //NOTE!! HERE WE ARE ASSUMING THAT NEITHER THE FEET, NOR THE LOCAL ZMPs ARE MOVING (only for the first phase)
-//                    m_worldZMPAcceleration[instant](i) = m_weightInLeftAcceleration[instant] * (leftWorldZMP(i) + correction * deltaL(i)) +
-//                            2 * m_weightInLeftVelocity[instant] * correctionVelocity * deltaL(i) +
-//                            m_weightInLeft[instant] * correctionAcceleration * deltaL(i) +
-//                            m_weightInRightAcceleration[instant] * (rightWorldZMP(i) + correction * deltaR(i)) +
-//                            2 * m_weightInRightVelocity[instant] * correctionVelocity * deltaR(i) +
-//                            m_weightInRight[instant] * correctionAcceleration * deltaR(i);
-//                }
-//            } else {
-//                for (unsigned int i = 0; i < 2; ++i){
-//                    m_worldZMPAcceleration[instant](i) = m_weightInLeftAcceleration[instant] * leftWorldZMP(i) +
-//                            2 * m_weightInLeftVelocity[instant] * leftWorldZMPVelocity(i) +
-//                            m_weightInLeft[instant] * leftWorldZMPAcceleration(i) +
-//                            m_weightInRightAcceleration[instant] * rightWorldZMP(i) +
-//                            2 * m_weightInRightVelocity[instant] * rightWorldZMPVelocity(i) +
-//                            m_weightInRight[instant] * rightWorldZMPAcceleration(i);
-//                }
-//            }
-//        }
-//    }
+        iDynTree::Transform leftTransform, rightTransform;
+
+        size_t instant;
+        double currentTime;
+        for (size_t reverseInstant = 0; reverseInstant < leftZMP.size(); ++reverseInstant){
+
+            instant = leftZMP.size() - 1 - reverseInstant; //spanning backward, so that it is easier to undestand which is the foot position
+
+            currentTime = instant * dT + initTime;
+
+            if (orderedSteps[currentLeftIndex]->impactTime > currentTime) {
+                while ((orderedSteps[currentLeftIndex]->footName != leftName) || (orderedSteps[currentLeftIndex]->impactTime > currentTime)) {
+                    currentLeftIndex--;
+                }
+            }
+
+            leftTransform.setPosition(pos3D(orderedSteps[currentLeftIndex]->position));
+            leftTransform.setRotation(iDynTree::Rotation::RPY(0.0, 0.0, orderedSteps[currentLeftIndex]->angle));
+
+            if (orderedSteps[currentRightIndex]->impactTime > currentTime) {
+                while ((orderedSteps[currentRightIndex]->footName != rightName) || (orderedSteps[currentRightIndex]->impactTime > currentTime)) {
+                    currentRightIndex--;
+                }
+            }
+
+            rightTransform.setPosition(pos3D(orderedSteps[currentRightIndex]->position));
+            rightTransform.setRotation(iDynTree::Rotation::RPY(0.0, 0.0, orderedSteps[currentRightIndex]->angle));
+
+
+            leftWorldZMP = pos3D(leftTransform, leftZMP[instant]);
+            rightWorldZMP = pos3D(rightTransform, rightZMP[instant]);
+
+            if (instant < phaseShift[1]){
+                correction = correctionSpline.evaluatePoint(instant*dT, correctionVelocity, correctionAcceleration);
+            } else {
+                correction = 0.0;
+                correctionVelocity = 0.0;
+                correctionAcceleration = 0.0;
+            }
+
+            if (instant < phaseShift[1]){ //first half switch
+                deltaL = pos3D(oldLeftH, leftZMP[instant]) - leftWorldZMP;
+                deltaR = pos3D(oldRightH, rightZMP[instant]) - rightWorldZMP;
+                for (unsigned int i = 0; i < 2; ++i){
+                    worldZMP[instant](i) = weightInLeft[instant] * (leftWorldZMP(i) + correction * deltaL(i)) +
+                            weightInRight[instant] * (rightWorldZMP(i) + correction * deltaR(i));
+                }
+            } else {
+                for (unsigned int i = 0; i < 2; ++i){
+                    worldZMP[instant](i) = weightInLeft[instant] * leftWorldZMP(i) + weightInRight[instant] * rightWorldZMP(i);
+                }
+            }
+
+
+            leftWorldZMPVelocity = pos3D(leftTransform, leftZMPVelocity[instant]);
+            rightWorldZMPVelocity = pos3D(rightTransform, rightZMPVelocity[instant]);
+
+            if (instant < phaseShift[1]){
+                for (unsigned int i = 0; i < 2; ++i){ //NOTE!! HERE WE ARE ASSUMING THAT NEITHER THE FEET, NOR THE LOCAL ZMPs ARE MOVING (only for the first phase)
+                    worldZMPVelocity[instant](i) = weightInLeftVelocity[instant] * (leftWorldZMP(i) + correction * deltaL(i)) +
+                            weightInLeft[instant] * correctionVelocity * deltaL(i) +
+                            weightInRightVelocity[instant] * (rightWorldZMP(i) + correction * deltaR(i)) +
+                            weightInRight[instant] * correctionVelocity * deltaR(i);
+                }
+            } else {
+                for (unsigned int i = 0; i < 2; ++i){
+                    worldZMPVelocity[instant](i) = weightInLeftVelocity[instant] * leftWorldZMP(i) +
+                            weightInLeft[instant] * leftWorldZMPVelocity(i) +
+                            weightInRightVelocity[instant] * rightWorldZMP(i) +
+                            weightInRight[instant] * rightWorldZMPVelocity(i);
+                }
+            }
+
+            leftWorldZMPAcceleration = pos3D(leftTransform, leftZMPAcceleration[instant]);
+            rightWorldZMPAcceleration = pos3D(rightTransform, rightZMPAcceleration[instant]);
+
+            if (instant < phaseShift[1]){
+                for (unsigned int i = 0; i < 2; ++i){ //NOTE!! HERE WE ARE ASSUMING THAT NEITHER THE FEET, NOR THE LOCAL ZMPs ARE MOVING (only for the first phase)
+                    worldZMPAcceleration[instant](i) = weightInLeftAcceleration[instant] * (leftWorldZMP(i) + correction * deltaL(i)) +
+                            2 * weightInLeftVelocity[instant] * correctionVelocity * deltaL(i) +
+                            weightInLeft[instant] * correctionAcceleration * deltaL(i) +
+                            weightInRightAcceleration[instant] * (rightWorldZMP(i) + correction * deltaR(i)) +
+                            2 * weightInRightVelocity[instant] * correctionVelocity * deltaR(i) +
+                            weightInRight[instant] * correctionAcceleration * deltaR(i);
+                }
+            } else {
+                for (unsigned int i = 0; i < 2; ++i){
+                    worldZMPAcceleration[instant](i) = weightInLeftAcceleration[instant] * leftWorldZMP(i) +
+                            2 * weightInLeftVelocity[instant] * leftWorldZMPVelocity(i) +
+                            weightInLeft[instant] * leftWorldZMPAcceleration(i) +
+                            weightInRightAcceleration[instant] * rightWorldZMP(i) +
+                            2 * weightInRightVelocity[instant] * rightWorldZMPVelocity(i) +
+                            weightInRight[instant] * rightWorldZMPAcceleration(i);
+                }
+            }
+        }
+    }
 };
 
 
 
 
-bool ZMPTrajectoryGenerator::computeNewTrajectories(double dT, double switchPercentage, double maxStepTime,
+bool ZMPTrajectoryGenerator::computeNewTrajectories(double initTime, double dT, double switchPercentage, double maxStepTime,
                                                     double nominalStepTime, bool pauseActive, const std::vector<size_t> &mergePoints,
                                                     const FootPrint &left, const FootPrint &right, const std::vector<const Step *> &orderedSteps,
                                                     const std::vector<StepPhase> &lFootPhases, const std::vector<StepPhase> &rFootPhases, const std::vector<size_t> &phaseShift)
@@ -479,26 +519,27 @@ bool ZMPTrajectoryGenerator::computeNewTrajectories(double dT, double switchPerc
     }
 
     if (!(m_pimpl->computeFootWeightPortion(dT, pauseActive, lFootPhases, mergePoints, phaseShift,
-                                            m_pimpl->m_weightInLeft, m_pimpl->m_weightInLeftVelocity, m_pimpl->m_weightInLeftAcceleration))) {
+                                            m_pimpl->weightInLeft, m_pimpl->weightInLeftVelocity, m_pimpl->weightInLeftAcceleration))) {
         std::cerr << "[ZMPTrajectoryGenerator::computeNewTrajectories] Failed while computing the weight percentage on the left foot." << std::endl;
         return false;
     }
 
-    m_pimpl->mirrorWeightPortion(m_pimpl->m_weightInLeft, m_pimpl->m_weightInLeftVelocity, m_pimpl->m_weightInLeftAcceleration,
-                                 m_pimpl->m_weightInRight, m_pimpl->m_weightInRightVelocity, m_pimpl->m_weightInRightAcceleration);
+    m_pimpl->mirrorWeightPortion(m_pimpl->weightInLeft, m_pimpl->weightInLeftVelocity, m_pimpl->weightInLeftAcceleration,
+                                 m_pimpl->weightInRight, m_pimpl->weightInRightVelocity, m_pimpl->weightInRightAcceleration);
 
-    if (!(m_pimpl->computeLocalZMP(dT, pauseActive, lFootPhases, phaseShift, m_pimpl->m_leftStanceZMP, m_pimpl->m_leftSwitchZMP,
-                                   m_pimpl->m_leftZMP, m_pimpl->m_leftZMPVelocity, m_pimpl->m_leftZMPAcceleration))) {
+    if (!(m_pimpl->computeLocalZMP(dT, pauseActive, lFootPhases, phaseShift, m_pimpl->leftStanceZMP, m_pimpl->leftSwitchZMP,
+                                   m_pimpl->leftZMP, m_pimpl->leftZMPVelocity, m_pimpl->leftZMPAcceleration))) {
         std::cerr << "[ZMPTrajectoryGenerator::computeNewTrajectories] Failed while computing the left local ZMP." << std::endl;
         return false;
     }
 
-    if (!(m_pimpl->computeLocalZMP(dT, pauseActive, rFootPhases, phaseShift, m_pimpl->m_rightStanceZMP, m_pimpl->m_rightSwitchZMP,
-                                   m_pimpl->m_rightZMP, m_pimpl->m_rightZMPVelocity, m_pimpl->m_rightZMPAcceleration))) {
+    if (!(m_pimpl->computeLocalZMP(dT, pauseActive, rFootPhases, phaseShift, m_pimpl->rightStanceZMP, m_pimpl->rightSwitchZMP,
+                                   m_pimpl->rightZMP, m_pimpl->rightZMPVelocity, m_pimpl->rightZMPAcceleration))) {
         std::cerr << "[ZMPTrajectoryGenerator::computeNewTrajectories] Failed while computing the right local ZMP." << std::endl;
         return false;
     }
 
+    m_pimpl->computeGlobalZMP(initTime, dT, phaseShift, orderedSteps, left, right);
 
 
     m_pimpl->initialWeightSpecified = false;
@@ -511,10 +552,10 @@ ZMPTrajectoryGenerator::ZMPTrajectoryGenerator()
     : m_pimpl(new ZMPTrajectoryGeneratorImplementation)
 {
     assert(m_pimpl);
-    m_pimpl->m_leftStanceZMP.zero();
-    m_pimpl->m_leftSwitchZMP.zero();
-    m_pimpl->m_rightStanceZMP.zero();
-    m_pimpl->m_rightSwitchZMP.zero();
+    m_pimpl->leftStanceZMP.zero();
+    m_pimpl->leftSwitchZMP.zero();
+    m_pimpl->rightStanceZMP.zero();
+    m_pimpl->rightSwitchZMP.zero();
 }
 
 ZMPTrajectoryGenerator::~ZMPTrajectoryGenerator()
@@ -525,7 +566,7 @@ ZMPTrajectoryGenerator::~ZMPTrajectoryGenerator()
     }
 }
 
-bool ZMPTrajectoryGenerator::setWeightInitialState(const WeightInitialState &initialState)
+bool ZMPTrajectoryGenerator::setWeightInitialState(const InitialState &initialState)
 {
     m_pimpl->initialState = initialState;
     m_pimpl->initialWeightSpecified = true;
@@ -544,14 +585,61 @@ bool ZMPTrajectoryGenerator::setPreviousSteps(const Step &previousLeft, const St
 
 bool ZMPTrajectoryGenerator::setStanceZMPDelta(const iDynTree::Vector2 &offsetInLeftFootFrame, const iDynTree::Vector2 &offsetInRightFootFrame)
 {
-    m_pimpl->m_leftStanceZMP = offsetInLeftFootFrame;
-    m_pimpl->m_rightStanceZMP = offsetInRightFootFrame;
+    m_pimpl->leftStanceZMP = offsetInLeftFootFrame;
+    m_pimpl->rightStanceZMP = offsetInRightFootFrame;
     return true;
 }
 
 bool ZMPTrajectoryGenerator::setInitialSwitchZMPDelta(const iDynTree::Vector2 &offsetInLeftFootFrame, const iDynTree::Vector2 &offsetInRightFootFrame)
 {
-    m_pimpl->m_leftSwitchZMP = offsetInLeftFootFrame;
-    m_pimpl->m_rightSwitchZMP = offsetInRightFootFrame;
+    m_pimpl->leftSwitchZMP = offsetInLeftFootFrame;
+    m_pimpl->rightSwitchZMP = offsetInRightFootFrame;
     return true;
 }
+
+void ZMPTrajectoryGenerator::getWeightPercentage(std::vector<double> &weightInLeft, std::vector<double> &weightInRight) const
+{
+    weightInLeft = m_pimpl->weightInLeft;
+    weightInRight = m_pimpl->weightInRight;
+}
+
+void ZMPTrajectoryGenerator::getWeightPercentage(std::vector<double> &weightInLeft, std::vector<double> &weightInLeftFirstDerivative, std::vector<double> &weightInLeftSecondDerivative, std::vector<double> &weightInRight, std::vector<double> &weightInRightFirstDerivative, std::vector<double> &weightInRightSecondDerivative) const
+{
+    weightInLeft = m_pimpl->weightInLeft;
+    weightInLeftFirstDerivative = m_pimpl->weightInLeftVelocity;
+    weightInLeftSecondDerivative = m_pimpl->weightInLeftAcceleration;
+    weightInRight = m_pimpl->weightInRight;
+    weightInRightFirstDerivative = m_pimpl->weightInRightVelocity;
+    weightInRightSecondDerivative = m_pimpl->weightInRightAcceleration;
+}
+
+void ZMPTrajectoryGenerator::getZMPTrajectory(std::vector<iDynTree::Vector2> &ZMPTrajectory) const
+{
+    ZMPTrajectory = m_pimpl->worldZMP;
+}
+
+void ZMPTrajectoryGenerator::getZMPTrajectory(std::vector<iDynTree::Vector2> &ZMPTrajectory, std::vector<iDynTree::Vector2> &ZMPVelocity, std::vector<iDynTree::Vector2> &ZMPAcceleration) const
+{
+    ZMPTrajectory = m_pimpl->worldZMP;
+    ZMPVelocity = m_pimpl->worldZMPVelocity;
+    ZMPAcceleration = m_pimpl->worldZMPAcceleration;
+}
+
+void ZMPTrajectoryGenerator::getLocalZMPTrajectories(std::vector<iDynTree::Vector2> &leftZMPTrajectory, std::vector<iDynTree::Vector2> &rightZMPTrajectory) const
+{
+    leftZMPTrajectory = m_pimpl->leftZMP;
+    rightZMPTrajectory = m_pimpl->rightZMP;
+}
+
+void ZMPTrajectoryGenerator::getLocalZMPTrajectories(std::vector<iDynTree::Vector2> &leftZMPTrajectory, std::vector<iDynTree::Vector2> &leftZMPVelocity, std::vector<iDynTree::Vector2> &leftZMPAcceleration, std::vector<iDynTree::Vector2> &rightZMPTrajectory, std::vector<iDynTree::Vector2> &rightZMPVelocity, std::vector<iDynTree::Vector2> &rightZMPAcceleration) const
+{
+    leftZMPTrajectory = m_pimpl->leftZMP;
+    rightZMPTrajectory = m_pimpl->rightZMP;
+
+    leftZMPVelocity = m_pimpl->leftZMPVelocity;
+    rightZMPVelocity = m_pimpl->rightZMPVelocity;
+
+    leftZMPAcceleration = m_pimpl->leftZMPAcceleration;
+    rightZMPAcceleration = m_pimpl->rightZMPAcceleration;
+}
+

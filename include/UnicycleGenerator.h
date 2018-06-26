@@ -10,6 +10,8 @@
 
 #include <UnicyclePlanner.h>
 #include <FeetCubicSplineGenerator.h>
+#include <ZMPTrajectoryGenerator.h>
+#include <CoMHeightTrajectoryGenerator.h>
 #include <memory>
 
 class UnicycleGenerator {
@@ -24,8 +26,9 @@ public:
 
     std::shared_ptr<UnicyclePlanner> unicyclePlanner();
 
-    bool interpolate(const FootPrint &left, const FootPrint &right, double initTime, double dT,
-                     const Step &previousLeft, const Step &previousRight); //both feet are supposed to start on the ground at zero velocity. The initTime must be greater than the maximum of the first impactTime of the two feet. The first step has half switch time. The FootPrints needs to be ordered! previousLeft and previouRight are needed to compensate eventual discontinuities on the ZMP when the foot lands not at the specified point
+    bool generate(const FootPrint &left, const FootPrint &right, double initTime, double dT); //both feet are supposed to start on the ground at zero velocity. The initTime must be greater than the maximum of the first impactTime of the two feet. The first step has half switch time. The FootPrints needs to be ordered!
+
+    bool generate(double initTime, double dT, double endTime);
 
     //Settings
     bool setSwitchOverSwingRatio(double ratio); //indeed the swing time cannot be null, while the switch time can be very close to zero (but not zero)
@@ -46,8 +49,9 @@ public:
 
     std::shared_ptr<FeetCubicSplineGenerator> addFeetCubicSplineGenerator();
 
+    std::shared_ptr<ZMPTrajectoryGenerator> addZMPTrajectoryGenerator();
 
-
+    std::shared_ptr<CoMHeightTrajectoryGenerator> addCoMHeightTrajectoryGenerator();
 
 };
 

@@ -18,6 +18,8 @@ typedef StepList::const_iterator StepsIndex;
 class UnicycleGenerator::UnicycleGeneratorImplementation {
 public:
     std::shared_ptr<UnicyclePlanner> planner;
+    std::shared_ptr<FootPrint> leftFootPrint, rightFootPrint;
+
     std::vector<const Step*> orderedSteps;
     std::shared_ptr<std::vector<StepPhase>> lFootPhases, rFootPhases;
     std::vector<size_t> phaseShift; //it stores the indeces when a change of phase occurs. The last element is the dimension of m_lFootPhases. It is common to both feet.
@@ -31,6 +33,8 @@ public:
 
 
     std::shared_ptr<FeetCubicSplineGenerator> feetSplineGenerator = nullptr;
+    std::shared_ptr<ZMPTrajectoryGenerator> zmpGenerator = nullptr;
+    std::shared_ptr<CoMHeightTrajectoryGenerator> comHeightGenerator = nullptr;
 
 
     bool orderSteps(const FootPrint &leftFootPrint, const FootPrint &rightFootPrint) {
@@ -214,6 +218,12 @@ UnicycleGenerator::UnicycleGenerator()
 {
     assert(m_pimpl);
     m_pimpl->planner = std::make_shared<UnicyclePlanner>();
+
+    m_pimpl->leftFootPrint = std::make_shared<FootPrint>();
+    m_pimpl->leftFootPrint->setFootName("left");
+
+    m_pimpl->rightFootPrint = std::make_shared<FootPrint>();
+    m_pimpl->rightFootPrint->setFootName("right");
 }
 
 UnicycleGenerator::~UnicycleGenerator()
@@ -229,20 +239,25 @@ std::shared_ptr<UnicyclePlanner> UnicycleGenerator::unicyclePlanner()
     return m_pimpl->planner;
 }
 
-bool UnicycleGenerator::interpolate(const FootPrint &left, const FootPrint &right, double initTime, double dT, const Step &previousLeft, const Step &previousRight)
+bool UnicycleGenerator::generate(const FootPrint &left, const FootPrint &right, double initTime, double dT)
 {
     if (left.numberOfSteps() < 1){
-        std::cerr << "[UnicycleGenerator::interpolate] No steps in the left pointer." << std::endl;
+        std::cerr << "[UnicycleGenerator::generate] No steps in the left pointer." << std::endl;
         return false;
     }
 
     if (right.numberOfSteps() < 1){
-        std::cerr << "[UnicycleGenerator::interpolate] No steps in the right pointer." << std::endl;
+        std::cerr << "[UnicycleGenerator::generate] No steps in the right pointer." << std::endl;
+        return false;
+    }
+
+    if (left.getFootName() == right.getFootName()) {
+        std::cerr << "[UnicycleGenerator::generate] The left and right footprints are expected to have different name." << std::endl;
         return false;
     }
 
     if (dT <= 0){
-        std::cerr << "[UnicycleGenerator::interpolate] The dT is supposed to be positive." << std::endl;
+        std::cerr << "[UnicycleGenerator::generate] The dT is supposed to be positive." << std::endl;
         return false;
     }
 
@@ -250,13 +265,13 @@ bool UnicycleGenerator::interpolate(const FootPrint &left, const FootPrint &righ
     double startRight = right.getSteps().front().impactTime;
 
     if (initTime < std::max(startLeft, startRight)){
-        std::cerr << "[UnicycleGenerator::interpolate] The initTime must be greater or equal than the maximum of the first impactTime of the two feet."
+        std::cerr << "[UnicycleGenerator::generate] The initTime must be greater or equal than the maximum of the first impactTime of the two feet."
                   << std::endl;
         return false;
     }
 
     if (m_pimpl->switchPercentage < 0){
-        std::cerr << "[FEETINTERPOLATOR] First you have to define the ratio between switch and swing phases." << std::endl;
+        std::cerr << "[UnicycleGenerator::generate] First you have to define the ratio between switch and swing phases." << std::endl;
         return false;
     }
 
@@ -267,12 +282,12 @@ bool UnicycleGenerator::interpolate(const FootPrint &left, const FootPrint &righ
     m_pimpl->initTime = initTime;
 
     if (!(m_pimpl->orderSteps(left, right))){
-        std::cerr << "[UnicycleGenerator::interpolate] Failed while ordering the steps." << std::endl;
+        std::cerr << "[UnicycleGenerator::generate] Failed while ordering the steps." << std::endl;
         return false;
     }
 
     if (!(m_pimpl->createPhasesTimings(left, right))){
-        std::cerr << "[UnicycleGenerator::interpolate] Failed while creating the standing periods." << std::endl;
+        std::cerr << "[UnicycleGenerator::generate] Failed while creating the standing periods." << std::endl;
         return false;
     }
 
@@ -284,38 +299,46 @@ bool UnicycleGenerator::interpolate(const FootPrint &left, const FootPrint &righ
         if (!(m_pimpl->feetSplineGenerator->computeNewTrajectories(dT, left, right, m_pimpl->orderedSteps,
                                                                    *(m_pimpl->lFootPhases), *(m_pimpl->rFootPhases),
                                                                    m_pimpl->phaseShift))) {
+            std::cerr << "[UnicycleGenerator::generate] Failed while computing new feet trajectories." << std::endl;
             return false;
         }
     }
 
-//    if (!computeFootWeightPortion(*m_lFootPhases, weightInLeftAtMergePoint,
-//                                  m_weightInLeft, m_weightInLeftVelocity, m_weightInLeftAcceleration)){
-//        std::cerr << "[FEETINTERPOLATOR] Failed while computing the weight percentage on the left foot." << std::endl;
-//        return false;
-//    }
+    if (m_pimpl->zmpGenerator) {
+        if (!(m_pimpl->zmpGenerator->computeNewTrajectories(initTime, dT, m_pimpl->switchPercentage, m_pimpl->maxStepTime,
+                                                            m_pimpl->nominalStepTime, m_pimpl->pauseActive, m_pimpl->mergePoints,
+                                                            left, right, m_pimpl->orderedSteps, *(m_pimpl->lFootPhases),
+                                                            *(m_pimpl->rFootPhases), m_pimpl->phaseShift))) {
+            std::cerr << "[UnicycleGenerator::generate] Failed while computing new ZMP trajectories." << std::endl;
+            return false;
+        }
+    }
 
-//    mirrorWeightPortion(m_weightInLeft, m_weightInLeftVelocity, m_weightInLeftAcceleration,
-//                        m_weightInRight, m_weightInRightVelocity, m_weightInRightAcceleration);
-
-//    if (!computeLocalZMP(*m_lFootPhases, m_leftStanceZMP, m_leftSwitchZMP, m_leftZMP, m_leftZMPVelocity, m_leftZMPAcceleration)){
-//        std::cerr << "[FEETINTERPOLATOR] Failed while computing the left local ZMP." << std::endl;
-//        return false;
-//    }
-
-//    if (!computeLocalZMP(*m_rFootPhases, m_rightStanceZMP, m_rightSwitchZMP, m_rightZMP, m_rightZMPVelocity, m_rightZMPAcceleration)){
-//        std::cerr << "[FEETINTERPOLATOR] Failed while computing the left local ZMP." << std::endl;
-//        return false;
-//    }
-
-//    computeGlobalZMP(previousLeft, previousRight);
-
-
-//    if (!computeCoMHeightTrajectory()){
-//        std::cerr << "[FEETINTERPOLATOR] Failed while computing the CoM height trajectories." << std::endl;
-//        return false;
-//    }
+    if (m_pimpl->comHeightGenerator) {
+        if (!(m_pimpl->comHeightGenerator->computeNewTrajectories(dT, *(m_pimpl->lFootPhases), m_pimpl->phaseShift))) {
+            std::cerr << "[UnicycleGenerator::generate] Failed while computing new CoM height trajectory." << std::endl;
+            return false;
+        }
+    }
 
     return true;
+}
+
+bool UnicycleGenerator::generate(double initTime, double dT, double endTime)
+{
+    m_pimpl->leftFootPrint->clearSteps();
+    m_pimpl->rightFootPrint->clearSteps();
+
+    if (!(m_pimpl->planner->setEndTime(endTime))) {
+        std::cerr << "[UnicycleGenerator::generate] Failed while setting endTime." << std::endl;
+        return false;
+    }
+
+    if (!(m_pimpl->planner->computeNewSteps(m_pimpl->leftFootPrint, m_pimpl->rightFootPrint, initTime))) {
+        std::cerr << "[UnicycleGenerator::generate] Failed to compute new steps." << std::endl;
+        return false;
+    }
+    return generate(*(m_pimpl->leftFootPrint), *(m_pimpl->rightFootPrint), initTime, dT);
 }
 
 bool UnicycleGenerator::setSwitchOverSwingRatio(double ratio)
@@ -393,6 +416,24 @@ std::shared_ptr<FeetCubicSplineGenerator> UnicycleGenerator::addFeetCubicSplineG
 
     return m_pimpl->feetSplineGenerator;
 
+}
+
+std::shared_ptr<ZMPTrajectoryGenerator> UnicycleGenerator::addZMPTrajectoryGenerator()
+{
+    if (m_pimpl->zmpGenerator == nullptr) {
+        m_pimpl->zmpGenerator.reset(new ZMPTrajectoryGenerator());
+    }
+
+    return m_pimpl->zmpGenerator;
+}
+
+std::shared_ptr<CoMHeightTrajectoryGenerator> UnicycleGenerator::addCoMHeightTrajectoryGenerator()
+{
+    if (m_pimpl->comHeightGenerator == nullptr) {
+        m_pimpl->comHeightGenerator.reset(new CoMHeightTrajectoryGenerator());
+    }
+
+    return m_pimpl->comHeightGenerator;
 }
 
 
