@@ -22,7 +22,7 @@ typedef StepList::const_iterator StepsIndex;
 
 class [[deprecated("use UnicycleGenerator instead.")]] FeetInterpolator {
 
-    std::vector<const Step*> m_orderedSteps;
+    std::vector<StepsIndex> m_orderedSteps;
     FootPrint m_left, m_right;
 
     //Step phase related variables
@@ -58,7 +58,7 @@ class [[deprecated("use UnicycleGenerator instead.")]] FeetInterpolator {
     std::vector<double> m_CoMHeightTrajectory, m_CoMHeightVelocity, m_CoMHeightAcceleration;
 
     bool orderSteps();
-    bool createPhasesTimings();
+    bool createPhasesTimings(const double velocityAtMergePoint);
     void fillFeetStandingPeriodsVectors();
     void fillLeftFixedVector();
     bool interpolateFoot(const std::vector<StepPhase> &stepPhase, const FootPrint &foot, std::vector<iDynTree::Transform> &output);

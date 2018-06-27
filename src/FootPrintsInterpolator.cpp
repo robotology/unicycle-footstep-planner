@@ -13,17 +13,17 @@
 bool FeetInterpolator::orderSteps()
 {
     m_orderedSteps.clear();
-    m_orderedSteps.reserve(m_left.numberOfSteps() + m_right.numberOfSteps());
+    m_orderedSteps.reserve(m_left.numberOfSteps() + m_right.numberOfSteps() - 2);
     if (m_orderedSteps.capacity() > 0){
-        for (StepsIndex footL = m_left.getSteps().cbegin(); footL != m_left.getSteps().cend(); ++footL)
-            m_orderedSteps.push_back(&*footL);
-        for (StepsIndex footR = m_right.getSteps().cbegin(); footR != m_right.getSteps().cend(); ++footR)
-            m_orderedSteps.push_back(&*footR);
+        for (StepsIndex footL = m_left.getSteps().cbegin() + 1; footL != m_left.getSteps().cend(); ++footL)
+            m_orderedSteps.push_back(footL);
+        for (StepsIndex footR = m_right.getSteps().cbegin() + 1; footR != m_right.getSteps().cend(); ++footR)
+            m_orderedSteps.push_back(footR);
 
         std::sort(m_orderedSteps.begin(), m_orderedSteps.end(),
-                  [](const Step *a, const Step *b) { return a->impactTime < b->impactTime;});
-        auto duplicate = std::adjacent_find(m_orderedSteps.begin() + 2, m_orderedSteps.end(),
-                                            [](const Step *a, const Step *b) { return a->impactTime == b->impactTime;});
+                  [](const StepsIndex&a, const StepsIndex&b) { return a->impactTime < b->impactTime;});
+        auto duplicate = std::adjacent_find(m_orderedSteps.begin(), m_orderedSteps.end(),
+                                            [](const StepsIndex&a, const StepsIndex&b) { return a->impactTime == b->impactTime;});
 
         if (duplicate != m_orderedSteps.end()){
             std::cerr << "[FEETINTERPOLATOR] Two entries of the FootPrints pointers have the same impactTime. (The head is not considered)"
@@ -35,7 +35,7 @@ bool FeetInterpolator::orderSteps()
     return true;
 }
 
-bool FeetInterpolator::createPhasesTimings()
+bool FeetInterpolator::createPhasesTimings(const double velocityAtMergePoint)
 {
     //NOTE this method must be called after orderSteps to work properly
     if (m_switchPercentage < 0){
@@ -54,7 +54,7 @@ bool FeetInterpolator::createPhasesTimings()
 
     std::shared_ptr<std::vector<StepPhase> > swing, stance;
 
-    if (m_orderedSteps.size() == 2){
+    if (m_orderedSteps.size() == 0){
         size_t endSwitchSamples = static_cast<size_t>(std::round(m_endSwitch/m_dT)); //last shift to the center
 
         m_lFootPhases->reserve(endSwitchSamples);
@@ -80,10 +80,10 @@ bool FeetInterpolator::createPhasesTimings()
     double stepTime, switchTime, pauseTime;
     size_t stepSamples, switchSamples, swingSamples;
 
-    const Step* leftIndex = &*(m_left.getSteps().cbegin() + 1);
-    const Step* rightIndex = &*(m_right.getSteps().cbegin() + 1);
-    size_t orderedStepIndex = 2;
-    const Step* nextStepindex;
+    StepsIndex leftIndex = m_left.getSteps().cbegin() + 1;
+    StepsIndex rightIndex = m_right.getSteps().cbegin() + 1;
+    size_t orderedStepIndex = 0;
+    StepsIndex nextStepindex;
     double previouStepTime = m_initTime;
 
     while (orderedStepIndex < m_orderedSteps.size()){
@@ -95,7 +95,7 @@ bool FeetInterpolator::createPhasesTimings()
             return false;
         }
 
-        if ((orderedStepIndex == 2) && (m_left.getSteps().front().impactTime != m_right.getSteps().front().impactTime)) { //first half step
+        if ((nextStepindex == m_orderedSteps.front()) && (std::abs(velocityAtMergePoint) > 0.01)){ //first half step
             //Timings
             switchTime = (m_switchPercentage/(1 - (m_switchPercentage/2.0)) * stepTime)/2.0; //half switch
         } else { //general case
@@ -130,7 +130,7 @@ bool FeetInterpolator::createPhasesTimings()
         stance->insert(stance->end(), switchSamples, StepPhase::SwitchIn);
         m_phaseShift.push_back(m_phaseShift.back() + switchSamples); //it stores the indeces when a change of phase occurs
 
-        if (orderedStepIndex != 2){ //add no merge point in the first half switch
+        if (nextStepindex != m_orderedSteps.front()){ //add no merge point in the first half switch
             //bool pause = m_pauseActive && (switchTime > m_maxSwitchTime); //if true, it will pause in the middle
             size_t mergePoint;
             if (pause){
@@ -875,7 +875,7 @@ bool FeetInterpolator::interpolate(const FootPrint &left, const FootPrint &right
         return false;
     }
 
-    if (!createPhasesTimings()){
+    if (!createPhasesTimings(weightInLeftAtMergePoint.initialVelocity)){
         std::cerr << "[FEETINTERPOLATOR] Failed while creating the standing periods." << std::endl;
         return false;
     }
