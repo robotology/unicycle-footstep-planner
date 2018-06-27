@@ -7,6 +7,7 @@
 
 #include <cassert>
 #include <iostream>
+#include <mutex>
 
 #include <CoMHeightTrajectoryGenerator.h>
 #include <iDynTree/Core/VectorDynSize.h>
@@ -21,14 +22,13 @@ public:
     iDynTree::VectorDynSize hBuffer, timesBuffer;
     iDynTree::CubicSpline heightSpline;
 
-    bool computeCoMHeightTrajectory() {
-
-    }
-
+    std::mutex mutex;
 };
 
 bool CoMHeightTrajectoryGenerator::computeNewTrajectories(double dT, const std::vector<StepPhase>& leftPhases, const std::vector<size_t>& phaseShift)
 {
+    std::lock_guard<std::mutex> guard(m_pimpl->mutex);
+
     //NOTE this must be called after createPhasesTimings
     if (m_pimpl->CoMHeight < 0){
         std::cerr << "[CoMHeightTrajectoryGenerator::computeNewTrajectories] First you have to set the nominal CoM height." << std::endl;
@@ -106,14 +106,12 @@ CoMHeightTrajectoryGenerator::CoMHeightTrajectoryGenerator()
 
 CoMHeightTrajectoryGenerator::~CoMHeightTrajectoryGenerator()
 {
-    if (m_pimpl) {
-        delete m_pimpl;
-        m_pimpl = nullptr;
-    }
 }
 
 bool CoMHeightTrajectoryGenerator::setCoMHeightSettings(double comHeight, double comHeightStanceDelta)
 {
+    std::lock_guard<std::mutex> guard(m_pimpl->mutex);
+
     if (comHeight < 0){
         std::cerr << "[CoMHeightTrajectoryGenerator::setCoMHeightSettings] The comHeight is supposed to be positive." << std::endl;
         return false;
@@ -132,15 +130,21 @@ bool CoMHeightTrajectoryGenerator::setCoMHeightSettings(double comHeight, double
 
 void CoMHeightTrajectoryGenerator::getCoMHeightTrajectory(std::vector<double> &CoMHeightTrajectory) const
 {
+    std::lock_guard<std::mutex> guard(m_pimpl->mutex);
+
     CoMHeightTrajectory = m_pimpl->CoMHeightTrajectory;
 }
 
 void CoMHeightTrajectoryGenerator::getCoMHeightVelocity(std::vector<double> &CoMHeightVelocity) const
 {
+    std::lock_guard<std::mutex> guard(m_pimpl->mutex);
+
     CoMHeightVelocity = m_pimpl->CoMHeightVelocity;
 }
 
 void CoMHeightTrajectoryGenerator::getCoMHeightAccelerationProfile(std::vector<double> &CoMHeightAccelerationProfile) const
 {
+    std::lock_guard<std::mutex> guard(m_pimpl->mutex);
+
     CoMHeightAccelerationProfile = m_pimpl->CoMHeightAcceleration;
 }

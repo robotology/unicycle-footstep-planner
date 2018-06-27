@@ -11,13 +11,14 @@
 #include <StepPhase.h>
 #include <cstddef>
 #include <vector>
+#include <memory>
 
 class CoMHeightTrajectoryGenerator {
 
     friend class UnicycleGenerator;
 
     class CoMHeightTrajectoryGeneratorImplementation;
-    CoMHeightTrajectoryGeneratorImplementation *m_pimpl;
+    std::unique_ptr<CoMHeightTrajectoryGeneratorImplementation> m_pimpl;
 
     bool computeNewTrajectories(double dT, const std::vector<StepPhase> &leftPhases, const std::vector<size_t> &phaseShift);
 

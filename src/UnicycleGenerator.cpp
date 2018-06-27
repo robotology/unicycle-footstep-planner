@@ -12,6 +12,7 @@
 #include <cassert>
 #include <algorithm>
 #include <cstddef>
+#include <mutex>
 
 typedef StepList::const_iterator StepsIndex;
 
@@ -35,6 +36,8 @@ public:
     std::shared_ptr<FeetCubicSplineGenerator> feetSplineGenerator = nullptr;
     std::shared_ptr<ZMPTrajectoryGenerator> zmpGenerator = nullptr;
     std::shared_ptr<CoMHeightTrajectoryGenerator> comHeightGenerator = nullptr;
+
+    std::mutex mutex;
 
 
     bool orderSteps(const FootPrint &leftFootPrint, const FootPrint &rightFootPrint) {
@@ -210,6 +213,19 @@ public:
         }
     }
 
+    bool clearAndAddMeasuredStep(std::shared_ptr<FootPrint> foot, Step& previousStep, const iDynTree::Vector2 &measuredPosition, double measuredAngle) {
+        foot->clearSteps();
+
+        Step correctedStep = previousStep;
+
+        correctedStep.position = measuredPosition;
+        iDynTree::Rotation initialRotation = iDynTree::Rotation::RotZ(previousStep.angle);
+        iDynTree::Rotation measuredRotation = iDynTree::Rotation::RotZ(measuredAngle);
+        correctedStep.angle = previousStep.angle + (initialRotation.inverse()*measuredRotation).asRPY()(2);
+
+        return foot->addStep(correctedStep);
+    }
+
 
 };
 
@@ -228,10 +244,6 @@ UnicycleGenerator::UnicycleGenerator()
 
 UnicycleGenerator::~UnicycleGenerator()
 {
-    if (m_pimpl) {
-        delete m_pimpl;
-        m_pimpl = nullptr;
-    }
 }
 
 std::shared_ptr<UnicyclePlanner> UnicycleGenerator::unicyclePlanner()
@@ -241,6 +253,8 @@ std::shared_ptr<UnicyclePlanner> UnicycleGenerator::unicyclePlanner()
 
 bool UnicycleGenerator::generate(const FootPrint &left, const FootPrint &right, double initTime, double dT)
 {
+    std::lock_guard<std::mutex> guard(m_pimpl->mutex);
+
     if (left.numberOfSteps() < 1){
         std::cerr << "[UnicycleGenerator::generate] No steps in the left pointer." << std::endl;
         return false;
@@ -296,8 +310,7 @@ bool UnicycleGenerator::generate(const FootPrint &left, const FootPrint &right, 
     m_pimpl->fillLeftFixedVector();
 
     if (m_pimpl->feetSplineGenerator) {
-        if (!(m_pimpl->feetSplineGenerator->computeNewTrajectories(dT, left, right, m_pimpl->orderedSteps,
-                                                                   *(m_pimpl->lFootPhases), *(m_pimpl->rFootPhases),
+        if (!(m_pimpl->feetSplineGenerator->computeNewTrajectories(dT, left, right,*(m_pimpl->lFootPhases), *(m_pimpl->rFootPhases),
                                                                    m_pimpl->phaseShift))) {
             std::cerr << "[UnicycleGenerator::generate] Failed while computing new feet trajectories." << std::endl;
             return false;
@@ -326,23 +339,188 @@ bool UnicycleGenerator::generate(const FootPrint &left, const FootPrint &right, 
 
 bool UnicycleGenerator::generate(double initTime, double dT, double endTime)
 {
-    m_pimpl->leftFootPrint->clearSteps();
-    m_pimpl->rightFootPrint->clearSteps();
+    {
+        std::lock_guard<std::mutex> guard(m_pimpl->mutex);
 
-    if (!(m_pimpl->planner->setEndTime(endTime))) {
-        std::cerr << "[UnicycleGenerator::generate] Failed while setting endTime." << std::endl;
-        return false;
+        m_pimpl->leftFootPrint->clearSteps();
+        m_pimpl->rightFootPrint->clearSteps();
+
+        if (!(m_pimpl->planner->computeNewSteps(m_pimpl->leftFootPrint, m_pimpl->rightFootPrint, initTime, endTime))) {
+            std::cerr << "[UnicycleGenerator::generate] Failed to compute new steps." << std::endl;
+            return false;
+        }
+    }
+    return generate(*(m_pimpl->leftFootPrint), *(m_pimpl->rightFootPrint), initTime, dT);
+}
+
+bool UnicycleGenerator::reGenerate(double initTime, double dT, double endTime)
+{
+    {
+        std::lock_guard<std::mutex> guard(m_pimpl->mutex);
+
+        if (!(m_pimpl->leftFootPrint->keepOnlyPresentStep(initTime))){
+            std::cerr << "[UnicycleGenerator::reGenerate] The initTime is not compatible with previous runs. Call a method generate instead." << std::endl;
+            return false;
+        }
+
+        if (!(m_pimpl->rightFootPrint->keepOnlyPresentStep(initTime))){
+            std::cerr << "[UnicycleGenerator::reGenerate] The initTime is not compatible with previous runs. Call a method generate instead." << std::endl;
+            return false;
+        }
+
+        if (!(m_pimpl->planner->computeNewSteps(m_pimpl->leftFootPrint, m_pimpl->rightFootPrint, initTime, endTime))) {
+            std::cerr << "[UnicycleGenerator::reGenerate] Unicycle planner failed to compute new steps." << std::endl;
+            return false;
+        }
     }
 
-    if (!(m_pimpl->planner->computeNewSteps(m_pimpl->leftFootPrint, m_pimpl->rightFootPrint, initTime))) {
-        std::cerr << "[UnicycleGenerator::generate] Failed to compute new steps." << std::endl;
-        return false;
+    return generate(*(m_pimpl->leftFootPrint), *(m_pimpl->rightFootPrint), initTime, dT);
+}
+
+bool UnicycleGenerator::reGenerate(double initTime, double dT, double endTime, const Step &measuredLeft, const Step &measuredRight)
+{
+    {
+        std::lock_guard<std::mutex> guard(m_pimpl->mutex);
+
+        Step previousL, previousR;
+
+        if (!(m_pimpl->leftFootPrint->keepOnlyPresentStep(initTime))){
+            std::cerr << "[UnicycleGenerator::reGenerate] The initTime is not compatible with previous runs. Call a method generate instead." << std::endl;
+            return false;
+        }
+
+        if (!(m_pimpl->rightFootPrint->keepOnlyPresentStep(initTime))){
+            std::cerr << "[UnicycleGenerator::reGenerate] The initTime is not compatible with previous runs. Call a method generate instead." << std::endl;
+            return false;
+        }
+
+        m_pimpl->leftFootPrint->getLastStep(previousL);
+        m_pimpl->rightFootPrint->getLastStep(previousR);
+
+        m_pimpl->leftFootPrint->clearSteps();
+        m_pimpl->rightFootPrint->clearSteps();
+
+        if (!(m_pimpl->leftFootPrint->addStep(measuredLeft))){
+            std::cerr << "[UnicycleGenerator::reGenerate] The measuredLeft step is invalid." << std::endl;
+            return false;
+        }
+
+        if (!(m_pimpl->rightFootPrint->addStep(measuredRight))){
+            std::cerr << "[UnicycleGenerator::reGenerate] The measuredRight step is invalid." << std::endl;
+            return false;
+        }
+
+        if (!(m_pimpl->planner->computeNewSteps(m_pimpl->leftFootPrint, m_pimpl->rightFootPrint, initTime, endTime))) {
+            std::cerr << "[UnicycleGenerator::reGenerate] Unicycle planner failed to compute new steps." << std::endl;
+            return false;
+        }
+
+        if (m_pimpl->zmpGenerator) {
+            if (!(m_pimpl->zmpGenerator->setPreviousSteps(previousL, previousR))) {
+                std::cerr << "[UnicycleGenerator::reGenerate] Failed to set the previous steps to the ZMP trajectory generator." << std::endl;
+                return false;
+            }
+        }
     }
+
+    return generate(*(m_pimpl->leftFootPrint), *(m_pimpl->rightFootPrint), initTime, dT);
+}
+
+bool UnicycleGenerator::reGenerate(double initTime, double dT, double endTime, bool correctLeft, const iDynTree::Vector2 &measuredPosition, double measuredAngle)
+{
+    {
+        std::lock_guard<std::mutex> guard(m_pimpl->mutex);
+
+        Step previousL, previousR, correctedStep;
+
+        if (!(m_pimpl->leftFootPrint->keepOnlyPresentStep(initTime))){
+            std::cerr << "[UnicycleGenerator::reGenerate] The initTime is not compatible with previous runs. Call a method generate instead." << std::endl;
+            return false;
+        }
+
+        if (!(m_pimpl->rightFootPrint->keepOnlyPresentStep(initTime))){
+            std::cerr << "[UnicycleGenerator::reGenerate] The initTime is not compatible with previous runs. Call a method generate instead." << std::endl;
+            return false;
+        }
+
+        m_pimpl->leftFootPrint->getLastStep(previousL);
+        m_pimpl->rightFootPrint->getLastStep(previousR);
+
+        std::shared_ptr<FootPrint> toBeCorrected = correctLeft ? m_pimpl->leftFootPrint : m_pimpl->rightFootPrint;
+
+        correctedStep = correctLeft ? previousL : previousR;
+
+        if (!(m_pimpl->clearAndAddMeasuredStep(toBeCorrected, correctedStep, measuredPosition, measuredAngle))){
+            std::cerr << "[UnicycleGenerator::reGenerate] Failed to update the steps using the measured value." << std::endl;
+            return false;
+        }
+
+        if (!(m_pimpl->planner->computeNewSteps(m_pimpl->leftFootPrint, m_pimpl->rightFootPrint, initTime, endTime))) {
+            std::cerr << "[UnicycleGenerator::reGenerate] Unicycle planner failed to compute new steps." << std::endl;
+            return false;
+        }
+
+        if (m_pimpl->zmpGenerator) {
+            if (!(m_pimpl->zmpGenerator->setPreviousSteps(previousL, previousR))) {
+                std::cerr << "[UnicycleGenerator::reGenerate] Failed to set the previous steps to the ZMP trajectory generator." << std::endl;
+                return false;
+            }
+        }
+    }
+
+    return generate(*(m_pimpl->leftFootPrint), *(m_pimpl->rightFootPrint), initTime, dT);
+}
+
+bool UnicycleGenerator::reGenerate(double initTime, double dT, double endTime, const iDynTree::Vector2 &measuredLeftPosition, double measuredLeftAngle, const iDynTree::Vector2 &measuredRightPosition, double measuredRightAngle)
+{
+    {
+        std::lock_guard<std::mutex> guard(m_pimpl->mutex);
+
+        Step previousL, previousR;
+
+        if (!(m_pimpl->leftFootPrint->keepOnlyPresentStep(initTime))){
+            std::cerr << "[UnicycleGenerator::reGenerate] The initTime is not compatible with previous runs. Call a method generate instead." << std::endl;
+            return false;
+        }
+
+        if (!(m_pimpl->rightFootPrint->keepOnlyPresentStep(initTime))){
+            std::cerr << "[UnicycleGenerator::reGenerate] The initTime is not compatible with previous runs. Call a method generate instead." << std::endl;
+            return false;
+        }
+
+        m_pimpl->leftFootPrint->getLastStep(previousL);
+        m_pimpl->rightFootPrint->getLastStep(previousR);
+
+        if (!m_pimpl->clearAndAddMeasuredStep(m_pimpl->leftFootPrint, previousL, measuredLeftPosition, measuredLeftAngle)){
+            std::cerr << "[UnicycleGenerator::reGenerate] Failed to update the left steps using the measured value." << std::endl;
+            return false;
+        }
+
+        if (!m_pimpl->clearAndAddMeasuredStep(m_pimpl->rightFootPrint, previousR, measuredRightPosition, measuredRightAngle)){
+            std::cerr << "[UnicycleGenerator::reGenerate] Failed to update the right steps using the measured value." << std::endl;
+            return false;
+        }
+
+        if (!(m_pimpl->planner->computeNewSteps(m_pimpl->leftFootPrint, m_pimpl->rightFootPrint, initTime, endTime))) {
+            std::cerr << "[UnicycleGenerator::reGenerate] Unicycle planner failed to compute new steps." << std::endl;
+            return false;
+        }
+
+        if (m_pimpl->zmpGenerator) {
+            if (!(m_pimpl->zmpGenerator->setPreviousSteps(previousL, previousR))) {
+                std::cerr << "[UnicycleGenerator::reGenerate] Failed to set the previous steps to the ZMP trajectory generator." << std::endl;
+                return false;
+            }
+        }
+    }
+
     return generate(*(m_pimpl->leftFootPrint), *(m_pimpl->rightFootPrint), initTime, dT);
 }
 
 bool UnicycleGenerator::setSwitchOverSwingRatio(double ratio)
 {
+    std::lock_guard<std::mutex> guard(m_pimpl->mutex);
+
     if (ratio <= 0){
         std::cerr << "[UnicycleGenerator::setSwitchOverSwingRatio] The ratio is supposed to be positive." << std::endl;
         return false;
@@ -354,6 +532,8 @@ bool UnicycleGenerator::setSwitchOverSwingRatio(double ratio)
 
 bool UnicycleGenerator::setTerminalHalfSwitchTime(double lastHalfSwitchTime)
 {
+    std::lock_guard<std::mutex> guard(m_pimpl->mutex);
+
     if (lastHalfSwitchTime < 0){
         std::cerr << "[UnicycleGenerator::setTerminalHalfSwitchTime] The lastHalfSwitchTime cannot be negative." << std::endl;
         return false;
@@ -365,6 +545,8 @@ bool UnicycleGenerator::setTerminalHalfSwitchTime(double lastHalfSwitchTime)
 
 bool UnicycleGenerator::setPauseConditions(double maxStepTime, double nominalStepTime)
 {
+    std::lock_guard<std::mutex> guard(m_pimpl->mutex);
+
     if (maxStepTime < 0){
         std::cerr << "[FEETINTERPOLATOR] If the maxStepTime is negative, the robot won't pause in middle stance." << std::endl;
         m_pimpl->pauseActive = false;
@@ -393,23 +575,31 @@ bool UnicycleGenerator::setPauseConditions(double maxStepTime, double nominalSte
 
 void UnicycleGenerator::getFeetStandingPeriods(std::vector<bool> &lFootContacts, std::vector<bool> &rFootContacts) const
 {
+    std::lock_guard<std::mutex> guard(m_pimpl->mutex);
+
     lFootContacts = m_pimpl->lFootContact;
     rFootContacts = m_pimpl->rFootContact;
 }
 
 void UnicycleGenerator::getWhenUseLeftAsFixed(std::vector<bool> &leftIsFixed) const
 {
+    std::lock_guard<std::mutex> guard(m_pimpl->mutex);
+
     leftIsFixed = m_pimpl->leftFixed;
 
 }
 
 void UnicycleGenerator::getMergePoints(std::vector<size_t> &mergePoints) const
 {
+    std::lock_guard<std::mutex> guard(m_pimpl->mutex);
+
     mergePoints = m_pimpl->mergePoints;
 }
 
 std::shared_ptr<FeetCubicSplineGenerator> UnicycleGenerator::addFeetCubicSplineGenerator()
 {
+    std::lock_guard<std::mutex> guard(m_pimpl->mutex);
+
     if (m_pimpl->feetSplineGenerator == nullptr) {
         m_pimpl->feetSplineGenerator.reset(new FeetCubicSplineGenerator());
     }
@@ -420,6 +610,8 @@ std::shared_ptr<FeetCubicSplineGenerator> UnicycleGenerator::addFeetCubicSplineG
 
 std::shared_ptr<ZMPTrajectoryGenerator> UnicycleGenerator::addZMPTrajectoryGenerator()
 {
+    std::lock_guard<std::mutex> guard(m_pimpl->mutex);
+
     if (m_pimpl->zmpGenerator == nullptr) {
         m_pimpl->zmpGenerator.reset(new ZMPTrajectoryGenerator());
     }
@@ -429,6 +621,8 @@ std::shared_ptr<ZMPTrajectoryGenerator> UnicycleGenerator::addZMPTrajectoryGener
 
 std::shared_ptr<CoMHeightTrajectoryGenerator> UnicycleGenerator::addCoMHeightTrajectoryGenerator()
 {
+    std::lock_guard<std::mutex> guard(m_pimpl->mutex);
+
     if (m_pimpl->comHeightGenerator == nullptr) {
         m_pimpl->comHeightGenerator.reset(new CoMHeightTrajectoryGenerator());
     }

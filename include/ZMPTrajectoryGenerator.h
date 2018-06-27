@@ -11,6 +11,7 @@
 #include <StepPhase.h>
 #include <FootPrint.h>
 #include <vector>
+#include <memory>
 
 typedef struct{
     double initialPosition;
@@ -22,7 +23,7 @@ class ZMPTrajectoryGenerator {
     friend class UnicycleGenerator;
 
     class ZMPTrajectoryGeneratorImplementation;
-    ZMPTrajectoryGeneratorImplementation *m_pimpl;
+    std::unique_ptr<ZMPTrajectoryGeneratorImplementation> m_pimpl;
 
     bool computeNewTrajectories(double initTime, double dT, double switchPercentage, double maxStepTime,
                                 double nominalStepTime, bool pauseActive, const std::vector<size_t> &mergePoints,

@@ -16,7 +16,7 @@
 
 class UnicycleGenerator {
     class UnicycleGeneratorImplementation;
-    UnicycleGeneratorImplementation *m_pimpl;
+   std::unique_ptr<UnicycleGeneratorImplementation> m_pimpl;
 
 public:
 
@@ -29,6 +29,17 @@ public:
     bool generate(const FootPrint &left, const FootPrint &right, double initTime, double dT); //both feet are supposed to start on the ground at zero velocity. The initTime must be greater than the maximum of the first impactTime of the two feet. The first step has half switch time. The FootPrints needs to be ordered!
 
     bool generate(double initTime, double dT, double endTime);
+
+    bool reGenerate(double initTime, double dT, double endTime);
+
+    bool reGenerate(double initTime, double dT, double endTime, const Step &measuredLeft, const Step &measuredRight); //automatically sets previous steps if zmp trajectory generation is used
+
+    bool reGenerate(double initTime, double dT, double endTime, bool correctLeft,
+                    const iDynTree::Vector2 &measuredPosition, double measuredAngle); //automatically sets previous steps if zmp trajectory generation is used
+
+    bool reGenerate(double initTime, double dT, double endTime,
+                    const iDynTree::Vector2 &measuredLeftPosition, double measuredLeftAngle,
+                    const iDynTree::Vector2 &measuredRightPosition, double measuredRightAngle); //automatically sets previous steps if zmp trajectory generation is used
 
     //Settings
     bool setSwitchOverSwingRatio(double ratio); //indeed the swing time cannot be null, while the switch time can be very close to zero (but not zero)

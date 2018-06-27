@@ -14,6 +14,7 @@
 #include "UnicycleFoot.h"
 #include <iDynTree/Integrators/RK4.h>
 #include <memory>
+#include <mutex>
 
 class UnicyclePlanner {
     std::shared_ptr<UnicyleController> m_controller;
@@ -22,6 +23,7 @@ class UnicyclePlanner {
     UnicycleOptimization m_unicycleProblem;
     double m_endTime, m_minTime, m_maxTime, m_nominalTime, m_dT, m_minAngle, m_nominalWidth, m_maxLength, m_minLength, m_maxAngle;
     bool m_addTerminalStep, m_startLeft, m_resetStartingFoot, m_firstStep;
+    std::mutex m_mutex;
 
     std::shared_ptr<UnicycleFoot> m_left, m_right;
 
@@ -58,6 +60,7 @@ public:
     bool clearDesiredTrajectoryUpTo(double time);
 
     //Integrator inputs
+    [[deprecated("set the endTime when computing new steps.")]]
     bool setEndTime(double endTime);
 
     bool setMaximumIntegratorStepSize(double dT);
@@ -98,7 +101,12 @@ public:
 
     void resetStartingFootIfStill(bool resetStartingFoot);
 
-    bool computeNewSteps(std::shared_ptr<FootPrint> leftFoot, std::shared_ptr<FootPrint> rightFoot, double initTime); //if the inputs are empty, the initTime is obtained from the first trajectory point, otherwise the initTime is the latest impactTime
+    [[deprecated("the setEndTime method has been deprecated. Use the computeNewSteps method which sets also the endTime.")]]
+    bool computeNewSteps(std::shared_ptr<FootPrint> leftFoot, std::shared_ptr<FootPrint> rightFoot, double initTime) {
+        return computeNewSteps(leftFoot, rightFoot, initTime, m_endTime);
+    }
+
+    bool computeNewSteps(std::shared_ptr<FootPrint> leftFoot, std::shared_ptr<FootPrint> rightFoot, double initTime, double endTime); //if the inputs are empty, the initTime is obtained from the first trajectory point, otherwise the initTime is the latest impactTime
 
     bool startWithLeft() const;
 

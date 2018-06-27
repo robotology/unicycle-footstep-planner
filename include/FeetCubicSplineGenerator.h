@@ -14,18 +14,18 @@
 #include <iDynTree/Core/Transform.h>
 
 #include <vector>
+#include <memory>
 
 class FeetCubicSplineGenerator {
     friend class UnicycleGenerator;
 
     class FeetCubicSplineGeneratorImplementation;
-    FeetCubicSplineGeneratorImplementation *m_pimpl;
+    std::unique_ptr<FeetCubicSplineGeneratorImplementation> m_pimpl;
 
     FeetCubicSplineGenerator();
 
     bool computeNewTrajectories(double dT,
                                 const FootPrint &left, const FootPrint &right,
-                                const std::vector<const Step*>& orderedSteps,
                                 const std::vector<StepPhase>& lFootPhases,
                                 const std::vector<StepPhase>& rFootPhases,
                                 const std::vector<size_t>& phaseShift);

@@ -31,7 +31,6 @@ bool configurePlanner(UnicyclePlanner& planner,const Configuration &conf){
     bool ok = true;
     ok = ok && planner.setDesiredPersonDistance(conf.dX, conf.dY);
     ok = ok && planner.setControllerGain(conf.K);
-    ok = ok && planner.setEndTime(conf.endTime);
     ok = ok && planner.setMaximumIntegratorStepSize(conf.dT);
     ok = ok && planner.setMaxStepLength(conf.maxL);
     ok = ok && planner.setWidthSetting(conf.minW, conf.nominalW);
@@ -294,7 +293,7 @@ bool interpolationTest(){
     clock_t total = clock();
     //iDynTree::assertTrue(unicycle.computeNewSteps(leftFoot, rightFoot));
     //clock_t interpolatorTime = clock();
-    iDynTree::assertTrue(unicycle.generateAndInterpolate(leftFoot, rightFoot, conf.initTime, conf.dT));
+    iDynTree::assertTrue(unicycle.generateAndInterpolate(leftFoot, rightFoot, conf.initTime, conf.dT, conf.endTime));
     //iDynTree::assertTrue(unicycle.interpolate(*leftFoot, *rightFoot, conf.initTime, conf.dT, 0.5, false));
     clock_t end = clock();
 
@@ -311,7 +310,6 @@ bool interpolationTest(){
     double newInitTime;
     newInitTime = newMergePoint*conf.dT + conf.initTime;
     std::cerr << "New run at " << newInitTime << std::endl;
-    iDynTree::assertTrue(unicycle.setEndTime(conf.endTime + 50));
     iDynTree::assertTrue(unicycle.getPersonPosition(newInitTime, finalPosition));
     unicycle.clearDesiredTrajectory();
     iDynTree::assertTrue(unicycle.addDesiredTrajectoryPoint(conf.endTime + 10, finalPosition));
@@ -323,7 +321,7 @@ bool interpolationTest(){
     printSteps(leftFoot->getSteps(), rightFoot->getSteps());
 
 
-    iDynTree::assertTrue(unicycle.generateAndInterpolate(leftFoot, rightFoot, newInitTime, conf.dT, newAlpha));
+    iDynTree::assertTrue(unicycle.generateAndInterpolate(leftFoot, rightFoot, newInitTime, conf.dT, conf.endTime + 50, newAlpha));
 
     printTrajectories(unicycle, newMergePoint, newAlpha, newMergePoint);
 

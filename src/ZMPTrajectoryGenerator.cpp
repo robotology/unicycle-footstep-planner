@@ -13,6 +13,7 @@
 #include <cassert>
 #include <iostream>
 #include <cmath>
+#include <mutex>
 
 class ZMPTrajectoryGenerator::ZMPTrajectoryGeneratorImplementation {
 public:
@@ -33,6 +34,8 @@ public:
     std::vector<iDynTree::Vector2> leftZMPAcceleration, rightZMPAcceleration, worldZMPAcceleration;
 
     bool initialWeightSpecified = false, previousStepsSpecified = false;
+
+    std::mutex mutex;
 
 private:
     iDynTree::VectorDynSize m_buffer, m_timesBuffer;
@@ -502,6 +505,8 @@ bool ZMPTrajectoryGenerator::computeNewTrajectories(double initTime, double dT, 
                                                     const FootPrint &left, const FootPrint &right, const std::vector<const Step *> &orderedSteps,
                                                     const std::vector<StepPhase> &lFootPhases, const std::vector<StepPhase> &rFootPhases, const std::vector<size_t> &phaseShift)
 {
+    std::lock_guard<std::mutex> guard(m_pimpl->mutex);
+
     m_pimpl->nominalSwitchTime = switchPercentage * nominalStepTime;
     m_pimpl->maxSwitchTime = switchPercentage * maxStepTime;
     m_pimpl->maxSwingTime = maxStepTime - m_pimpl->maxSwitchTime;
@@ -560,14 +565,12 @@ ZMPTrajectoryGenerator::ZMPTrajectoryGenerator()
 
 ZMPTrajectoryGenerator::~ZMPTrajectoryGenerator()
 {
-    if (m_pimpl) {
-         delete m_pimpl;
-        m_pimpl = nullptr;
-    }
 }
 
 bool ZMPTrajectoryGenerator::setWeightInitialState(const InitialState &initialState)
 {
+    std::lock_guard<std::mutex> guard(m_pimpl->mutex);
+
     m_pimpl->initialState = initialState;
     m_pimpl->initialWeightSpecified = true;
     return true;
@@ -575,6 +578,8 @@ bool ZMPTrajectoryGenerator::setWeightInitialState(const InitialState &initialSt
 
 bool ZMPTrajectoryGenerator::setPreviousSteps(const Step &previousLeft, const Step &previousRight)
 {
+    std::lock_guard<std::mutex> guard(m_pimpl->mutex);
+
     m_pimpl->previousLeft = previousLeft;
     m_pimpl->previousRight = previousRight;
 
@@ -585,6 +590,8 @@ bool ZMPTrajectoryGenerator::setPreviousSteps(const Step &previousLeft, const St
 
 bool ZMPTrajectoryGenerator::setStanceZMPDelta(const iDynTree::Vector2 &offsetInLeftFootFrame, const iDynTree::Vector2 &offsetInRightFootFrame)
 {
+    std::lock_guard<std::mutex> guard(m_pimpl->mutex);
+
     m_pimpl->leftStanceZMP = offsetInLeftFootFrame;
     m_pimpl->rightStanceZMP = offsetInRightFootFrame;
     return true;
@@ -592,6 +599,8 @@ bool ZMPTrajectoryGenerator::setStanceZMPDelta(const iDynTree::Vector2 &offsetIn
 
 bool ZMPTrajectoryGenerator::setInitialSwitchZMPDelta(const iDynTree::Vector2 &offsetInLeftFootFrame, const iDynTree::Vector2 &offsetInRightFootFrame)
 {
+    std::lock_guard<std::mutex> guard(m_pimpl->mutex);
+
     m_pimpl->leftSwitchZMP = offsetInLeftFootFrame;
     m_pimpl->rightSwitchZMP = offsetInRightFootFrame;
     return true;
@@ -599,12 +608,16 @@ bool ZMPTrajectoryGenerator::setInitialSwitchZMPDelta(const iDynTree::Vector2 &o
 
 void ZMPTrajectoryGenerator::getWeightPercentage(std::vector<double> &weightInLeft, std::vector<double> &weightInRight) const
 {
+    std::lock_guard<std::mutex> guard(m_pimpl->mutex);
+
     weightInLeft = m_pimpl->weightInLeft;
     weightInRight = m_pimpl->weightInRight;
 }
 
 void ZMPTrajectoryGenerator::getWeightPercentage(std::vector<double> &weightInLeft, std::vector<double> &weightInLeftFirstDerivative, std::vector<double> &weightInLeftSecondDerivative, std::vector<double> &weightInRight, std::vector<double> &weightInRightFirstDerivative, std::vector<double> &weightInRightSecondDerivative) const
 {
+    std::lock_guard<std::mutex> guard(m_pimpl->mutex);
+
     weightInLeft = m_pimpl->weightInLeft;
     weightInLeftFirstDerivative = m_pimpl->weightInLeftVelocity;
     weightInLeftSecondDerivative = m_pimpl->weightInLeftAcceleration;
@@ -615,11 +628,15 @@ void ZMPTrajectoryGenerator::getWeightPercentage(std::vector<double> &weightInLe
 
 void ZMPTrajectoryGenerator::getZMPTrajectory(std::vector<iDynTree::Vector2> &ZMPTrajectory) const
 {
+    std::lock_guard<std::mutex> guard(m_pimpl->mutex);
+
     ZMPTrajectory = m_pimpl->worldZMP;
 }
 
 void ZMPTrajectoryGenerator::getZMPTrajectory(std::vector<iDynTree::Vector2> &ZMPTrajectory, std::vector<iDynTree::Vector2> &ZMPVelocity, std::vector<iDynTree::Vector2> &ZMPAcceleration) const
 {
+    std::lock_guard<std::mutex> guard(m_pimpl->mutex);
+
     ZMPTrajectory = m_pimpl->worldZMP;
     ZMPVelocity = m_pimpl->worldZMPVelocity;
     ZMPAcceleration = m_pimpl->worldZMPAcceleration;
@@ -627,12 +644,16 @@ void ZMPTrajectoryGenerator::getZMPTrajectory(std::vector<iDynTree::Vector2> &ZM
 
 void ZMPTrajectoryGenerator::getLocalZMPTrajectories(std::vector<iDynTree::Vector2> &leftZMPTrajectory, std::vector<iDynTree::Vector2> &rightZMPTrajectory) const
 {
+    std::lock_guard<std::mutex> guard(m_pimpl->mutex);
+
     leftZMPTrajectory = m_pimpl->leftZMP;
     rightZMPTrajectory = m_pimpl->rightZMP;
 }
 
 void ZMPTrajectoryGenerator::getLocalZMPTrajectories(std::vector<iDynTree::Vector2> &leftZMPTrajectory, std::vector<iDynTree::Vector2> &leftZMPVelocity, std::vector<iDynTree::Vector2> &leftZMPAcceleration, std::vector<iDynTree::Vector2> &rightZMPTrajectory, std::vector<iDynTree::Vector2> &rightZMPVelocity, std::vector<iDynTree::Vector2> &rightZMPAcceleration) const
 {
+    std::lock_guard<std::mutex> guard(m_pimpl->mutex);
+
     leftZMPTrajectory = m_pimpl->leftZMP;
     rightZMPTrajectory = m_pimpl->rightZMP;
 

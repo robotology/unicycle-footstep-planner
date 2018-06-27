@@ -9,6 +9,7 @@
 #include <iDynTree/Core/VectorDynSize.h>
 #include <iDynTree/Core/CubicSpline.h>
 #include <cassert>
+#include <mutex>
 
 class FeetCubicSplineGenerator::FeetCubicSplineGeneratorImplementation {
 public:
@@ -19,6 +20,8 @@ public:
     iDynTree::CubicSpline xSpline, ySpline, zSpline, yawSpline, pitchSpline;
 
     std::vector<iDynTree::Transform> leftTrajectory, rightTrajectory;
+
+    std::mutex mutex;
 
 
     bool interpolateFoot(double dT, const std::vector<size_t>& phaseShift, const std::vector<StepPhase> &stepPhase, const FootPrint &foot, std::vector<iDynTree::Transform> &output) {
@@ -159,10 +162,11 @@ FeetCubicSplineGenerator::FeetCubicSplineGenerator()
     assert(m_pimpl);
 }
 
-bool FeetCubicSplineGenerator::computeNewTrajectories(double dT, const FootPrint &left, const FootPrint &right,
-                                                      const std::vector<const Step *> &orderedSteps, const std::vector<StepPhase> &lFootPhases,
+bool FeetCubicSplineGenerator::computeNewTrajectories(double dT, const FootPrint &left, const FootPrint &right, const std::vector<StepPhase> &lFootPhases,
                                                       const std::vector<StepPhase> &rFootPhases, const std::vector<size_t> &phaseShift)
 {
+    std::lock_guard<std::mutex> guard(m_pimpl->mutex);
+
     if (!(m_pimpl->interpolateFoot(dT, phaseShift, lFootPhases, left, m_pimpl->leftTrajectory))){
         std::cerr << "[FeetCubicSplineGenerator::computeNewTrajectories] Failed while interpolating left foot trajectory." << std::endl;
         return false;
@@ -177,14 +181,12 @@ bool FeetCubicSplineGenerator::computeNewTrajectories(double dT, const FootPrint
 
 FeetCubicSplineGenerator::~FeetCubicSplineGenerator()
 {
-    if (m_pimpl) {
-        delete m_pimpl;
-        m_pimpl = nullptr;
-    }
 }
 
 bool FeetCubicSplineGenerator::setStepHeight(double stepHeight)
 {
+    std::lock_guard<std::mutex> guard(m_pimpl->mutex);
+
     if (stepHeight < 0){
         std::cerr << "[FeetCubicSplineGenerator::setStepHeight] The stepHeight is supposed to be positive." << std::endl;
         return false;
@@ -195,12 +197,16 @@ bool FeetCubicSplineGenerator::setStepHeight(double stepHeight)
 
 bool FeetCubicSplineGenerator::setPitchDelta(double pitchAngle)
 {
+    std::lock_guard<std::mutex> guard(m_pimpl->mutex);
+
     m_pimpl->pitchDelta = iDynTree::deg2rad(pitchAngle);
     return true;
 }
 
 bool FeetCubicSplineGenerator::setFootApexTime(double swingTimeRatio)
 {
+    std::lock_guard<std::mutex> guard(m_pimpl->mutex);
+
     if ((swingTimeRatio <= 0)||(swingTimeRatio >= 1)){
         std::cerr << "[FeetCubicSplineGenerator::setFootApexTime] The swingTimeRatio is supposed to be chosen in the interval (0, 1)." << std::endl;
         return false;
@@ -211,12 +217,16 @@ bool FeetCubicSplineGenerator::setFootApexTime(double swingTimeRatio)
 
 bool FeetCubicSplineGenerator::setFootLandingVelocity(double landingVelocity)
 {
+    std::lock_guard<std::mutex> guard(m_pimpl->mutex);
+
     m_pimpl->landingVelocity = landingVelocity;
     return true;
 }
 
 void FeetCubicSplineGenerator::getFeetTrajectories(std::vector<iDynTree::Transform> &lFootTrajectory, std::vector<iDynTree::Transform> &rFootTrajectory) const
 {
+    std::lock_guard<std::mutex> guard(m_pimpl->mutex);
+
     lFootTrajectory = m_pimpl->leftTrajectory;
     rFootTrajectory = m_pimpl->rightTrajectory;
 }

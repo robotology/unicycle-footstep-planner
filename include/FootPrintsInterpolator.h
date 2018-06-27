@@ -20,7 +20,7 @@
 
 typedef StepList::const_iterator StepsIndex;
 
-class FeetInterpolator {
+class [[deprecated("use UnicycleGenerator instead.")]] FeetInterpolator {
 
     std::vector<const Step*> m_orderedSteps;
     FootPrint m_left, m_right;
