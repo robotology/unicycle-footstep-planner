@@ -23,6 +23,12 @@ public:
     iDynTree::CubicSpline heightSpline;
 
     std::mutex mutex;
+
+    CoMHeightTrajectoryGeneratorImplementation()
+        : hBuffer(3)
+        , timesBuffer(3)
+        , heightSpline(3)
+    { }
 };
 
 bool CoMHeightTrajectoryGenerator::computeNewTrajectories(double dT, const std::vector<StepPhase>& leftPhases, const std::vector<size_t>& phaseShift)

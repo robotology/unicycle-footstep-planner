@@ -95,7 +95,7 @@ bool FeetInterpolator::createPhasesTimings()
             return false;
         }
 
-        if ((nextStepindex == m_orderedSteps.front()) && (m_left.getSteps().front().impactTime != m_right.getSteps().front().impactTime)) { //first half step
+        if ((orderedStepIndex == 2) && (m_left.getSteps().front().impactTime != m_right.getSteps().front().impactTime)) { //first half step
             //Timings
             switchTime = (m_switchPercentage/(1 - (m_switchPercentage/2.0)) * stepTime)/2.0; //half switch
         } else { //general case
@@ -130,7 +130,7 @@ bool FeetInterpolator::createPhasesTimings()
         stance->insert(stance->end(), switchSamples, StepPhase::SwitchIn);
         m_phaseShift.push_back(m_phaseShift.back() + switchSamples); //it stores the indeces when a change of phase occurs
 
-        if (nextStepindex != m_orderedSteps.front()){ //add no merge point in the first half switch
+        if (orderedStepIndex != 2){ //add no merge point in the first half switch
             //bool pause = m_pauseActive && (switchTime > m_maxSwitchTime); //if true, it will pause in the middle
             size_t mergePoint;
             if (pause){

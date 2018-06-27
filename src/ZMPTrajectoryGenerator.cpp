@@ -18,7 +18,7 @@
 class ZMPTrajectoryGenerator::ZMPTrajectoryGeneratorImplementation {
 public:
     InitialState initialState;
-    std::vector<InitialState> m_initStates;
+    std::vector<InitialState> initStates;
 
 
     double nominalSwitchTime, maxSwitchTime, maxSwingTime, nominalSwingTime;
@@ -38,11 +38,22 @@ public:
     std::mutex mutex;
 
 private:
-    iDynTree::VectorDynSize m_buffer, m_timesBuffer;
-    iDynTree::CubicSpline m_spline;
-
+    iDynTree::VectorDynSize m_buffer, m_timesBuffer, m_correctionBuffer, m_xBuffer, m_yBuffer;
+    iDynTree::CubicSpline m_spline, m_correctionSpline, m_xSpline, m_ySpline;
 
 public:
+
+    ZMPTrajectoryGeneratorImplementation()
+        : m_buffer(2)
+        , m_timesBuffer(2)
+        , m_correctionBuffer(2)
+        , m_xBuffer(2)
+        , m_yBuffer(2)
+        , m_spline(2)
+        , m_correctionSpline(2)
+        , m_xSpline(2)
+        , m_ySpline(2)
+    { }
 
     bool computeFootWeightPortion(double dT, bool pauseActive, const std::vector<StepPhase> &stepPhase, const std::vector<size_t> &mergePoints,
                                   const std::vector<size_t>& phaseShift, std::vector<double> &output,
@@ -56,8 +67,8 @@ public:
         if (outputAcceleration.size() != stepPhase.size())
             outputAcceleration.resize(stepPhase.size());
 
-        if (m_initStates.size() != mergePoints.size())
-            m_initStates.resize(mergePoints.size());
+        if (initStates.size() != mergePoints.size())
+            initStates.resize(mergePoints.size());
 
         size_t instant = 0, initialSwitchInstant, endOfPhase;
         double switchLength, switchInstant;
@@ -74,9 +85,9 @@ public:
                     outputAcceleration[instant] = 0.0;
 
                     if (instant == mergePoints[mergePoint]){
-                        m_initStates[mergePoint].initialPosition = output[instant];
-                        m_initStates[mergePoint].initialVelocity = outputVelocity[instant];
-                        m_initStates[mergePoint].initialAcceleration = outputAcceleration[instant];
+                        initStates[mergePoint].initialPosition = output[instant];
+                        initStates[mergePoint].initialVelocity = outputVelocity[instant];
+                        initStates[mergePoint].initialAcceleration = outputAcceleration[instant];
 
                         if (mergePoint < (mergePoints.size() - 1))
                             mergePoint++;
@@ -113,9 +124,9 @@ public:
                         output[instant] = m_spline.evaluatePoint(switchInstant, outputVelocity[instant], outputAcceleration[instant]);
 
                         if (instant == mergePoints[mergePoint]){
-                            m_initStates[mergePoint].initialPosition = output[instant];
-                            m_initStates[mergePoint].initialVelocity = outputVelocity[instant];
-                            m_initStates[mergePoint].initialAcceleration = outputAcceleration[instant];
+                            initStates[mergePoint].initialPosition = output[instant];
+                            initStates[mergePoint].initialVelocity = outputVelocity[instant];
+                            initStates[mergePoint].initialAcceleration = outputAcceleration[instant];
 
                             if (mergePoint < (mergePoints.size() - 1))
                                 mergePoint++;
@@ -130,9 +141,9 @@ public:
                         outputAcceleration[instant] = 0.0;
 
                         if (instant == mergePoints[mergePoint]){
-                            m_initStates[mergePoint].initialPosition = output[instant];
-                            m_initStates[mergePoint].initialVelocity = outputVelocity[instant];
-                            m_initStates[mergePoint].initialAcceleration = outputAcceleration[instant];
+                            initStates[mergePoint].initialPosition = output[instant];
+                            initStates[mergePoint].initialVelocity = outputVelocity[instant];
+                            initStates[mergePoint].initialAcceleration = outputAcceleration[instant];
 
                             if (mergePoint < (mergePoints.size() - 1))
                                 mergePoint++;
@@ -165,9 +176,9 @@ public:
                     output[instant] = m_spline.evaluatePoint(switchInstant, outputVelocity[instant], outputAcceleration[instant]);
 
                     if (instant == mergePoints[mergePoint]){
-                        m_initStates[mergePoint].initialPosition = output[instant];
-                        m_initStates[mergePoint].initialVelocity = outputVelocity[instant];
-                        m_initStates[mergePoint].initialAcceleration = outputAcceleration[instant];
+                        initStates[mergePoint].initialPosition = output[instant];
+                        initStates[mergePoint].initialVelocity = outputVelocity[instant];
+                        initStates[mergePoint].initialAcceleration = outputAcceleration[instant];
 
                         if (mergePoint < (mergePoints.size() - 1))
                             mergePoint++;
@@ -226,9 +237,6 @@ public:
         if (outputAcceleration.size() != stepPhase.size())
             outputAcceleration.resize(stepPhase.size());
 
-        static iDynTree::VectorDynSize xBuffer(2), yBuffer(2), timeBuffer(2);
-        static iDynTree::CubicSpline xSpline(2), ySpline(2);
-
         size_t instant = 0, initialInstant, endOfPhase;
         double stanceLength, switchLength, elapsedTime;
 
@@ -252,24 +260,24 @@ public:
                 }
             } else if (stepPhase[instant] == StepPhase::Stance){
 
-                xBuffer(0) = stanceZmpPosition(0);
-                yBuffer(0) = stanceZmpPosition(1);
-                timeBuffer(0) = 0.0;
-                xSpline.setInitialConditions(0.0, 0.0);
-                ySpline.setInitialConditions(0.0, 0.0);
+                m_xBuffer(0) = stanceZmpPosition(0);
+                m_yBuffer(0) = stanceZmpPosition(1);
+                m_timesBuffer(0) = 0.0;
+                m_xSpline.setInitialConditions(0.0, 0.0);
+                m_ySpline.setInitialConditions(0.0, 0.0);
 
                 stanceLength = (endOfPhase-instant) * dT;
-                xBuffer(1) = switchZmpInitPosition(0);
-                yBuffer(1) = switchZmpInitPosition(1);
-                timeBuffer(1) = stanceLength;
-                xSpline.setFinalConditions(0.0, 0.0);
-                ySpline.setFinalConditions(0.0, 0.0);
+                m_xBuffer(1) = switchZmpInitPosition(0);
+                m_yBuffer(1) = switchZmpInitPosition(1);
+                m_timesBuffer(1) = stanceLength;
+                m_xSpline.setFinalConditions(0.0, 0.0);
+                m_ySpline.setFinalConditions(0.0, 0.0);
 
-                if (!xSpline.setData(timeBuffer, xBuffer)){
+                if (!m_xSpline.setData(m_timesBuffer, m_xBuffer)){
                     std::cerr << "[ZMPTrajectoryGenerator::computeNewTrajectories] Failed to initialize the ZMPx spline in stance phase." << std::endl;
                     return false;
                 }
-                if (!ySpline.setData(timeBuffer, yBuffer)){
+                if (!m_ySpline.setData(m_timesBuffer, m_yBuffer)){
                     std::cerr << "[ZMPTrajectoryGenerator::computeNewTrajectories] Failed to initialize the ZMPy spline in stance phase." << std::endl;
                     return false;
                 }
@@ -277,8 +285,8 @@ public:
                 initialInstant = instant;
                 while (instant < endOfPhase){
                     elapsedTime = (instant - initialInstant)*dT;
-                    output[instant](0) = xSpline.evaluatePoint(elapsedTime, outputVelocity[instant](0), outputAcceleration[instant](0));
-                    output[instant](1) = ySpline.evaluatePoint(elapsedTime, outputVelocity[instant](1), outputAcceleration[instant](1));
+                    output[instant](0) = m_xSpline.evaluatePoint(elapsedTime, outputVelocity[instant](0), outputAcceleration[instant](0));
+                    output[instant](1) = m_ySpline.evaluatePoint(elapsedTime, outputVelocity[instant](1), outputAcceleration[instant](1));
                     ++instant;
                 }
             } else if (stepPhase[instant] == StepPhase::SwitchOut){
@@ -294,44 +302,44 @@ public:
                     switchLength = (endOfPhase-instant) * dT;
                     bool pause = pauseActive && (switchLength > maxSwitchTime); //if true, it will pause in the middle
 
-                    xBuffer(0) = switchZmpInitPosition(0);
-                    yBuffer(0) = switchZmpInitPosition(1);
-                    timeBuffer(0) = 0.0;
-                    xSpline.setInitialConditions(0.0, 0.0);
-                    ySpline.setInitialConditions(0.0, 0.0);
+                    m_xBuffer(0) = switchZmpInitPosition(0);
+                    m_yBuffer(0) = switchZmpInitPosition(1);
+                    m_timesBuffer(0) = 0.0;
+                    m_xSpline.setInitialConditions(0.0, 0.0);
+                    m_ySpline.setInitialConditions(0.0, 0.0);
 
-                    xBuffer(1) = stanceZmpPosition(0); //bring the ZMP back to the stance position
-                    yBuffer(1) = stanceZmpPosition(1);
+                    m_xBuffer(1) = stanceZmpPosition(0); //bring the ZMP back to the stance position
+                    m_yBuffer(1) = stanceZmpPosition(1);
                     if (pause){
-                        timeBuffer(1) = nominalSwitchTime/2;
+                        m_timesBuffer(1) = nominalSwitchTime/2;
                     } else if (phase == (phaseShift.size() - 1)){
-                        timeBuffer(1) = (endOfPhase - instant)*dT;
+                        m_timesBuffer(1) = (endOfPhase - instant)*dT;
                     } else {
-                        timeBuffer(1) = switchLength/2;
+                        m_timesBuffer(1) = switchLength/2;
                     }
 
-                    xSpline.setFinalConditions(0.0, 0.0);
-                    ySpline.setFinalConditions(0.0, 0.0);
+                    m_xSpline.setFinalConditions(0.0, 0.0);
+                    m_ySpline.setFinalConditions(0.0, 0.0);
 
-                    if (!xSpline.setData(timeBuffer, xBuffer)){
+                    if (!m_xSpline.setData(m_timesBuffer, m_xBuffer)){
                         std::cerr << "[ZMPTrajectoryGenerator::computeNewTrajectories] Failed to initialize the ZMPx spline in switch phase." << std::endl;
                         return false;
                     }
-                    if (!ySpline.setData(timeBuffer, yBuffer)){
+                    if (!m_ySpline.setData(m_timesBuffer, m_yBuffer)){
                         std::cerr << "[ZMPTrajectoryGenerator::computeNewTrajectories] Failed to initialize the ZMPy spline in switch phase." << std::endl;
                         return false;
                     }
                     initialInstant = instant;
-                    while (instant < (initialInstant + std::ceil(timeBuffer(1)/dT))){
+                    while (instant < (initialInstant + std::ceil(m_timesBuffer(1)/dT))){
                         elapsedTime = (instant - initialInstant)*dT;
-                        output[instant](0) = xSpline.evaluatePoint(elapsedTime, outputVelocity[instant](0), outputAcceleration[instant](0));
-                        output[instant](1) = ySpline.evaluatePoint(elapsedTime, outputVelocity[instant](1), outputAcceleration[instant](1));
+                        output[instant](0) = m_xSpline.evaluatePoint(elapsedTime, outputVelocity[instant](0), outputAcceleration[instant](0));
+                        output[instant](1) = m_ySpline.evaluatePoint(elapsedTime, outputVelocity[instant](1), outputAcceleration[instant](1));
                         ++instant;
                     }
 
                     while (instant < endOfPhase) {
-                        output[instant](0) = xBuffer(1);
-                        output[instant](1) = yBuffer(1);
+                        output[instant](0) = m_xBuffer(1);
+                        output[instant](1) = m_yBuffer(1);
                         outputVelocity[instant].zero();
                         outputAcceleration[instant].zero();
                         ++instant;
@@ -364,16 +372,14 @@ public:
         worldZMPVelocity.resize(leftZMPVelocity.size());
         worldZMPAcceleration.resize(leftZMPAcceleration.size());
 
-        iDynTree::CubicSpline correctionSpline(2);
-        static iDynTree::VectorDynSize correctionBuffer(2), timeBuffer(2);
 
-        correctionBuffer(0) = 1.0;
-        timeBuffer(0) = 0.0;
-        correctionBuffer(1) = 0.0;
-        timeBuffer(1) = phaseShift[1] * dT;
-        correctionSpline.setInitialConditions(0.0, 0.0);
-        correctionSpline.setFinalConditions(0.0, 0.0);
-        correctionSpline.setData(timeBuffer, correctionBuffer);
+        m_correctionBuffer(0) = 1.0;
+        m_timesBuffer(0) = 0.0;
+        m_correctionBuffer(1) = 0.0;
+        m_timesBuffer(1) = phaseShift[1] * dT;
+        m_correctionSpline.setInitialConditions(0.0, 0.0);
+        m_correctionSpline.setFinalConditions(0.0, 0.0);
+        m_correctionSpline.setData(m_timesBuffer, m_correctionBuffer);
 
         iDynTree::Transform oldLeftH, oldRightH;
         oldLeftH.setPosition(pos3D(previousLeft.position));
@@ -431,7 +437,7 @@ public:
             rightWorldZMP = pos3D(rightTransform, rightZMP[instant]);
 
             if (instant < phaseShift[1]){
-                correction = correctionSpline.evaluatePoint(instant*dT, correctionVelocity, correctionAcceleration);
+                correction = m_correctionSpline.evaluatePoint(instant*dT, correctionVelocity, correctionAcceleration);
             } else {
                 correction = 0.0;
                 correctionVelocity = 0.0;
@@ -662,5 +668,11 @@ void ZMPTrajectoryGenerator::getLocalZMPTrajectories(std::vector<iDynTree::Vecto
 
     leftZMPAcceleration = m_pimpl->leftZMPAcceleration;
     rightZMPAcceleration = m_pimpl->rightZMPAcceleration;
+}
+
+void ZMPTrajectoryGenerator::getInitialStatesAtMergePoints(std::vector<InitialState> &initialStates) const
+{
+    std::lock_guard<std::mutex> guard(m_pimpl->mutex);
+    initialStates = m_pimpl->initStates;
 }
 

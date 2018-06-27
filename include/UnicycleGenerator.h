@@ -26,11 +26,15 @@ public:
 
     std::shared_ptr<UnicyclePlanner> unicyclePlanner();
 
-    bool generate(const FootPrint &left, const FootPrint &right, double initTime, double dT); //both feet are supposed to start on the ground at zero velocity. The initTime must be greater than the maximum of the first impactTime of the two feet. The first step has half switch time. The FootPrints needs to be ordered!
+    std::shared_ptr<FootPrint> getLeftFootPrint();
 
-    bool generate(double initTime, double dT, double endTime);
+    std::shared_ptr<FootPrint> getRightFootPrint();
 
-    bool reGenerate(double initTime, double dT, double endTime);
+    bool generateFromFootPrints(std::shared_ptr<FootPrint> left, std::shared_ptr<FootPrint> right, double initTime, double dT); //here the planner is not called
+
+    bool generate(double initTime, double dT, double endTime); //here the planner is called
+
+    bool reGenerate(double initTime, double dT, double endTime); //here the planner is called
 
     bool reGenerate(double initTime, double dT, double endTime, const Step &measuredLeft, const Step &measuredRight); //automatically sets previous steps if zmp trajectory generation is used
 

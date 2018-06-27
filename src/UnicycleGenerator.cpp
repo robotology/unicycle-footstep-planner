@@ -103,22 +103,22 @@ public:
         double stepTime, switchTime, pauseTime;
         size_t stepSamples, switchSamples, swingSamples;
 
-        const Step* leftIndex = &*(leftFootPrint.getSteps().cbegin() + 1);
-        const Step* rightIndex = &*(rightFootPrint.getSteps().cbegin() + 1);
-        size_t orderedStepIndex = 2;
-        const Step* nextStepindex;
+        const StepList& leftList = leftFootPrint.getSteps();
+        const StepList& rightList = rightFootPrint.getSteps();
+        size_t orderedStepIndex = 2, leftIndex = 1, rightIndex = 1;
+        const Step* nextStep;
         double previouStepTime = initTime;
 
         while (orderedStepIndex < orderedSteps.size()){
-            nextStepindex = orderedSteps[orderedStepIndex];
-            stepTime = nextStepindex->impactTime - previouStepTime;
+            nextStep = orderedSteps[orderedStepIndex];
+            stepTime = nextStep->impactTime - previouStepTime;
 
             if (stepTime < 0){
                 std::cerr <<"Something went wrong. The stepTime appears to be negative." << std::endl;
                 return false;
             }
 
-            if ((nextStepindex == orderedSteps.front()) && (leftFootPrint.getSteps().front().impactTime != rightFootPrint.getSteps().front().impactTime)) { //first half step
+            if ((orderedStepIndex == 2) && (leftFootPrint.getSteps().front().impactTime != rightFootPrint.getSteps().front().impactTime)) { //first half step
                 //Timings
                 switchTime = (switchPercentage/(1 - (switchPercentage/2.0)) * stepTime)/2.0; //half switch
             } else { //general case
@@ -136,11 +136,11 @@ public:
             switchSamples = static_cast<size_t>(std::round(switchTime/dT));
             swingSamples = stepSamples - switchSamples;
 
-            if (leftIndex == nextStepindex){
+            if (&(leftList[leftIndex]) == nextStep){
                 swing = lFootPhases;
                 stance = rFootPhases;
                 leftIndex++;
-            } else if (rightIndex == nextStepindex){
+            } else if (&(rightList[rightIndex]) == nextStep){
                 swing = rFootPhases;
                 stance = lFootPhases;
                 rightIndex++;
@@ -153,7 +153,7 @@ public:
             stance->insert(stance->end(), switchSamples, StepPhase::SwitchIn);
             phaseShift.push_back(phaseShift.back() + switchSamples); //it stores the indeces when a change of phase occurs
 
-            if (nextStepindex != orderedSteps.front()){ //add no merge point in the first half switch
+            if (orderedStepIndex != 2){ //add no merge point in the first half switch
                 //bool pause = m_pauseActive && (switchTime > m_maxSwitchTime); //if true, it will pause in the middle
                 size_t mergePoint;
                 if (pause){
@@ -251,21 +251,35 @@ std::shared_ptr<UnicyclePlanner> UnicycleGenerator::unicyclePlanner()
     return m_pimpl->planner;
 }
 
-bool UnicycleGenerator::generate(const FootPrint &left, const FootPrint &right, double initTime, double dT)
+std::shared_ptr<FootPrint> UnicycleGenerator::getLeftFootPrint()
+{
+    return m_pimpl->leftFootPrint;
+}
+
+std::shared_ptr<FootPrint> UnicycleGenerator::getRightFootPrint()
+{
+    return m_pimpl->rightFootPrint;
+}
+
+bool UnicycleGenerator::generateFromFootPrints(std::shared_ptr<FootPrint> left, std::shared_ptr<FootPrint> right, double initTime, double dT)
 {
     std::lock_guard<std::mutex> guard(m_pimpl->mutex);
 
-    if (left.numberOfSteps() < 1){
+    m_pimpl->leftFootPrint = left;
+
+    m_pimpl->rightFootPrint = right;
+
+    if (left->numberOfSteps() < 1){
         std::cerr << "[UnicycleGenerator::generate] No steps in the left pointer." << std::endl;
         return false;
     }
 
-    if (right.numberOfSteps() < 1){
+    if (right->numberOfSteps() < 1){
         std::cerr << "[UnicycleGenerator::generate] No steps in the right pointer." << std::endl;
         return false;
     }
 
-    if (left.getFootName() == right.getFootName()) {
+    if (left->getFootName() == right->getFootName()) {
         std::cerr << "[UnicycleGenerator::generate] The left and right footprints are expected to have different name." << std::endl;
         return false;
     }
@@ -275,8 +289,8 @@ bool UnicycleGenerator::generate(const FootPrint &left, const FootPrint &right, 
         return false;
     }
 
-    double startLeft = left.getSteps().front().impactTime;
-    double startRight = right.getSteps().front().impactTime;
+    double startLeft = left->getSteps().front().impactTime;
+    double startRight = right->getSteps().front().impactTime;
 
     if (initTime < std::max(startLeft, startRight)){
         std::cerr << "[UnicycleGenerator::generate] The initTime must be greater or equal than the maximum of the first impactTime of the two feet."
@@ -295,12 +309,12 @@ bool UnicycleGenerator::generate(const FootPrint &left, const FootPrint &right, 
     m_pimpl->dT = dT;
     m_pimpl->initTime = initTime;
 
-    if (!(m_pimpl->orderSteps(left, right))){
+    if (!(m_pimpl->orderSteps(*left, *right))){
         std::cerr << "[UnicycleGenerator::generate] Failed while ordering the steps." << std::endl;
         return false;
     }
 
-    if (!(m_pimpl->createPhasesTimings(left, right))){
+    if (!(m_pimpl->createPhasesTimings(*left, *right))){
         std::cerr << "[UnicycleGenerator::generate] Failed while creating the standing periods." << std::endl;
         return false;
     }
@@ -310,7 +324,7 @@ bool UnicycleGenerator::generate(const FootPrint &left, const FootPrint &right, 
     m_pimpl->fillLeftFixedVector();
 
     if (m_pimpl->feetSplineGenerator) {
-        if (!(m_pimpl->feetSplineGenerator->computeNewTrajectories(dT, left, right,*(m_pimpl->lFootPhases), *(m_pimpl->rFootPhases),
+        if (!(m_pimpl->feetSplineGenerator->computeNewTrajectories(dT, *left, *right,*(m_pimpl->lFootPhases), *(m_pimpl->rFootPhases),
                                                                    m_pimpl->phaseShift))) {
             std::cerr << "[UnicycleGenerator::generate] Failed while computing new feet trajectories." << std::endl;
             return false;
@@ -320,7 +334,7 @@ bool UnicycleGenerator::generate(const FootPrint &left, const FootPrint &right, 
     if (m_pimpl->zmpGenerator) {
         if (!(m_pimpl->zmpGenerator->computeNewTrajectories(initTime, dT, m_pimpl->switchPercentage, m_pimpl->maxStepTime,
                                                             m_pimpl->nominalStepTime, m_pimpl->pauseActive, m_pimpl->mergePoints,
-                                                            left, right, m_pimpl->orderedSteps, *(m_pimpl->lFootPhases),
+                                                            *left, *right, m_pimpl->orderedSteps, *(m_pimpl->lFootPhases),
                                                             *(m_pimpl->rFootPhases), m_pimpl->phaseShift))) {
             std::cerr << "[UnicycleGenerator::generate] Failed while computing new ZMP trajectories." << std::endl;
             return false;
@@ -342,15 +356,12 @@ bool UnicycleGenerator::generate(double initTime, double dT, double endTime)
     {
         std::lock_guard<std::mutex> guard(m_pimpl->mutex);
 
-        m_pimpl->leftFootPrint->clearSteps();
-        m_pimpl->rightFootPrint->clearSteps();
-
         if (!(m_pimpl->planner->computeNewSteps(m_pimpl->leftFootPrint, m_pimpl->rightFootPrint, initTime, endTime))) {
             std::cerr << "[UnicycleGenerator::generate] Failed to compute new steps." << std::endl;
             return false;
         }
     }
-    return generate(*(m_pimpl->leftFootPrint), *(m_pimpl->rightFootPrint), initTime, dT);
+    return generateFromFootPrints(m_pimpl->leftFootPrint, m_pimpl->rightFootPrint, initTime, dT);
 }
 
 bool UnicycleGenerator::reGenerate(double initTime, double dT, double endTime)
@@ -374,7 +385,7 @@ bool UnicycleGenerator::reGenerate(double initTime, double dT, double endTime)
         }
     }
 
-    return generate(*(m_pimpl->leftFootPrint), *(m_pimpl->rightFootPrint), initTime, dT);
+    return generateFromFootPrints(m_pimpl->leftFootPrint, m_pimpl->rightFootPrint, initTime, dT);
 }
 
 bool UnicycleGenerator::reGenerate(double initTime, double dT, double endTime, const Step &measuredLeft, const Step &measuredRight)
@@ -423,7 +434,7 @@ bool UnicycleGenerator::reGenerate(double initTime, double dT, double endTime, c
         }
     }
 
-    return generate(*(m_pimpl->leftFootPrint), *(m_pimpl->rightFootPrint), initTime, dT);
+    return generateFromFootPrints(m_pimpl->leftFootPrint, m_pimpl->rightFootPrint, initTime, dT);
 }
 
 bool UnicycleGenerator::reGenerate(double initTime, double dT, double endTime, bool correctLeft, const iDynTree::Vector2 &measuredPosition, double measuredAngle)
@@ -468,7 +479,7 @@ bool UnicycleGenerator::reGenerate(double initTime, double dT, double endTime, b
         }
     }
 
-    return generate(*(m_pimpl->leftFootPrint), *(m_pimpl->rightFootPrint), initTime, dT);
+    return generateFromFootPrints(m_pimpl->leftFootPrint, m_pimpl->rightFootPrint, initTime, dT);
 }
 
 bool UnicycleGenerator::reGenerate(double initTime, double dT, double endTime, const iDynTree::Vector2 &measuredLeftPosition, double measuredLeftAngle, const iDynTree::Vector2 &measuredRightPosition, double measuredRightAngle)
@@ -514,7 +525,7 @@ bool UnicycleGenerator::reGenerate(double initTime, double dT, double endTime, c
         }
     }
 
-    return generate(*(m_pimpl->leftFootPrint), *(m_pimpl->rightFootPrint), initTime, dT);
+    return generateFromFootPrints(m_pimpl->leftFootPrint, m_pimpl->rightFootPrint, initTime, dT);
 }
 
 bool UnicycleGenerator::setSwitchOverSwingRatio(double ratio)

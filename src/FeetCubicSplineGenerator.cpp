@@ -23,6 +23,21 @@ public:
 
     std::mutex mutex;
 
+    FeetCubicSplineGeneratorImplementation()
+        : xPositionsBuffer(2)
+        , yPositionsBuffer(2)
+        , zPositionsBuffer(3)
+        , yawsBuffer(2)
+        , pitchAnglesBuffer(3)
+        , timesBuffer(2)
+        , zTimesBuffer(3)
+        , xSpline(2)
+        , ySpline(2)
+        , zSpline(3)
+        , yawSpline(2)
+        , pitchSpline(3)
+    { }
+
 
     bool interpolateFoot(double dT, const std::vector<size_t>& phaseShift, const std::vector<StepPhase> &stepPhase, const FootPrint &foot, std::vector<iDynTree::Transform> &output) {
         //NOTE this must be called after createPhasesTimings
