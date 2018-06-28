@@ -26,10 +26,11 @@ include(AddWarningsConfigurationToTargets)
 
 include(CMakePackageConfigHelpers)
 
+set(UnicyclePlanner_VERSION 0.1.100)
 
 project(UnicyclePlanner
         LANGUAGES CXX
-        VERSION 0.1.100)
+        VERSION ${UnicyclePlanner_VERSION})
 
 option(ENABLE_RPATH "Enable RPATH for this library" ON)
 mark_as_advanced(ENABLE_RPATH)
@@ -103,7 +104,9 @@ configure_package_config_file(${CMAKE_SOURCE_DIR}/cmake/unicyclePlannerConfig.cm
                               ${CMAKE_BINARY_DIR}/UnicyclePlannerConfig.cmake
                               INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/UnicyclePlanner)
 
-install(FILES ${CMAKE_BINARY_DIR}/UnicyclePlannerConfig.cmake DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/UnicyclePlanner)
+write_basic_package_version_file(${CMAKE_CURRENT_BINARY_DIR}/UnicyclePlannerConfigVersion.cmake  VERSION ${UnicyclePlanner_VERSION} COMPATIBILITY SameMajorVersion )
+
+install(FILES ${CMAKE_BINARY_DIR}/UnicyclePlannerConfig.cmake ${CMAKE_CURRENT_BINARY_DIR}/UnicyclePlannerConfigVersion.cmake DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/UnicyclePlanner)
 
 include(AddUninstallTarget)
 
