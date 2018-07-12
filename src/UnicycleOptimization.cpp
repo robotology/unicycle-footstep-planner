@@ -103,13 +103,13 @@ void UnicycleOptimization::printViolatedConstraints(const iDynTree::Vector2 &rPl
     m_stateBuffer(1) = rPl(1);
     m_stateBuffer(2) = deltaAngle;
     m_stateBuffer(3) = deltaTime;
-    if (m_lengthConstraint->isFeasiblePoint(0.0, m_stateBuffer, m_emptyBuffer)) {
+    if (!(m_lengthConstraint->isFeasiblePoint(0.0, m_stateBuffer, m_emptyBuffer))) {
         std::cerr << "  - Maximum length constraint." << std::endl;
     }
-    if (m_widthConstraint->isFeasiblePoint(0.0, m_stateBuffer, m_emptyBuffer)) {
+    if (!(m_widthConstraint->isFeasiblePoint(0.0, m_stateBuffer, m_emptyBuffer))) {
         std::cerr << "  - Minimum width constraint." << std::endl;
     }
-    if (m_angleConstraint->isFeasiblePoint(0.0, m_stateBuffer, m_emptyBuffer)) {
+    if (!(m_angleConstraint->isFeasiblePoint(0.0, m_stateBuffer, m_emptyBuffer))) {
         std::cerr << "  - Maximum angle constraint." << std::endl;
     }
 }
