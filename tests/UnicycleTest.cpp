@@ -152,7 +152,6 @@ bool plannerTest(){
     //Initialization (some of these calls may be avoided)
     iDynTree::assertTrue(planner.setDesiredPersonDistance(conf.dX, conf.dY));
     iDynTree::assertTrue(planner.setControllerGain(conf.K));
-    iDynTree::assertTrue(planner.setEndTime(conf.endTime));
     iDynTree::assertTrue(planner.setMaximumIntegratorStepSize(conf.dT));
     iDynTree::assertTrue(planner.setMaxStepLength(conf.maxL));
     iDynTree::assertTrue(planner.setWidthSetting(conf.minW, conf.nominalW));
@@ -181,7 +180,7 @@ bool plannerTest(){
     //left->addStep(initPosition, iDynTree::deg2rad(15), 25); //fake initialization
 
     start = clock();
-    iDynTree::assertTrue(planner.computeNewSteps(left, right, conf.initTime));
+    iDynTree::assertTrue(planner.computeNewSteps(left, right, conf.initTime, conf.endTime));
     std::cerr <<"Test Finished in " << (static_cast<double>(clock() - start) / CLOCKS_PER_SEC) << " seconds."<<std::endl;
 
     StepList leftSteps = left->getSteps();
@@ -207,9 +206,8 @@ bool plannerTest(){
     newDesired(0) = lastStep.position(0) + 0.5;
     newDesired(1) = lastStep.position(1) + 0.5;
     iDynTree::assertTrue(planner.addDesiredTrajectoryPoint(lastStep.impactTime+10, newDesired, dummyVector));
-    iDynTree::assertTrue(planner.setEndTime(lastStep.impactTime+10)); // necessary!
 
-    iDynTree::assertTrue(planner.computeNewSteps(left, right, lastStep.impactTime));
+    iDynTree::assertTrue(planner.computeNewSteps(left, right, lastStep.impactTime, lastStep.impactTime+10));
 
     leftSteps = left->getSteps();
     rightSteps = right->getSteps();

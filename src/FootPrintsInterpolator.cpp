@@ -55,7 +55,7 @@ bool FeetInterpolator::createPhasesTimings(const double velocityAtMergePoint)
     std::shared_ptr<std::vector<StepPhase> > swing, stance;
 
     if (m_orderedSteps.size() == 0){
-        int endSwitchSamples = std::round(m_endSwitch/m_dT); //last shift to the center
+        size_t endSwitchSamples = static_cast<size_t>(std::round(m_endSwitch/m_dT)); //last shift to the center
 
         m_lFootPhases->reserve(endSwitchSamples);
         m_rFootPhases->reserve(endSwitchSamples);
@@ -72,13 +72,13 @@ bool FeetInterpolator::createPhasesTimings(const double velocityAtMergePoint)
     }
 
     double totalTime = m_orderedSteps.back()->impactTime - m_initTime + m_endSwitch;
-    int trajectoryDimension = std::ceil(totalTime/m_dT);
+    size_t trajectoryDimension = static_cast<size_t>(std::ceil(totalTime/m_dT));
 
     m_lFootPhases->reserve(trajectoryDimension); // Notice that this dimension may not be the final dimension, due to rounding errors!!!
     m_rFootPhases->reserve(trajectoryDimension);
 
     double stepTime, switchTime, pauseTime;
-    int stepSamples, switchSamples, swingSamples;
+    size_t stepSamples, switchSamples, swingSamples;
 
     StepsIndex leftIndex = m_left.getSteps().cbegin() + 1;
     StepsIndex rightIndex = m_right.getSteps().cbegin() + 1;
@@ -109,8 +109,8 @@ bool FeetInterpolator::createPhasesTimings(const double velocityAtMergePoint)
         } else pauseTime = 0;
 
         //Samples
-        stepSamples = std::round(stepTime/m_dT);
-        switchSamples = std::round(switchTime/m_dT);
+        stepSamples = static_cast<size_t>(std::round(stepTime/m_dT));
+        switchSamples = static_cast<size_t>(std::round(switchTime/m_dT));
         swingSamples = stepSamples - switchSamples;
 
         if (leftIndex == nextStepindex){
@@ -134,10 +134,10 @@ bool FeetInterpolator::createPhasesTimings(const double velocityAtMergePoint)
             //bool pause = m_pauseActive && (switchTime > m_maxSwitchTime); //if true, it will pause in the middle
             size_t mergePoint;
             if (pause){
-                mergePoint = m_phaseShift.back() - std::round(m_nominalSwitchTime/(2*m_dT));
+                mergePoint = m_phaseShift.back() - static_cast<size_t>(std::round(m_nominalSwitchTime/(2*m_dT)));
                 m_mergePoints.push_back(mergePoint);
             } else {
-                mergePoint = m_phaseShift.back() - std::round(switchTime/(2*m_dT));
+                mergePoint = m_phaseShift.back() - static_cast<size_t>(std::round(switchTime/(2*m_dT)));
                 m_mergePoints.push_back(mergePoint);
             }
         }
@@ -149,7 +149,7 @@ bool FeetInterpolator::createPhasesTimings(const double velocityAtMergePoint)
         previouStepTime += stepSamples*m_dT; //to take into account samples lost by numeric errors
         orderedStepIndex++;
     }
-    switchSamples = std::round(m_endSwitch/m_dT); //last shift to the center
+    switchSamples = static_cast<size_t>(std::round(m_endSwitch/m_dT)); //last shift to the center
     swing->insert(swing->end(), switchSamples, StepPhase::SwitchIn);
     stance->insert(stance->end(), switchSamples, StepPhase::SwitchOut);
     m_phaseShift.push_back(m_phaseShift.back() + switchSamples);
@@ -168,13 +168,13 @@ void FeetInterpolator::fillFeetStandingPeriodsVectors()
     m_lFootContact.resize(m_lFootPhases->size());
     m_rFootContact.resize(m_rFootPhases->size());
 
-    for (int instant = 0; instant < m_lFootContact.size(); ++instant){
+    for (size_t instant = 0; instant < m_lFootContact.size(); ++instant){
         if (m_lFootPhases->at(instant) == StepPhase::Swing)
             m_lFootContact[instant] = false;
         else m_lFootContact[instant] = true;
     }
 
-    for (int instant = 0; instant < m_rFootContact.size(); ++instant){
+    for (size_t instant = 0; instant < m_rFootContact.size(); ++instant){
         if (m_rFootPhases->at(instant) == StepPhase::Swing)
             m_rFootContact[instant] = false;
         else m_rFootContact[instant] = true;
@@ -187,7 +187,7 @@ void FeetInterpolator::fillLeftFixedVector()
     //NOTE this must be called after createPhasesTimings
     m_leftFixed.resize(m_lFootPhases->size());
 
-    for (int instant = 0; instant < m_leftFixed.size(); ++instant){
+    for (size_t instant = 0; instant < m_leftFixed.size(); ++instant){
         m_leftFixed[instant] = (m_lFootPhases->at(instant) == StepPhase::Stance)||(m_lFootPhases->at(instant) == StepPhase::SwitchOut);
     }
 }
@@ -477,15 +477,15 @@ void FeetInterpolator::mirrorWeightPortion(const std::vector<double> &original, 
     if (mirroredAcceleration.size() != originalAcceleration.size())
         mirroredAcceleration.resize(originalAcceleration.size());
 
-    for (int instant = 0; instant < original.size(); ++instant){
+    for (size_t instant = 0; instant < original.size(); ++instant){
         mirrored[instant] = 1.0 - original[instant];
     }
 
-    for (int instant = 0; instant < originalVelocity.size(); ++instant){
+    for (size_t instant = 0; instant < originalVelocity.size(); ++instant){
         mirroredVelocity[instant] = -originalVelocity[instant];
     }
 
-    for (int instant = 0; instant < originalAcceleration.size(); ++instant){
+    for (size_t instant = 0; instant < originalAcceleration.size(); ++instant){
         mirroredAcceleration[instant] = -originalAcceleration[instant];
     }
 }
@@ -666,23 +666,24 @@ void FeetInterpolator::computeGlobalZMP(const Step &previousLeft, const Step &pr
     iDynTree::Position deltaL, deltaR;
 
 
-    double correction, correctionVelocity, correctionAcceleration;
+    double correction = 0.0, correctionVelocity = 0.0, correctionAcceleration = 0.0;
 
     for (size_t instant = 0; instant < m_leftZMP.size(); ++instant){
 
         leftWorldZMP = pos3D(m_leftTrajectory[instant], m_leftZMP[instant]);
         rightWorldZMP = pos3D(m_rightTrajectory[instant], m_rightZMP[instant]);
 
+        correction = correctionSpline.evaluatePoint(instant*m_dT, correctionVelocity, correctionAcceleration);
+
         if (instant < m_phaseShift[1]){ //first half switch
             deltaL = pos3D(oldLeftH, m_leftZMP[instant]) - leftWorldZMP;
             deltaR = pos3D(oldRightH, m_rightZMP[instant]) - rightWorldZMP;
-            correction = correctionSpline.evaluatePoint(instant*m_dT, correctionVelocity, correctionAcceleration);
-            for (int i = 0; i < 2; ++i){
+            for (unsigned int i = 0; i < 2; ++i){
                 m_worldZMP[instant](i) = m_weightInLeft[instant] * (leftWorldZMP(i) + correction * deltaL(i)) +
                         m_weightInRight[instant] * (rightWorldZMP(i) + correction * deltaR(i));
             }
         } else {
-            for (int i = 0; i < 2; ++i){
+            for (unsigned int i = 0; i < 2; ++i){
                 m_worldZMP[instant](i) = m_weightInLeft[instant] * leftWorldZMP(i) + m_weightInRight[instant] * rightWorldZMP(i);
             }
         }
@@ -692,14 +693,14 @@ void FeetInterpolator::computeGlobalZMP(const Step &previousLeft, const Step &pr
         rightWorldZMPVelocity = pos3D(m_rightTrajectory[instant], m_rightZMPVelocity[instant]);
 
         if (instant < m_phaseShift[1]){
-            for (int i = 0; i < 2; ++i){ //NOTE!! HERE WE ARE ASSUMING THAT NEITHER THE FEET, NOR THE LOCAL ZMPs ARE MOVING (only for the first phase)
+            for (unsigned int i = 0; i < 2; ++i){ //NOTE!! HERE WE ARE ASSUMING THAT NEITHER THE FEET, NOR THE LOCAL ZMPs ARE MOVING (only for the first phase)
                 m_worldZMPVelocity[instant](i) = m_weightInLeftVelocity[instant] * (leftWorldZMP(i) + correction * deltaL(i)) +
                         m_weightInLeft[instant] * correctionVelocity * deltaL(i) +
                         m_weightInRightVelocity[instant] * (rightWorldZMP(i) + correction * deltaR(i)) +
                         m_weightInRight[instant] * correctionVelocity * deltaR(i);
             }
         } else {
-            for (int i = 0; i < 2; ++i){
+            for (unsigned int i = 0; i < 2; ++i){
                 m_worldZMPVelocity[instant](i) = m_weightInLeftVelocity[instant] * leftWorldZMP(i) +
                         m_weightInLeft[instant] * leftWorldZMPVelocity(i) +
                         m_weightInRightVelocity[instant] * rightWorldZMP(i) +
@@ -711,7 +712,7 @@ void FeetInterpolator::computeGlobalZMP(const Step &previousLeft, const Step &pr
         rightWorldZMPAcceleration = pos3D(m_rightTrajectory[instant], m_rightZMPAcceleration[instant]);
 
         if (instant < m_phaseShift[1]){
-            for (int i = 0; i < 2; ++i){ //NOTE!! HERE WE ARE ASSUMING THAT NEITHER THE FEET, NOR THE LOCAL ZMPs ARE MOVING (only for the first phase)
+            for (unsigned int i = 0; i < 2; ++i){ //NOTE!! HERE WE ARE ASSUMING THAT NEITHER THE FEET, NOR THE LOCAL ZMPs ARE MOVING (only for the first phase)
                 m_worldZMPAcceleration[instant](i) = m_weightInLeftAcceleration[instant] * (leftWorldZMP(i) + correction * deltaL(i)) +
                         2 * m_weightInLeftVelocity[instant] * correctionVelocity * deltaL(i) +
                         m_weightInLeft[instant] * correctionAcceleration * deltaL(i) +
@@ -720,7 +721,7 @@ void FeetInterpolator::computeGlobalZMP(const Step &previousLeft, const Step &pr
                         m_weightInRight[instant] * correctionAcceleration * deltaR(i);
             }
         } else {
-            for (int i = 0; i < 2; ++i){
+            for (unsigned int i = 0; i < 2; ++i){
                 m_worldZMPAcceleration[instant](i) = m_weightInLeftAcceleration[instant] * leftWorldZMP(i) +
                         2 * m_weightInLeftVelocity[instant] * leftWorldZMPVelocity(i) +
                         m_weightInLeft[instant] * leftWorldZMPAcceleration(i) +
@@ -760,7 +761,7 @@ bool FeetInterpolator::computeCoMHeightTrajectory()
     }
 
     size_t endOfPhase, initialInstant;
-    double interpolationTime, dummy, stanceLength;
+    double interpolationTime, stanceLength;
     size_t instant = 0;
     for (size_t phase = 1; phase < m_phaseShift.size(); ++phase){ //the first value is useless
         endOfPhase = m_phaseShift[phase];

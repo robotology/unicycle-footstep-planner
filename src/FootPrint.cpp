@@ -37,6 +37,7 @@ bool FootPrint::addStep(const iDynTree::Vector2 &position, double theta, double 
     newStep.impactTime = impactTime;
     newStep.angle = theta;
     newStep.position = position;
+    newStep.footName = m_footName;
 
     m_steps->push_back(newStep);
 
@@ -107,4 +108,14 @@ size_t FootPrint::numberOfSteps() const
 const StepList &FootPrint::getSteps() const
 {
     return *m_steps;
+}
+
+void FootPrint::setFootName(const std::string& footName)
+{
+    m_footName = footName;
+}
+
+const std::string& FootPrint::getFootName() const
+{
+    return m_footName;
 }

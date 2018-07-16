@@ -34,6 +34,13 @@ bool UnicycleTrajectoryGenerator::generateAndInterpolate(std::shared_ptr<FootPri
     return computeNewSteps(leftFoot, rightFoot, initTime) && interpolate(*leftFoot, *rightFoot, initTime, dT, weightInLeftAtMergePoint);
 }
 
+bool UnicycleTrajectoryGenerator::generateAndInterpolate(std::shared_ptr<FootPrint> leftFoot, std::shared_ptr<FootPrint> rightFoot, double initTime, double dT, double endTime, const InitialState &weightInLeftAtMergePoint)
+{
+    m_left = leftFoot;
+    m_right = rightFoot;
+    return computeNewSteps(leftFoot, rightFoot, initTime, endTime) && interpolate(*leftFoot, *rightFoot, initTime, dT, weightInLeftAtMergePoint);
+}
+
 bool UnicycleTrajectoryGenerator::generateAndInterpolate(std::shared_ptr<FootPrint> leftFoot, std::shared_ptr<FootPrint> rightFoot, double initTime, double dT)
 {
     m_left = leftFoot;
@@ -41,11 +48,18 @@ bool UnicycleTrajectoryGenerator::generateAndInterpolate(std::shared_ptr<FootPri
     return computeNewSteps(leftFoot, rightFoot, initTime) && interpolate(*leftFoot, *rightFoot, initTime, dT);
 }
 
+bool UnicycleTrajectoryGenerator::generateAndInterpolate(std::shared_ptr<FootPrint> leftFoot, std::shared_ptr<FootPrint> rightFoot, double initTime, double dT, double endTime)
+{
+    m_left = leftFoot;
+    m_right = rightFoot;
+    return computeNewSteps(leftFoot, rightFoot, initTime, endTime) && interpolate(*leftFoot, *rightFoot, initTime, dT);
+}
+
 bool UnicycleTrajectoryGenerator::generateAndInterpolate(double initTime, double dT, double endTime)
 {
     m_left->clearSteps();
     m_right->clearSteps();
-    return setEndTime(endTime) && computeNewSteps(m_left, m_right, initTime) && interpolate(*m_left, *m_right, initTime, dT);
+    return computeNewSteps(m_left, m_right, initTime, endTime) && interpolate(*m_left, *m_right, initTime, dT);
 }
 
 bool UnicycleTrajectoryGenerator::reGenerate(double initTime, double dT, double endTime, const InitialState &weightInLeftAtMergePoint)
@@ -60,7 +74,7 @@ bool UnicycleTrajectoryGenerator::reGenerate(double initTime, double dT, double 
         return false;
     }
 
-    return setEndTime(endTime) && computeNewSteps(m_left, m_right, initTime) &&
+    return computeNewSteps(m_left, m_right, initTime, endTime) &&
             interpolate(*m_left, *m_right, initTime, dT, weightInLeftAtMergePoint);
 }
 
@@ -95,7 +109,7 @@ bool UnicycleTrajectoryGenerator::reGenerate(double initTime, double dT, double 
         return false;
     }
 
-    return setEndTime(endTime) && computeNewSteps(m_left, m_right, initTime) &&
+    return computeNewSteps(m_left, m_right, initTime, endTime) &&
             interpolate(*m_left, *m_right, initTime, dT, weightInLeftAtMergePoint, previousL, previousR);
 }
 
@@ -126,7 +140,7 @@ bool UnicycleTrajectoryGenerator::reGenerate(double initTime, double dT, double 
         return false;
     }
 
-    return setEndTime(endTime) && computeNewSteps(m_left, m_right, initTime) &&
+    return computeNewSteps(m_left, m_right, initTime, endTime) &&
             interpolate(*m_left, *m_right, initTime, dT, weightInLeftAtMergePoint, previousL, previousR);
 }
 
@@ -157,6 +171,6 @@ bool UnicycleTrajectoryGenerator::reGenerate(double initTime, double dT, double 
         return false;
     }
 
-    return setEndTime(endTime) && computeNewSteps(m_left, m_right, initTime) &&
+    return computeNewSteps(m_left, m_right, initTime, endTime) &&
             interpolate(*m_left, *m_right, initTime, dT, weightInLeftAtMergePoint, previousL, previousR);
 }

@@ -9,6 +9,8 @@
 #define FOOTPRINTSINTERPOLATOR_H
 
 #include "FootPrint.h"
+#include <StepPhase.h>
+#include <ZMPTrajectoryGenerator.h>
 #include "iDynTree/Core/VectorFixSize.h"
 #include "iDynTree/Core/VectorDynSize.h"
 #include "iDynTree/Core/Transform.h"
@@ -18,20 +20,7 @@
 
 typedef StepList::const_iterator StepsIndex;
 
-enum class StepPhase{
-    Stance,
-    SwitchIn,
-    SwitchOut,
-    Swing
-};
-
-typedef struct{
-    double initialPosition;
-    double initialVelocity;
-    double initialAcceleration;
-} InitialState;
-
-class FeetInterpolator {
+class [[deprecated("use UnicycleGenerator instead.")]] FeetInterpolator {
 
     std::vector<StepsIndex> m_orderedSteps;
     FootPrint m_left, m_right;
