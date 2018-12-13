@@ -560,7 +560,7 @@ bool ZMPTrajectoryGenerator::computeNewTrajectories(double initTime, double dT, 
 }
 
 ZMPTrajectoryGenerator::ZMPTrajectoryGenerator()
-    : m_pimpl(new ZMPTrajectoryGeneratorImplementation)
+    : m_pimpl(std::make_unique<ZMPTrajectoryGeneratorImplementation>())
 {
     assert(m_pimpl);
     m_pimpl->leftStanceZMP.zero();

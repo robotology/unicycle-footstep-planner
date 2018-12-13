@@ -34,19 +34,21 @@ public:
 
 
     std::shared_ptr<FeetCubicSplineGenerator> feetSplineGenerator = nullptr;
+    std::shared_ptr<FeetMinimumJerkGenerator> feetMinimumJerkGenerator = nullptr;
     std::shared_ptr<ZMPTrajectoryGenerator> zmpGenerator = nullptr;
     std::shared_ptr<CoMHeightTrajectoryGenerator> comHeightGenerator = nullptr;
+    std::shared_ptr<DCMTrajectoryGenerator> dcmTrajectoryGenerator = nullptr;
 
     std::mutex mutex;
 
 
-    bool orderSteps(const FootPrint &leftFootPrint, const FootPrint &rightFootPrint) {
+    bool orderSteps(const FootPrint &lFootPrint, const FootPrint &rFootPrint) {
         orderedSteps.clear();
-        orderedSteps.reserve(leftFootPrint.numberOfSteps() + rightFootPrint.numberOfSteps());
+        orderedSteps.reserve(lFootPrint.numberOfSteps() + rFootPrint.numberOfSteps());
         if (orderedSteps.capacity() > 0){
-            for (StepsIndex footL = leftFootPrint.getSteps().cbegin(); footL != leftFootPrint.getSteps().cend(); ++footL)
+            for (StepsIndex footL = lFootPrint.getSteps().cbegin(); footL != lFootPrint.getSteps().cend(); ++footL)
                 orderedSteps.push_back(&*footL);
-            for (StepsIndex footR = rightFootPrint.getSteps().cbegin(); footR != rightFootPrint.getSteps().cend(); ++footR)
+            for (StepsIndex footR = rFootPrint.getSteps().cbegin(); footR != rFootPrint.getSteps().cend(); ++footR)
                 orderedSteps.push_back(&*footR);
 
             std::sort(orderedSteps.begin(), orderedSteps.end(),
@@ -63,7 +65,7 @@ public:
         return true;
     }
 
-    bool createPhasesTimings(const FootPrint &leftFootPrint, const FootPrint &rightFootPrint) {
+    bool createPhasesTimings(const FootPrint &lFootPrint, const FootPrint &rFootPrint) {
         //NOTE this method must be called after orderSteps to work properly
 
         lFootPhases.reset(new std::vector<StepPhase>());
@@ -83,8 +85,8 @@ public:
             lFootPhases->reserve(endSwitchSamples);
             rFootPhases->reserve(endSwitchSamples);
 
-            swing = (leftFootPrint.getSteps().front().impactTime > rightFootPrint.getSteps().front().impactTime) ? lFootPhases : rFootPhases;
-            stance = (leftFootPrint.getSteps().front().impactTime > rightFootPrint.getSteps().front().impactTime) ? rFootPhases : lFootPhases;
+            swing = (lFootPrint.getSteps().front().impactTime > rFootPrint.getSteps().front().impactTime) ? lFootPhases : rFootPhases;
+            stance = (lFootPrint.getSteps().front().impactTime > rFootPrint.getSteps().front().impactTime) ? rFootPhases : lFootPhases;
 
             swing->insert(swing->end(), endSwitchSamples, StepPhase::SwitchIn);
             stance->insert(stance->end(), endSwitchSamples, StepPhase::SwitchOut);
@@ -103,8 +105,8 @@ public:
         double stepTime, switchTime, pauseTime;
         size_t stepSamples, switchSamples, swingSamples;
 
-        const StepList& leftList = leftFootPrint.getSteps();
-        const StepList& rightList = rightFootPrint.getSteps();
+        const StepList& leftList = lFootPrint.getSteps();
+        const StepList& rightList = rFootPrint.getSteps();
         size_t orderedStepIndex = 2, leftIndex = 1, rightIndex = 1;
         const Step* nextStep;
         double previouStepTime = initTime;
@@ -118,7 +120,7 @@ public:
                 return false;
             }
 
-            if ((orderedStepIndex == 2) && (leftFootPrint.getSteps().front().impactTime != rightFootPrint.getSteps().front().impactTime)) { //first half step
+            if ((orderedStepIndex == 2) && (lFootPrint.getSteps().front().impactTime != rFootPrint.getSteps().front().impactTime)) { //first half step
                 //Timings
                 switchTime = (switchPercentage/(1 - (switchPercentage/2.0)) * stepTime)/2.0; //half switch
             } else { //general case
@@ -331,12 +333,29 @@ bool UnicycleGenerator::generateFromFootPrints(std::shared_ptr<FootPrint> left, 
         }
     }
 
+    if (m_pimpl->feetMinimumJerkGenerator) {
+        if (!(m_pimpl->feetMinimumJerkGenerator->computeNewTrajectories(dT, *left, *right,*(m_pimpl->lFootPhases), *(m_pimpl->rFootPhases),
+                                                                        m_pimpl->phaseShift))) {
+            std::cerr << "[UnicycleGenerator::generate] Failed while computing new feet trajectories (minimum jerk)." << std::endl;
+            return false;
+        }
+    }
+
     if (m_pimpl->zmpGenerator) {
         if (!(m_pimpl->zmpGenerator->computeNewTrajectories(initTime, dT, m_pimpl->switchPercentage, m_pimpl->maxStepTime,
                                                             m_pimpl->nominalStepTime, m_pimpl->pauseActive, m_pimpl->mergePoints,
                                                             *left, *right, m_pimpl->orderedSteps, *(m_pimpl->lFootPhases),
                                                             *(m_pimpl->rFootPhases), m_pimpl->phaseShift))) {
             std::cerr << "[UnicycleGenerator::generate] Failed while computing new ZMP trajectories." << std::endl;
+            return false;
+        }
+    }
+
+    if (m_pimpl->dcmTrajectoryGenerator) {
+        if (!(m_pimpl->dcmTrajectoryGenerator->computeNewTrajectories(initTime, dT, m_pimpl->switchPercentage, m_pimpl->maxStepTime, m_pimpl->nominalStepTime,
+                                                                      m_pimpl->pauseActive, m_pimpl->orderedSteps, m_pimpl->phaseShift, *(m_pimpl->lFootPhases),
+                                                                      *left, *right))) {
+            std::cerr << "[UnicycleGenerator::generate] Failed while computing new DCM trajectories." << std::endl;
             return false;
         }
     }
@@ -584,6 +603,14 @@ bool UnicycleGenerator::setPauseConditions(double maxStepTime, double nominalSte
     return true;
 }
 
+void UnicycleGenerator::getStepPhases(std::vector<StepPhase> &leftPhases, std::vector<StepPhase> &rightPhases) const
+{
+    std::lock_guard<std::mutex> guard(m_pimpl->mutex);
+
+    leftPhases = *(m_pimpl->lFootPhases);
+    rightPhases = *(m_pimpl->rFootPhases);
+}
+
 void UnicycleGenerator::getFeetStandingPeriods(std::vector<bool> &lFootContacts, std::vector<bool> &rFootContacts) const
 {
     std::lock_guard<std::mutex> guard(m_pimpl->mutex);
@@ -619,6 +646,17 @@ std::shared_ptr<FeetCubicSplineGenerator> UnicycleGenerator::addFeetCubicSplineG
 
 }
 
+std::shared_ptr<FeetMinimumJerkGenerator> UnicycleGenerator::addFeetMinimumJerkGenerator()
+{
+    std::lock_guard<std::mutex> guard(m_pimpl->mutex);
+
+    if (m_pimpl->feetMinimumJerkGenerator == nullptr) {
+        m_pimpl->feetMinimumJerkGenerator.reset(new FeetMinimumJerkGenerator());
+    }
+
+    return m_pimpl->feetMinimumJerkGenerator;
+}
+
 std::shared_ptr<ZMPTrajectoryGenerator> UnicycleGenerator::addZMPTrajectoryGenerator()
 {
     std::lock_guard<std::mutex> guard(m_pimpl->mutex);
@@ -639,6 +677,17 @@ std::shared_ptr<CoMHeightTrajectoryGenerator> UnicycleGenerator::addCoMHeightTra
     }
 
     return m_pimpl->comHeightGenerator;
+}
+
+std::shared_ptr<DCMTrajectoryGenerator> UnicycleGenerator::addDCMTrajectoryGenerator()
+{
+    std::lock_guard<std::mutex> guard(m_pimpl->mutex);
+
+    if (m_pimpl->dcmTrajectoryGenerator == nullptr) {
+        m_pimpl->dcmTrajectoryGenerator.reset(new DCMTrajectoryGenerator());
+    }
+
+    return m_pimpl->dcmTrajectoryGenerator;
 }
 
 

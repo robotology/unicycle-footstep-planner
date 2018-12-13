@@ -9,9 +9,12 @@
 #define UNICYCLEGENERATOR_H
 
 #include <UnicyclePlanner.h>
+#include <StepPhase.h>
 #include <FeetCubicSplineGenerator.h>
+#include <FeetMinimumJerkGenerator.h>
 #include <ZMPTrajectoryGenerator.h>
 #include <CoMHeightTrajectoryGenerator.h>
+#include <DCMTrajectoryGenerator.h>
 #include <memory>
 
 class UnicycleGenerator {
@@ -53,6 +56,8 @@ public:
     bool setPauseConditions(double maxStepTime, double nominalStepTime);
 
     //Getters
+    void getStepPhases(std::vector<StepPhase>& leftPhases, std::vector<StepPhase>& rightPhases) const;
+
     void getFeetStandingPeriods(std::vector<bool>& lFootContacts, std::vector<bool>& rFootContacts) const;
 
     void getWhenUseLeftAsFixed(std::vector<bool>& leftIsFixed) const;
@@ -64,9 +69,13 @@ public:
 
     std::shared_ptr<FeetCubicSplineGenerator> addFeetCubicSplineGenerator();
 
+    std::shared_ptr<FeetMinimumJerkGenerator> addFeetMinimumJerkGenerator();
+
     std::shared_ptr<ZMPTrajectoryGenerator> addZMPTrajectoryGenerator();
 
     std::shared_ptr<CoMHeightTrajectoryGenerator> addCoMHeightTrajectoryGenerator();
+
+    std::shared_ptr<DCMTrajectoryGenerator> addDCMTrajectoryGenerator();
 
 };
 
