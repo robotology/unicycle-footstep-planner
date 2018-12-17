@@ -17,9 +17,10 @@
 #include <Eigen/Dense>
 
 // iDynTree
-#include "iDynTree/Core/VectorFixSize.h"
+#include <iDynTree/Core/VectorFixSize.h>
 
 #include <FootPrint.h>
+#include <StepPhase.h>
 
 typedef struct {
     double time;
@@ -103,40 +104,11 @@ class DCMTrajectoryGeneratorHelper
     std::vector<std::shared_ptr<GeneralSupportTrajectory>> m_trajectory; /**< Vector containing pointer of every trajectory phase. */
     std::pair<size_t, size_t> m_trajectoryDomain; /**< Trajectory domain. */
 
-    std::vector<const Step*> m_orderedSteps;  /**< Vector containing the both left and right footprint sorted into ascending order. */
-    Step m_firstStanceFoot; /**< Intial state of first stance foot. */
-    Step m_firstSwingFoot; /**< Intial state of first swing foot. */
-    std::vector<size_t> m_phaseShift; /**< Vector containing the index when a change of phase (SS -> DS and viceversa) occours. */
     std::vector<iDynTree::Vector2> m_DCMPosition; /**< Vector containing the position of the DCM. */
     std::vector<iDynTree::Vector2> m_DCMVelocity; /**< Vector containing the velocity of the DCM. */
     std::vector<iDynTree::Vector2> m_ZMPPosition; /**< Vector containing the position of the ZMP. */
+    std::vector<double> m_weightInLeft, m_weightInRight; /**< Vectors containing the percentage of weight carried by the foot. */
 
-    /**
-     * Evaluate the timings for the last step.
-     * @param singleSupportStartTime start time of the Single Support trajectory;
-     * @param singleSupportEndTime end time of the Single Support trajectory;
-     * @param doubleSupportEndTime end time of the Single Support trajectory;
-     * @param singleSupportBoundaryConditionTime boundary condition time of the single support trajectory.
-     */
-    void getLastStepsTiming(double &singleSupportStartTime,
-                            double &singleSupportEndTime,
-                            double &doubleSupportEndTime,
-                            double &singleSupportBoundaryConditionTime);
-
-    /**
-     * Evaluate the timings for a general step.
-     * @param singleSupportStartTime start time of the Single Support trajectory;
-     * @param singleSupportEndTime end time of the Single Support trajectory;
-     * @param singleSupportBoundaryConditionTime boundary condition time of the single support trajectory.
-     */
-    void getStepsTiming(double &singleSupportStartTime,
-                        double &singleSupportEndTime,
-                        double &singleSupportBoundaryConditionTime);
-    /**
-     * Evaluate the timings for the first double support phase.
-     * @param doubleSupportStartTime start time of the Double Support trajectory.
-     */
-    void getFirstDoubleSupportTiming(double &doubleSupportStartTime);
 
     /**
      * Add the last Single and Double support phases.
@@ -193,6 +165,18 @@ class DCMTrajectoryGeneratorHelper
      */
     bool evaluateDCMTrajectory();
 
+    /**
+     * Get the ZMP Delta.
+     * @param footprint ponter to the footprint;
+     * @param zmpInGlobalCoordinates zmp position expressed in global coordinates.
+     * @return true / galse in case of success /failure.
+     */
+    bool getZMPGlobalPosition(const Step *footprint,
+                              iDynTree::Vector2 &zmpInGlobalCoordinates) const;
+
+    bool computeFeetWeight(const std::vector<StepPhase> &lFootPhases, const std::vector<size_t> &phaseShift,
+                           const FootPrint &left, const FootPrint &right, const std::vector<iDynTree::Vector2>& zmpPosition);
+
     friend class DCMTrajectoryGenerator;
 
     /**
@@ -226,14 +210,6 @@ class DCMTrajectoryGeneratorHelper
     void setZMPDelta(const iDynTree::Vector2 &leftZMPDelta,
                      const iDynTree::Vector2 &rightZMPDelta);
 
-    /**
-     * Get the ZMP Delta.
-     * @param footprint ponter to the footprint;
-     * @param ZMPDelta left or right delta depending on the name of the footprint.
-     * @return true / galse in case of success /failure.
-     */
-    bool getZMPDelta(const Step *footprint,
-                     iDynTree::Vector2 &ZMPDelta) const;
 
     /**
      * Set the pause condition.
@@ -246,33 +222,20 @@ class DCMTrajectoryGeneratorHelper
     /**
      * Generate the Divergent Component of Motion trajectory.
      * @param orderedSteps vector containing the both left and right footprint sorted into ascending impactTime order;
-     * @param firstStanceFoot is the footprint of the first stance foot;
-     * @param firstSwingFoot is the footprint of the first swing foot;
+     * @param lFootPhases contains the phase of the left foot trajctory (those of the right can be obtained from this vector too).
+     * @param left set of steps of the left foot
+     * @param right set of steps of the right foot
      * @param initPosition is the position of the DCM at the beginning of the trajectory;
      * @param initVelocity is the velocity of the DCM at the beginning of the trajectory;
      * @param phaseShift vector containing the index when a change of phase (SS -> DS and viceversa) occours.
      * @return true / false in case of success / failure.
      */
-    bool generateDCMTrajectory(const std::vector<const Step *> &orderedSteps,
-                               const Step firstStanceFoot,
-                               const Step firstSwingFoot,
+    bool generateDCMTrajectory(const std::vector<const Step *> &orderedSteps, const std::vector<StepPhase> &lFootPhases,
+                               const FootPrint &left, const FootPrint &right,
                                const iDynTree::Vector2 &initPosition,
                                const iDynTree::Vector2 &initVelocity,
                                const std::vector<size_t> &phaseShift);
 
-    /**
-     * Generate the Fixed Divergent Component of Motion trajectory.
-     * This method has to be called if no steps has be done!
-     * @param initPosition is the position of the DCM at the beginning of the trajectory;
-     * @param initVelocity is the velocity of the DCM at the beginning of the trajectory;
-     * @param finalPosition is the desired position of the DCM at the end of the trajectory.
-     * @param phaseShift vector containing the index when a change of phase (SS -> DS and viceversa) occours.
-     * @return true / false in case of success / failure.
-     */
-    bool generateFixStanceDCMTrajectory(const iDynTree::Vector2 &initPosition,
-                                        const iDynTree::Vector2 &initVelocity,
-                                        const iDynTree::Vector2 &finalPosition,
-                                        const std::vector<size_t> &phaseShift);
 
     /**
      * Get the position of the Divergent Component of Motion.
@@ -291,6 +254,11 @@ class DCMTrajectoryGeneratorHelper
      * @return a vector containing the DCM velocity during all the trajectory domain.
      */
     const std::vector<iDynTree::Vector2>& getZMPPosition() const;
+
+    /**
+     * Output the weight percentage carried by each foot while walking, according to the DCM trajectory.
+     */
+    void getWeightPercentage(std::vector<double>& weightInLeft, std::vector<double>& weightInRight) const;
 };
 
 #endif // DCMTRAJECTORYGENERATORHELPER_H

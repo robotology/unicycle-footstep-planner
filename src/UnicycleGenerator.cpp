@@ -46,9 +46,13 @@ public:
         orderedSteps.clear();
         orderedSteps.reserve(lFootPrint.numberOfSteps() + rFootPrint.numberOfSteps());
         if (orderedSteps.capacity() > 0){
-            for (StepsIndex footL = lFootPrint.getSteps().cbegin(); footL != lFootPrint.getSteps().cend(); ++footL)
+
+            auto& lSteps = lFootPrint.getSteps();
+            auto& rSteps = rFootPrint.getSteps();
+
+            for (StepsIndex footL = lSteps.cbegin(); footL != lSteps.cend(); ++footL)
                 orderedSteps.push_back(&*footL);
-            for (StepsIndex footR = rFootPrint.getSteps().cbegin(); footR != rFootPrint.getSteps().cend(); ++footR)
+            for (StepsIndex footR = rSteps.cbegin(); footR != rSteps.cend(); ++footR)
                 orderedSteps.push_back(&*footR);
 
             std::sort(orderedSteps.begin(), orderedSteps.end(),
@@ -57,9 +61,15 @@ public:
                                                 [](const Step *a, const Step *b) { return a->impactTime == b->impactTime;});
 
             if (duplicate != orderedSteps.end()){
-                std::cerr << "[FEETINTERPOLATOR] Two entries of the FootPrints pointers have the same impactTime. (The head is not considered)"
+                std::cerr << "[ERROR][UnicycleGenerator::orderSteps] Two entries of the FootPrints pointers have the same impactTime. (The head is not considered)"
                           << std::endl;
                 return false;
+            }
+
+            if ((orderedSteps[0]->impactTime == orderedSteps[1]->impactTime) && (orderedSteps[1]->footName == orderedSteps[2]->footName)){ //preserve the alternation of ordered steps when the initial steps of the two feet have the same impact time
+                const Step* buffer = orderedSteps[0];
+                orderedSteps[0] = orderedSteps[1];
+                orderedSteps[1] = buffer;
             }
         }
         return true;
@@ -116,7 +126,7 @@ public:
             stepTime = nextStep->impactTime - previouStepTime;
 
             if (stepTime < 0){
-                std::cerr <<"Something went wrong. The stepTime appears to be negative." << std::endl;
+                std::cerr <<"[ERROR][UnicycleGenerator::createPhasesTimings] Something went wrong. The stepTime appears to be negative." << std::endl;
                 return false;
             }
 
@@ -147,7 +157,7 @@ public:
                 stance = lFootPhases;
                 rightIndex++;
             } else {
-                std::cerr << "[FEETINTERPOLATOR] Something went wrong." << std::endl;
+                std::cerr << "[ERROR][UnicycleGenerator::createPhasesTimings] Something went wrong." << std::endl;
                 return false;
             }
 
