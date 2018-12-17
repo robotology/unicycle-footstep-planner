@@ -27,10 +27,11 @@ public:
     std::vector<size_t> mergePoints; //it stores the indeces from which is convenient to merge a new trajectory. The last element is the dimension of m_lFootPhases, i.e. merge after the end
     std::vector<bool> lFootContact, rFootContact, leftFixed;
 
-    double switchPercentage = -1.0, dT = 0.01, endSwitch = 0.0, initTime = 0.0;
+    double switchPercentage = 0.5, dT = 0.01, endSwitch = 0.0, initTime = 0.0;
     double nominalSwitchTime = 1.0;
     double maxStepTime = 10.0, nominalStepTime = 2.0;
     bool pauseActive = false;
+    double mergePointRatio = 0.5;
 
 
     std::shared_ptr<FeetCubicSplineGenerator> feetSplineGenerator = nullptr;
@@ -169,10 +170,10 @@ public:
                 //bool pause = m_pauseActive && (switchTime > m_maxSwitchTime); //if true, it will pause in the middle
                 size_t mergePoint;
                 if (pause){
-                    mergePoint = phaseShift.back() - static_cast<size_t>(std::round(nominalSwitchTime/(2*dT)));
+                    mergePoint = phaseShift.back() - static_cast<size_t>(std::round(nominalSwitchTime * (1 - mergePointRatio)/(dT)));
                     mergePoints.push_back(mergePoint);
                 } else {
-                    mergePoint = phaseShift.back() - static_cast<size_t>(std::round(switchTime/(2*dT)));
+                    mergePoint = phaseShift.back() - static_cast<size_t>(std::round(switchTime * (1 - mergePointRatio)/(dT)));
                     mergePoints.push_back(mergePoint);
                 }
             }
@@ -309,12 +310,6 @@ bool UnicycleGenerator::generateFromFootPrints(std::shared_ptr<FootPrint> left, 
                   << std::endl;
         return false;
     }
-
-    if (m_pimpl->switchPercentage < 0){
-        std::cerr << "[UnicycleGenerator::generate] First you have to define the ratio between switch and swing phases." << std::endl;
-        return false;
-    }
-
 
     m_pimpl->nominalSwitchTime = m_pimpl->switchPercentage * m_pimpl->nominalStepTime;
 
@@ -588,7 +583,7 @@ bool UnicycleGenerator::setPauseConditions(double maxStepTime, double nominalSte
     std::lock_guard<std::mutex> guard(m_pimpl->mutex);
 
     if (maxStepTime < 0){
-        std::cerr << "[FEETINTERPOLATOR] If the maxStepTime is negative, the robot won't pause in middle stance." << std::endl;
+        std::cerr << "[UnicycleGenerator::setPauseConditions] If the maxStepTime is negative, the robot won't pause in middle stance." << std::endl;
         m_pimpl->pauseActive = false;
     }
 
@@ -597,19 +592,29 @@ bool UnicycleGenerator::setPauseConditions(double maxStepTime, double nominalSte
 
     if (m_pimpl->pauseActive){
         if (nominalStepTime <= 0){
-            std::cerr << "[FEETINTERPOLATOR] The nominalStepTime is supposed to be positive." << std::endl;
+            std::cerr << "[UnicycleGenerator::setPauseConditions] The nominalStepTime is supposed to be positive." << std::endl;
             m_pimpl->pauseActive = false;
             return false;
         }
 
         if ((nominalStepTime) > maxStepTime){
-            std::cerr << "[FEETINTERPOLATOR] The nominalSwitchTime cannot be greater than maxSwitchTime." << std::endl;
+            std::cerr << "[UnicycleGenerator::setPauseConditions] The nominalSwitchTime cannot be greater than maxSwitchTime." << std::endl;
             m_pimpl->pauseActive = false;
             return false;
         }
     }
     m_pimpl->nominalStepTime = nominalStepTime;
 
+    return true;
+}
+
+bool UnicycleGenerator::setMergePointRatio(double mergePointRatio)
+{
+    if(mergePointRatio < 0 || mergePointRatio > 1){
+        std::cerr << "[UnicycleGenerator::setMergePointRatio] The merge point ratio has to be a positive number less the one";
+        return false;
+    }
+    m_pimpl->mergePointRatio = mergePointRatio;
     return true;
 }
 
