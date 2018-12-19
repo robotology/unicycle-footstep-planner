@@ -59,6 +59,7 @@ set(UCPLANNER_SOURCES src/ControlledUnicycle.cpp
                       src/FootPrint.cpp
                       src/FootPrintsInterpolator.cpp
                       src/UnicycleTrajectoryGenerator.cpp
+                      src/FeetGenerator.cpp
                       src/FeetCubicSplineGenerator.cpp
                       src/UnicycleGenerator.cpp
                       src/ZMPTrajectoryGenerator.cpp
@@ -75,6 +76,7 @@ set(UCPLANNER_HEADERS include/ControlledUnicycle.h
                       include/UnicyclePlanner.h
                       include/FootPrintsInterpolator.h
                       include/UnicycleTrajectoryGenerator.h
+                      include/FeetGenerator.h
                       include/FeetCubicSplineGenerator.h
                       include/UnicycleGenerator.h
                       include/ZMPTrajectoryGenerator.h

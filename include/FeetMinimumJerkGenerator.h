@@ -9,13 +9,14 @@
 
 #include <StepPhase.h>
 #include <FootPrint.h>
+#include <FeetGenerator.h>
 
 #include <iDynTree/Core/Transform.h>
 
 #include <vector>
 #include <memory>
 
-class FeetMinimumJerkGenerator {
+class FeetMinimumJerkGenerator : public FeetGenerator {
     friend class UnicycleGenerator;
 
     class FeetMinimumJerkGeneratorImplementation;
@@ -31,19 +32,19 @@ class FeetMinimumJerkGenerator {
 
 public:
 
-    ~FeetMinimumJerkGenerator();
+    virtual ~FeetMinimumJerkGenerator() final;
 
-    bool setStepHeight(double stepHeight);
+    virtual bool setStepHeight(double stepHeight) final;
 
-    bool setPitchDelta(double pitchAngle = 0.0); //DEGREES
+    virtual bool setPitchDelta(double pitchAngle = 0.0) final; //DEGREES
 
-    bool setFootApexTime(double swingTimeRatio = 0.5);
+    virtual bool setFootApexTime(double swingTimeRatio = 0.5) final;
 
-    bool setFootLandingVelocity(double landingVelocity = 0.0);
+    virtual bool setFootLandingVelocity(double landingVelocity = 0.0) final;
 
-    void getFeetTrajectories(std::vector<iDynTree::Transform>& lFootTrajectory, std::vector<iDynTree::Transform>& rFootTrajectory) const;
+    virtual void getFeetTrajectories(std::vector<iDynTree::Transform>& lFootTrajectory, std::vector<iDynTree::Transform>& rFootTrajectory) const final;
 
-    void getFeetTwistsInMixedRepresentation(std::vector<iDynTree::Twist> &lFootTwistsInMixedRepresentation, std::vector<iDynTree::Twist> &rFootTwistsInMixedRepresentation) const;
+    virtual void getFeetTwistsInMixedRepresentation(std::vector<iDynTree::Twist> &lFootTwistsInMixedRepresentation, std::vector<iDynTree::Twist> &rFootTwistsInMixedRepresentation) const final;
 
     //In a future release, also accelerations will be provided
 

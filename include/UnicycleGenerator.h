@@ -29,7 +29,7 @@ public:
 
     std::shared_ptr<UnicyclePlanner> unicyclePlanner();
 
-    std::shared_ptr<FootPrint> getLeftFootPrint();
+    std::shared_ptr<FootPrint> getLeftFootPrint(); //allow to modify the left and right foot prints before calling the planner in the generate method
 
     std::shared_ptr<FootPrint> getRightFootPrint();
 

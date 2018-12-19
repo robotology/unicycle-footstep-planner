@@ -6,8 +6,10 @@
  */
 
 #include <FeetCubicSplineGenerator.h>
+#include <iDynTree/Core/EigenHelpers.h>
 #include <iDynTree/Core/VectorDynSize.h>
 #include <iDynTree/Core/CubicSpline.h>
+#include <iDynTree/Core/Twist.h>
 #include <cassert>
 #include <mutex>
 
@@ -20,6 +22,8 @@ public:
     iDynTree::CubicSpline xSpline, ySpline, zSpline, yawSpline, pitchSpline;
 
     std::vector<iDynTree::Transform> leftTrajectory, rightTrajectory;
+
+    std::vector<iDynTree::Twist> leftMixedTwist, rightMixedTwist;
 
     std::mutex mutex;
 
@@ -39,7 +43,7 @@ public:
     { }
 
 
-    bool interpolateFoot(double dT, const std::vector<size_t>& phaseShift, const std::vector<StepPhase> &stepPhase, const FootPrint &foot, std::vector<iDynTree::Transform> &output) {
+    bool interpolateFoot(double dT, const std::vector<size_t>& phaseShift, const std::vector<StepPhase> &stepPhase, const FootPrint &foot, std::vector<iDynTree::Transform> &output, std::vector<iDynTree::Twist> &outputTwistsInMixedRepresentation) {
         //NOTE this must be called after createPhasesTimings
 
         if (stepHeight < 0){
@@ -50,13 +54,20 @@ public:
         if (output.size() != stepPhase.size())
             output.resize(stepPhase.size());
 
+        outputTwistsInMixedRepresentation.resize(stepPhase.size());
+
         const StepList& steps = foot.getSteps();
         StepList::const_iterator footState = steps.begin();
         size_t instant = 0;
         iDynTree::Transform newTransform;
         iDynTree::Position newPosition;
-        double swingLength;
+        double dummyAcceleration;
+        double swingLength, pitchAngle, yawAngle;
         size_t endOfPhase;
+        iDynTree::Vector3 linearVelocity;
+        iDynTree::Vector3 rpyDerivative;
+        iDynTree::AngularMotionVector3 rightTrivializedAngVelocity;
+        rpyDerivative.zero();
 
         for (size_t phase = 1; phase < phaseShift.size(); ++phase){ //the first value is useless
 
@@ -135,16 +146,22 @@ public:
                 double interpolationTime;
                 while (instant < endOfPhase){
                     interpolationTime = (instant - startSwingInstant)*dT;
-                    newPosition(0) = xSpline.evaluatePoint(interpolationTime);
-                    newPosition(1) = ySpline.evaluatePoint(interpolationTime);
-                    newPosition(2) = zSpline.evaluatePoint(interpolationTime);
+                    newPosition(0) = xSpline.evaluatePoint(interpolationTime, linearVelocity(0), dummyAcceleration);
+                    newPosition(1) = ySpline.evaluatePoint(interpolationTime, linearVelocity(1), dummyAcceleration);
+                    newPosition(2) = zSpline.evaluatePoint(interpolationTime, linearVelocity(2), dummyAcceleration);
+                    pitchAngle = pitchSpline.evaluatePoint(interpolationTime, rpyDerivative(1), dummyAcceleration);
+                    yawAngle = yawSpline.evaluatePoint(interpolationTime, rpyDerivative(2), dummyAcceleration);
                     newTransform.setPosition(newPosition);
-                    newTransform.setRotation(iDynTree::Rotation::RPY(0.0, pitchSpline.evaluatePoint(interpolationTime), yawSpline.evaluatePoint(interpolationTime)));
+                    newTransform.setRotation(iDynTree::Rotation::RPY(0.0, pitchAngle, yawAngle));
 
                     if (newPosition(2) < 0){
                         std::cerr << "[FeetCubicSplineGenerator::computeNewTrajectories] The z of the foot goes negative. Continuing anyway." << std::endl;
                     }
                     output[instant] = newTransform;
+                    iDynTree::toEigen(rightTrivializedAngVelocity) = iDynTree::toEigen(iDynTree::Rotation::RPYRightTrivializedDerivative(0.0, pitchAngle, yawAngle)) *
+                            iDynTree::toEigen(rpyDerivative);
+                    outputTwistsInMixedRepresentation[instant].setLinearVec3(linearVelocity);
+                    outputTwistsInMixedRepresentation[instant].setAngularVec3(rightTrivializedAngVelocity);
 
                     ++instant;
                 }
@@ -158,6 +175,7 @@ public:
 
                 while (instant < endOfPhase){
                     output[instant] = newTransform;
+                    outputTwistsInMixedRepresentation[instant].zero();
                     ++instant;
                 }
             }
@@ -182,12 +200,12 @@ bool FeetCubicSplineGenerator::computeNewTrajectories(double dT, const FootPrint
 {
     std::lock_guard<std::mutex> guard(m_pimpl->mutex);
 
-    if (!(m_pimpl->interpolateFoot(dT, phaseShift, lFootPhases, left, m_pimpl->leftTrajectory))){
+    if (!(m_pimpl->interpolateFoot(dT, phaseShift, lFootPhases, left, m_pimpl->leftTrajectory, m_pimpl->leftMixedTwist))){
         std::cerr << "[FeetCubicSplineGenerator::computeNewTrajectories] Failed while interpolating left foot trajectory." << std::endl;
         return false;
     }
 
-    if (!(m_pimpl->interpolateFoot(dT, phaseShift, rFootPhases, right, m_pimpl->rightTrajectory))){
+    if (!(m_pimpl->interpolateFoot(dT, phaseShift, rFootPhases, right, m_pimpl->rightTrajectory, m_pimpl->rightMixedTwist))){
         std::cerr << "[FeetCubicSplineGenerator::computeNewTrajectories] Failed while interpolating left foot trajectory." << std::endl;
         return false;
     }
@@ -244,4 +262,12 @@ void FeetCubicSplineGenerator::getFeetTrajectories(std::vector<iDynTree::Transfo
 
     lFootTrajectory = m_pimpl->leftTrajectory;
     rFootTrajectory = m_pimpl->rightTrajectory;
+}
+
+void FeetCubicSplineGenerator::getFeetTwistsInMixedRepresentation(std::vector<iDynTree::Twist> &lFootTwistsInMixedRepresentation, std::vector<iDynTree::Twist> &rFootTwistsInMixedRepresentation) const
+{
+    std::lock_guard<std::mutex> guard(m_pimpl->mutex);
+
+    lFootTwistsInMixedRepresentation = m_pimpl->leftMixedTwist;
+    rFootTwistsInMixedRepresentation = m_pimpl->rightMixedTwist;
 }
