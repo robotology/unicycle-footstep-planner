@@ -67,7 +67,7 @@ public:
                 return false;
             }
 
-            if ((orderedSteps[0]->impactTime == orderedSteps[1]->impactTime) && (orderedSteps[1]->footName == orderedSteps[2]->footName)){ //preserve the alternation of ordered steps when the initial steps of the two feet have the same impact time
+            if ((orderedSteps.size() > 2) && (orderedSteps[0]->impactTime == orderedSteps[1]->impactTime) && (orderedSteps[1]->footName == orderedSteps[2]->footName)){ //preserve the alternation of ordered steps when the initial steps of the two feet have the same impact time
                 const Step* buffer = orderedSteps[0];
                 orderedSteps[0] = orderedSteps[1];
                 orderedSteps[1] = buffer;
