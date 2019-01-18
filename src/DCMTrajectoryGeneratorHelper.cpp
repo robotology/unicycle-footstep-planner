@@ -787,7 +787,7 @@ bool DCMTrajectoryGeneratorHelper::generateDCMTrajectory(const std::vector<const
 
         // evaluate the last step
         if(!addLastStep(singleSupportStartTime, singleSupportEndTime,
-                        doubleSupportEndTime, lastZMP, singleSupportBoundaryCondition)){
+                        doubleSupportEndTime, otherFootZMP, singleSupportBoundaryCondition)){
             std::cerr << "[DCMTrajectoryGeneratorHelper::generateDCMTrajectory] Error when the DCM trajectory of the last step is generated." << std::endl;
             return false;
         }
