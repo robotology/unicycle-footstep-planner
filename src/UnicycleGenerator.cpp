@@ -79,8 +79,8 @@ public:
     bool createPhasesTimings(const FootPrint &lFootPrint, const FootPrint &rFootPrint) {
         //NOTE this method must be called after orderSteps to work properly
 
-        lFootPhases.reset(new std::vector<StepPhase>());
-        rFootPhases.reset(new std::vector<StepPhase>());
+        lFootPhases = std::make_shared<std::vector<StepPhase>>();
+        rFootPhases = std::make_shared<std::vector<StepPhase>>();
 
         phaseShift.clear();
         phaseShift.push_back(0); //necessary, otherwise I cannot call m_phaseShift.back() later

@@ -29,12 +29,20 @@ class DCMTrajectoryGenerator {
     DCMTrajectoryGenerator();
 
     /**
-     * Generete a DCM trajectory.
-     * @param left is a vector containing all the left footprints;
-     * @param right is a vector containing all the left footprints;
-     * @param initTime is the trajectory initial time;
-     * @param dT sampling time;
-     * @return true/false in case of success/failure.
+     * @brief Generate a new DCM trajectory.
+     * Note, this method is private. It is called automatically by the UnicycleGenerator if the method addDCMTrajectoryGenerator has been called.
+     * @param initTime The initial time of trajectories
+     * @param dT The time step
+     * @param switchPercentage The amount of time in percentage of the step spent in double support.
+     * @param maxStepTime The maximum time for a step.
+     * @param nominalStepTime The nominal duration of a step.
+     * @param pauseActive True if the pause mechanism is active.
+     * @param orderedSteps List of steps (for both feet) ordered by time.
+     * @param phaseShift Vector containing the indices of at which the value in lFootPhases change value.
+     * @param lFootPhases Vector containing the step phase for each time instant.
+     * @param left Left steps
+     * @param right Right Steps
+     * @return True in case of success.
      */
     bool computeNewTrajectories(double initTime, double dT, double switchPercentage, double maxStepTime,
                                 double nominalStepTime, bool pauseActive, const std::vector<const Step *> &orderedSteps,

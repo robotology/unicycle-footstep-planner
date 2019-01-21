@@ -256,9 +256,7 @@ public:
 
 FeetMinimumJerkGenerator::FeetMinimumJerkGenerator()
     : m_pimpl(std::make_unique<FeetMinimumJerkGeneratorImplementation>())
-{
-    assert(m_pimpl);
-}
+{ }
 
 bool FeetMinimumJerkGenerator::computeNewTrajectories(double dT, const FootPrint &left, const FootPrint &right, const std::vector<StepPhase> &lFootPhases,
                                                       const std::vector<StepPhase> &rFootPhases, const std::vector<size_t> &phaseShift)
