@@ -1,12 +1,11 @@
 /*
  * Copyright (C) 2018 Fondazione Istituto Italiano di Tecnologia
- * Authors: Stefano Dafarra
+ * Authors: Giulio Romualdi, Stefano Dafarra
  * CopyPolicy: Released under the terms of the LGPLv2.1 or later, see LGPL.TXT
  *
  */
-
-#ifndef FEETCUBICSPLINEGENERATOR_H
-#define FEETCUBICSPLINEGENERATOR_H
+#ifndef FEETMINIMUMJERKGENERATOR_H
+#define FEETMINIMUMJERKGENERATOR_H
 
 #include <StepPhase.h>
 #include <FootPrint.h>
@@ -17,13 +16,13 @@
 #include <vector>
 #include <memory>
 
-class FeetCubicSplineGenerator : public FeetGenerator{
+class FeetMinimumJerkGenerator : public FeetGenerator {
     friend class UnicycleGenerator;
 
-    class FeetCubicSplineGeneratorImplementation;
-    std::unique_ptr<FeetCubicSplineGeneratorImplementation> m_pimpl;
+    class FeetMinimumJerkGeneratorImplementation;
+    std::unique_ptr<FeetMinimumJerkGeneratorImplementation> m_pimpl;
 
-    FeetCubicSplineGenerator();
+    FeetMinimumJerkGenerator();
 
     bool computeNewTrajectories(double dT,
                                 const FootPrint &left, const FootPrint &right,
@@ -33,7 +32,7 @@ class FeetCubicSplineGenerator : public FeetGenerator{
 
 public:
 
-    virtual ~FeetCubicSplineGenerator() final;
+    virtual ~FeetMinimumJerkGenerator() final;
 
     virtual bool setStepHeight(double stepHeight) final;
 
@@ -47,6 +46,8 @@ public:
 
     virtual void getFeetTwistsInMixedRepresentation(std::vector<iDynTree::Twist> &lFootTwistsInMixedRepresentation, std::vector<iDynTree::Twist> &rFootTwistsInMixedRepresentation) const final;
 
+    //In a future release, also accelerations will be provided
+
 };
 
-#endif // FEETCUBICSPLINEGENERATOR_H
+#endif // FEETMINIMUMJERKGENERATOR_H

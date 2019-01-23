@@ -28,7 +28,7 @@ include(CMakePackageConfigHelpers)
 
 project(UnicyclePlanner
         LANGUAGES CXX
-        VERSION 0.1.100)
+        VERSION 0.1.102)
 
 option(ENABLE_RPATH "Enable RPATH for this library" ON)
 mark_as_advanced(ENABLE_RPATH)
@@ -59,10 +59,14 @@ set(UCPLANNER_SOURCES src/ControlledUnicycle.cpp
                       src/FootPrint.cpp
                       src/FootPrintsInterpolator.cpp
                       src/UnicycleTrajectoryGenerator.cpp
+                      src/FeetGenerator.cpp
                       src/FeetCubicSplineGenerator.cpp
                       src/UnicycleGenerator.cpp
                       src/ZMPTrajectoryGenerator.cpp
-                      src/CoMHeightTrajectoryGenerator.cpp)
+                      src/CoMHeightTrajectoryGenerator.cpp
+                      src/DCMTrajectoryGenerator.cpp
+                      src/DCMTrajectoryGeneratorHelper.cpp
+                      src/FeetMinimumJerkGenerator.cpp)
 
 set(UCPLANNER_HEADERS include/ControlledUnicycle.h
                       include/UnicycleController.h
@@ -72,11 +76,15 @@ set(UCPLANNER_HEADERS include/ControlledUnicycle.h
                       include/UnicyclePlanner.h
                       include/FootPrintsInterpolator.h
                       include/UnicycleTrajectoryGenerator.h
+                      include/FeetGenerator.h
                       include/FeetCubicSplineGenerator.h
                       include/UnicycleGenerator.h
                       include/ZMPTrajectoryGenerator.h
                       include/CoMHeightTrajectoryGenerator.h
-                      include/StepPhase.h)
+                      include/StepPhase.h
+                      include/DCMTrajectoryGenerator.h
+                      include/DCMTrajectoryGeneratorHelper.h
+                      include/FeetMinimumJerkGenerator.h)
 
 add_library(UnicyclePlanner ${UCPLANNER_HEADERS} ${UCPLANNER_SOURCES})
 target_include_directories(UnicyclePlanner PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>)

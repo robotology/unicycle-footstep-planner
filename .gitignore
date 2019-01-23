@@ -32,7 +32,7 @@
 *.app
 
 build/*
-*.user
+*.user*
 *.kdev4
 .DS_Store
 Thumbs.db

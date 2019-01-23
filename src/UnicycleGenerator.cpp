@@ -27,26 +27,33 @@ public:
     std::vector<size_t> mergePoints; //it stores the indeces from which is convenient to merge a new trajectory. The last element is the dimension of m_lFootPhases, i.e. merge after the end
     std::vector<bool> lFootContact, rFootContact, leftFixed;
 
-    double switchPercentage = -1.0, dT = 0.01, endSwitch = 0.0, initTime = 0.0;
+    double switchPercentage = 0.5, dT = 0.01, endSwitch = 0.0, initTime = 0.0;
     double nominalSwitchTime = 1.0;
     double maxStepTime = 10.0, nominalStepTime = 2.0;
     bool pauseActive = false;
+    double mergePointRatio = 0.5;
 
 
     std::shared_ptr<FeetCubicSplineGenerator> feetSplineGenerator = nullptr;
+    std::shared_ptr<FeetMinimumJerkGenerator> feetMinimumJerkGenerator = nullptr;
     std::shared_ptr<ZMPTrajectoryGenerator> zmpGenerator = nullptr;
     std::shared_ptr<CoMHeightTrajectoryGenerator> comHeightGenerator = nullptr;
+    std::shared_ptr<DCMTrajectoryGenerator> dcmTrajectoryGenerator = nullptr;
 
     std::mutex mutex;
 
 
-    bool orderSteps(const FootPrint &leftFootPrint, const FootPrint &rightFootPrint) {
+    bool orderSteps(const FootPrint &lFootPrint, const FootPrint &rFootPrint) {
         orderedSteps.clear();
-        orderedSteps.reserve(leftFootPrint.numberOfSteps() + rightFootPrint.numberOfSteps());
+        orderedSteps.reserve(lFootPrint.numberOfSteps() + rFootPrint.numberOfSteps());
         if (orderedSteps.capacity() > 0){
-            for (StepsIndex footL = leftFootPrint.getSteps().cbegin(); footL != leftFootPrint.getSteps().cend(); ++footL)
+
+            auto& lSteps = lFootPrint.getSteps();
+            auto& rSteps = rFootPrint.getSteps();
+
+            for (StepsIndex footL = lSteps.cbegin(); footL != lSteps.cend(); ++footL)
                 orderedSteps.push_back(&*footL);
-            for (StepsIndex footR = rightFootPrint.getSteps().cbegin(); footR != rightFootPrint.getSteps().cend(); ++footR)
+            for (StepsIndex footR = rSteps.cbegin(); footR != rSteps.cend(); ++footR)
                 orderedSteps.push_back(&*footR);
 
             std::sort(orderedSteps.begin(), orderedSteps.end(),
@@ -55,19 +62,25 @@ public:
                                                 [](const Step *a, const Step *b) { return a->impactTime == b->impactTime;});
 
             if (duplicate != orderedSteps.end()){
-                std::cerr << "[FEETINTERPOLATOR] Two entries of the FootPrints pointers have the same impactTime. (The head is not considered)"
+                std::cerr << "[ERROR][UnicycleGenerator::orderSteps] Two entries of the FootPrints pointers have the same impactTime. (The head is not considered)"
                           << std::endl;
                 return false;
+            }
+
+            if ((orderedSteps.size() > 2) && (orderedSteps[0]->impactTime == orderedSteps[1]->impactTime) && (orderedSteps[1]->footName == orderedSteps[2]->footName)){ //preserve the alternation of ordered steps when the initial steps of the two feet have the same impact time
+                const Step* buffer = orderedSteps[0];
+                orderedSteps[0] = orderedSteps[1];
+                orderedSteps[1] = buffer;
             }
         }
         return true;
     }
 
-    bool createPhasesTimings(const FootPrint &leftFootPrint, const FootPrint &rightFootPrint) {
+    bool createPhasesTimings(const FootPrint &lFootPrint, const FootPrint &rFootPrint) {
         //NOTE this method must be called after orderSteps to work properly
 
-        lFootPhases.reset(new std::vector<StepPhase>());
-        rFootPhases.reset(new std::vector<StepPhase>());
+        lFootPhases = std::make_shared<std::vector<StepPhase>>();
+        rFootPhases = std::make_shared<std::vector<StepPhase>>();
 
         phaseShift.clear();
         phaseShift.push_back(0); //necessary, otherwise I cannot call m_phaseShift.back() later
@@ -83,8 +96,8 @@ public:
             lFootPhases->reserve(endSwitchSamples);
             rFootPhases->reserve(endSwitchSamples);
 
-            swing = (leftFootPrint.getSteps().front().impactTime > rightFootPrint.getSteps().front().impactTime) ? lFootPhases : rFootPhases;
-            stance = (leftFootPrint.getSteps().front().impactTime > rightFootPrint.getSteps().front().impactTime) ? rFootPhases : lFootPhases;
+            swing = (lFootPrint.getSteps().front().impactTime > rFootPrint.getSteps().front().impactTime) ? lFootPhases : rFootPhases;
+            stance = (lFootPrint.getSteps().front().impactTime > rFootPrint.getSteps().front().impactTime) ? rFootPhases : lFootPhases;
 
             swing->insert(swing->end(), endSwitchSamples, StepPhase::SwitchIn);
             stance->insert(stance->end(), endSwitchSamples, StepPhase::SwitchOut);
@@ -103,8 +116,8 @@ public:
         double stepTime, switchTime, pauseTime;
         size_t stepSamples, switchSamples, swingSamples;
 
-        const StepList& leftList = leftFootPrint.getSteps();
-        const StepList& rightList = rightFootPrint.getSteps();
+        const StepList& leftList = lFootPrint.getSteps();
+        const StepList& rightList = rFootPrint.getSteps();
         size_t orderedStepIndex = 2, leftIndex = 1, rightIndex = 1;
         const Step* nextStep;
         double previouStepTime = initTime;
@@ -114,11 +127,11 @@ public:
             stepTime = nextStep->impactTime - previouStepTime;
 
             if (stepTime < 0){
-                std::cerr <<"Something went wrong. The stepTime appears to be negative." << std::endl;
+                std::cerr <<"[ERROR][UnicycleGenerator::createPhasesTimings] Something went wrong. The stepTime appears to be negative." << std::endl;
                 return false;
             }
 
-            if ((orderedStepIndex == 2) && (leftFootPrint.getSteps().front().impactTime != rightFootPrint.getSteps().front().impactTime)) { //first half step
+            if ((orderedStepIndex == 2) && (lFootPrint.getSteps().front().impactTime != rFootPrint.getSteps().front().impactTime)) { //first half step
                 //Timings
                 switchTime = (switchPercentage/(1 - (switchPercentage/2.0)) * stepTime)/2.0; //half switch
             } else { //general case
@@ -145,7 +158,7 @@ public:
                 stance = lFootPhases;
                 rightIndex++;
             } else {
-                std::cerr << "[FEETINTERPOLATOR] Something went wrong." << std::endl;
+                std::cerr << "[ERROR][UnicycleGenerator::createPhasesTimings] Something went wrong." << std::endl;
                 return false;
             }
 
@@ -157,10 +170,10 @@ public:
                 //bool pause = m_pauseActive && (switchTime > m_maxSwitchTime); //if true, it will pause in the middle
                 size_t mergePoint;
                 if (pause){
-                    mergePoint = phaseShift.back() - static_cast<size_t>(std::round(nominalSwitchTime/(2*dT)));
+                    mergePoint = phaseShift.back() - static_cast<size_t>(std::round(nominalSwitchTime * (1 - mergePointRatio)/(dT)));
                     mergePoints.push_back(mergePoint);
                 } else {
-                    mergePoint = phaseShift.back() - static_cast<size_t>(std::round(switchTime/(2*dT)));
+                    mergePoint = phaseShift.back() - static_cast<size_t>(std::round(switchTime * (1 - mergePointRatio)/(dT)));
                     mergePoints.push_back(mergePoint);
                 }
             }
@@ -298,12 +311,6 @@ bool UnicycleGenerator::generateFromFootPrints(std::shared_ptr<FootPrint> left, 
         return false;
     }
 
-    if (m_pimpl->switchPercentage < 0){
-        std::cerr << "[UnicycleGenerator::generate] First you have to define the ratio between switch and swing phases." << std::endl;
-        return false;
-    }
-
-
     m_pimpl->nominalSwitchTime = m_pimpl->switchPercentage * m_pimpl->nominalStepTime;
 
     m_pimpl->dT = dT;
@@ -331,12 +338,29 @@ bool UnicycleGenerator::generateFromFootPrints(std::shared_ptr<FootPrint> left, 
         }
     }
 
+    if (m_pimpl->feetMinimumJerkGenerator) {
+        if (!(m_pimpl->feetMinimumJerkGenerator->computeNewTrajectories(dT, *left, *right,*(m_pimpl->lFootPhases), *(m_pimpl->rFootPhases),
+                                                                        m_pimpl->phaseShift))) {
+            std::cerr << "[UnicycleGenerator::generate] Failed while computing new feet trajectories (minimum jerk)." << std::endl;
+            return false;
+        }
+    }
+
     if (m_pimpl->zmpGenerator) {
         if (!(m_pimpl->zmpGenerator->computeNewTrajectories(initTime, dT, m_pimpl->switchPercentage, m_pimpl->maxStepTime,
                                                             m_pimpl->nominalStepTime, m_pimpl->pauseActive, m_pimpl->mergePoints,
                                                             *left, *right, m_pimpl->orderedSteps, *(m_pimpl->lFootPhases),
                                                             *(m_pimpl->rFootPhases), m_pimpl->phaseShift))) {
             std::cerr << "[UnicycleGenerator::generate] Failed while computing new ZMP trajectories." << std::endl;
+            return false;
+        }
+    }
+
+    if (m_pimpl->dcmTrajectoryGenerator) {
+        if (!(m_pimpl->dcmTrajectoryGenerator->computeNewTrajectories(initTime, dT, m_pimpl->switchPercentage, m_pimpl->maxStepTime, m_pimpl->nominalStepTime,
+                                                                      m_pimpl->pauseActive, m_pimpl->orderedSteps, m_pimpl->phaseShift, *(m_pimpl->lFootPhases),
+                                                                      *left, *right))) {
+            std::cerr << "[UnicycleGenerator::generate] Failed while computing new DCM trajectories." << std::endl;
             return false;
         }
     }
@@ -559,7 +583,7 @@ bool UnicycleGenerator::setPauseConditions(double maxStepTime, double nominalSte
     std::lock_guard<std::mutex> guard(m_pimpl->mutex);
 
     if (maxStepTime < 0){
-        std::cerr << "[FEETINTERPOLATOR] If the maxStepTime is negative, the robot won't pause in middle stance." << std::endl;
+        std::cerr << "[UnicycleGenerator::setPauseConditions] If the maxStepTime is negative, the robot won't pause in middle stance." << std::endl;
         m_pimpl->pauseActive = false;
     }
 
@@ -568,13 +592,13 @@ bool UnicycleGenerator::setPauseConditions(double maxStepTime, double nominalSte
 
     if (m_pimpl->pauseActive){
         if (nominalStepTime <= 0){
-            std::cerr << "[FEETINTERPOLATOR] The nominalStepTime is supposed to be positive." << std::endl;
+            std::cerr << "[UnicycleGenerator::setPauseConditions] The nominalStepTime is supposed to be positive." << std::endl;
             m_pimpl->pauseActive = false;
             return false;
         }
 
         if ((nominalStepTime) > maxStepTime){
-            std::cerr << "[FEETINTERPOLATOR] The nominalSwitchTime cannot be greater than maxSwitchTime." << std::endl;
+            std::cerr << "[UnicycleGenerator::setPauseConditions] The nominalSwitchTime cannot be greater than maxSwitchTime." << std::endl;
             m_pimpl->pauseActive = false;
             return false;
         }
@@ -582,6 +606,24 @@ bool UnicycleGenerator::setPauseConditions(double maxStepTime, double nominalSte
     m_pimpl->nominalStepTime = nominalStepTime;
 
     return true;
+}
+
+bool UnicycleGenerator::setMergePointRatio(double mergePointRatio)
+{
+    if(mergePointRatio < 0 || mergePointRatio > 1){
+        std::cerr << "[UnicycleGenerator::setMergePointRatio] The merge point ratio has to be a positive number less the one";
+        return false;
+    }
+    m_pimpl->mergePointRatio = mergePointRatio;
+    return true;
+}
+
+void UnicycleGenerator::getStepPhases(std::vector<StepPhase> &leftPhases, std::vector<StepPhase> &rightPhases) const
+{
+    std::lock_guard<std::mutex> guard(m_pimpl->mutex);
+
+    leftPhases = *(m_pimpl->lFootPhases);
+    rightPhases = *(m_pimpl->rFootPhases);
 }
 
 void UnicycleGenerator::getFeetStandingPeriods(std::vector<bool> &lFootContacts, std::vector<bool> &rFootContacts) const
@@ -619,6 +661,17 @@ std::shared_ptr<FeetCubicSplineGenerator> UnicycleGenerator::addFeetCubicSplineG
 
 }
 
+std::shared_ptr<FeetMinimumJerkGenerator> UnicycleGenerator::addFeetMinimumJerkGenerator()
+{
+    std::lock_guard<std::mutex> guard(m_pimpl->mutex);
+
+    if (m_pimpl->feetMinimumJerkGenerator == nullptr) {
+        m_pimpl->feetMinimumJerkGenerator.reset(new FeetMinimumJerkGenerator());
+    }
+
+    return m_pimpl->feetMinimumJerkGenerator;
+}
+
 std::shared_ptr<ZMPTrajectoryGenerator> UnicycleGenerator::addZMPTrajectoryGenerator()
 {
     std::lock_guard<std::mutex> guard(m_pimpl->mutex);
@@ -639,6 +692,17 @@ std::shared_ptr<CoMHeightTrajectoryGenerator> UnicycleGenerator::addCoMHeightTra
     }
 
     return m_pimpl->comHeightGenerator;
+}
+
+std::shared_ptr<DCMTrajectoryGenerator> UnicycleGenerator::addDCMTrajectoryGenerator()
+{
+    std::lock_guard<std::mutex> guard(m_pimpl->mutex);
+
+    if (m_pimpl->dcmTrajectoryGenerator == nullptr) {
+        m_pimpl->dcmTrajectoryGenerator.reset(new DCMTrajectoryGenerator());
+    }
+
+    return m_pimpl->dcmTrajectoryGenerator;
 }
 
 
