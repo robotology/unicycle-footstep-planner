@@ -5,7 +5,7 @@
  *
  */
 
-#include "UnicycleTrajectoryGenerator.h"
+#include "UnicycleGenerator.h"
 #include "iDynTree/Core/TestUtils.h"
 #include <memory>
 #include "iDynTree/Core/VectorDynSize.h"
@@ -15,9 +15,9 @@
 
 
 typedef struct {
-    double initTime = 0.0, endTime = 10.0, dT = 0.016, K = 10, dX = 0.05, dY = 0.0;
-    double maxL = 0.05, minL = 0.005, minW = 0.03, maxAngle = iDynTree::deg2rad(40), minAngle = iDynTree::deg2rad(5);
-    double nominalW = 0.04, maxT = 8, minT = 2.9, nominalT = 4, timeWeight = 2.5, positionWeight = 1;
+    double initTime = 0.0, endTime = 10.0, dT = 0.01, K = 10, dX = 0.05, dY = 0.0;
+    double maxL = 0.05, minL = 0.005, minW = 0.03, maxAngle = iDynTree::deg2rad(45), minAngle = iDynTree::deg2rad(5);
+    double nominalW = 0.05, maxT = 8, minT = 2.9, nominalT = 4, timeWeight = 2.5, positionWeight = 1;
 
     double nominalSwitchTime = 1.0, endSwitchTime = 0.5, maxSwitch = 3.0;
     double stepHeight = 0.005;
@@ -27,37 +27,40 @@ typedef struct {
     bool swingLeft = true;
 } Configuration;
 
-bool configurePlanner(UnicyclePlanner& planner,const Configuration &conf){
+bool configurePlanner(std::shared_ptr<UnicyclePlanner> planner,const Configuration &conf){
     bool ok = true;
-    ok = ok && planner.setDesiredPersonDistance(conf.dX, conf.dY);
-    ok = ok && planner.setControllerGain(conf.K);
-    ok = ok && planner.setEndTime(conf.endTime);
-    ok = ok && planner.setMaximumIntegratorStepSize(conf.dT);
-    ok = ok && planner.setMaxStepLength(conf.maxL);
-    ok = ok && planner.setWidthSetting(conf.minW, conf.nominalW);
-    ok = ok && planner.setMaxAngleVariation(conf.maxAngle);
-    ok = ok && planner.setCostWeights(conf.positionWeight, conf.timeWeight);
-    ok = ok && planner.setStepTimings(conf.minT, conf.maxT, conf.nominalT);
-    ok = ok && planner.setPlannerPeriod(conf.dT);
-    ok = ok && planner.setMinimumAngleForNewSteps(conf.minAngle);
-    ok = ok && planner.setMinimumStepLength(conf.minL);
-    planner.addTerminalStep(true);
-    planner.startWithLeft(conf.swingLeft);
+    ok = ok && planner->setDesiredPersonDistance(conf.dX, conf.dY);
+    ok = ok && planner->setControllerGain(conf.K);
+    ok = ok && planner->setMaximumIntegratorStepSize(conf.dT);
+    ok = ok && planner->setMaxStepLength(conf.maxL);
+    ok = ok && planner->setWidthSetting(conf.minW, conf.nominalW);
+    ok = ok && planner->setMaxAngleVariation(conf.maxAngle);
+    ok = ok && planner->setCostWeights(conf.positionWeight, conf.timeWeight);
+    ok = ok && planner->setStepTimings(conf.minT, conf.maxT, conf.nominalT);
+    ok = ok && planner->setPlannerPeriod(conf.dT);
+    ok = ok && planner->setMinimumAngleForNewSteps(conf.minAngle);
+    ok = ok && planner->setMinimumStepLength(conf.minL);
+    planner->addTerminalStep(true);
+    planner->startWithLeft(conf.swingLeft);
     return ok;
 }
 
-bool configureInterpolator(FeetInterpolator& interpolator, const Configuration &conf){
-    iDynTree::assertTrue(interpolator.setSwitchOverSwingRatio(conf.switchOverSwing));
-    iDynTree::assertTrue(interpolator.setTerminalHalfSwitchTime(conf.endSwitchTime));
-    iDynTree::assertTrue(interpolator.setStepHeight(conf.stepHeight));
-    iDynTree::assertTrue(interpolator.setPauseConditions(conf.maxT, conf.nominalT));
-    iDynTree::assertTrue(interpolator.setCoMHeightSettings(conf.comHeight, conf.comHeightDelta));
+bool configureGenerator(UnicycleGenerator& generator, const Configuration &conf){
+    std::shared_ptr<FeetCubicSplineGenerator> feetGenerator = generator.addFeetCubicSplineGenerator();
+    std::shared_ptr<CoMHeightTrajectoryGenerator> heightGenerator = generator.addCoMHeightTrajectoryGenerator();
+    std::shared_ptr<ZMPTrajectoryGenerator> zmpGenerator = generator.addZMPTrajectoryGenerator();
+
+    iDynTree::assertTrue(generator.setSwitchOverSwingRatio(conf.switchOverSwing));
+    iDynTree::assertTrue(generator.setTerminalHalfSwitchTime(conf.endSwitchTime));
+    iDynTree::assertTrue(feetGenerator->setStepHeight(conf.stepHeight));
+    iDynTree::assertTrue(generator.setPauseConditions(conf.maxT, conf.nominalT));
+    iDynTree::assertTrue(heightGenerator->setCoMHeightSettings(conf.comHeight, conf.comHeightDelta));
     iDynTree::Vector2 leftZMPstance, rightZMPstance;
     leftZMPstance.zero();
     leftZMPstance(0) = 0.01; //1cm forward
     rightZMPstance = leftZMPstance;
 
-    iDynTree::assertTrue(interpolator.setStanceZMPDelta(leftZMPstance, rightZMPstance));
+    iDynTree::assertTrue(zmpGenerator->setStanceZMPDelta(leftZMPstance, rightZMPstance));
 
     iDynTree::Vector2 leftZMPswing, rightZMPswing;
     leftZMPswing(0) = 0.01;
@@ -65,7 +68,7 @@ bool configureInterpolator(FeetInterpolator& interpolator, const Configuration &
     rightZMPswing(0) = 0.01;
     rightZMPswing(1) = 0.005; //5mm toward left
 
-    iDynTree::assertTrue(interpolator.setInitialSwitchZMPDelta(leftZMPswing, rightZMPswing));
+    iDynTree::assertTrue(zmpGenerator->setInitialSwitchZMPDelta(leftZMPswing, rightZMPswing));
 
     return true;
 }
@@ -114,7 +117,11 @@ void printVector(object& objectName, std::ofstream& file){
     }
 }
 
-void printTrajectories(const FeetInterpolator& interpolator, size_t& newMergePoint, InitialState& newAlpha, size_t mergePoint){
+void printTrajectories(UnicycleGenerator& interpolator, size_t& newMergePoint, InitialState& newAlpha, size_t mergePoint){
+    std::shared_ptr<FeetCubicSplineGenerator> feetGenerator = interpolator.addFeetCubicSplineGenerator();
+    std::shared_ptr<CoMHeightTrajectoryGenerator> heightGenerator = interpolator.addCoMHeightTrajectoryGenerator();
+    std::shared_ptr<ZMPTrajectoryGenerator> zmpGenerator = interpolator.addZMPTrajectoryGenerator();
+
     std::ofstream posLeft, posRight, zmp, leftZmp, rightZmp, weightLeft, weightRight, height, heightAcceleration, zmpVel, zmpAcc;
     posLeft.open("pL.txt");
     posRight.open("pR.txt");
@@ -131,7 +138,7 @@ void printTrajectories(const FeetInterpolator& interpolator, size_t& newMergePoi
     static std::vector<iDynTree::Transform> lFootTrajectory, rFootTrajectory;
 
     std::vector<iDynTree::Transform> lFootTrajectoryInput, rFootTrajectoryInput;
-    interpolator.getFeetTrajectories(lFootTrajectoryInput, rFootTrajectoryInput);
+    feetGenerator->getFeetTrajectories(lFootTrajectoryInput, rFootTrajectoryInput);
 
     lFootTrajectory.insert(lFootTrajectory.begin() + mergePoint, lFootTrajectoryInput.begin(), lFootTrajectoryInput.end());
     lFootTrajectory.resize(mergePoint + lFootTrajectoryInput.size());
@@ -154,7 +161,7 @@ void printTrajectories(const FeetInterpolator& interpolator, size_t& newMergePoi
 
     static std::vector<double> weightInLeft, weightInRight;
     std::vector<double> weightInLeftInput, weightInRightInput;
-    interpolator.getWeightPercentage(weightInLeftInput, weightInRightInput);
+    zmpGenerator->getWeightPercentage(weightInLeftInput, weightInRightInput);
     weightInLeft.insert(weightInLeft.begin() + mergePoint, weightInLeftInput.begin(), weightInLeftInput.end());
     weightInLeft.resize(mergePoint + weightInLeftInput.size());
     weightInRight.insert(weightInRight.begin() + mergePoint, weightInRightInput.begin(), weightInRightInput.end());
@@ -168,7 +175,7 @@ void printTrajectories(const FeetInterpolator& interpolator, size_t& newMergePoi
 
     static std::vector< iDynTree::Vector2 > lZMPTrajectory, rZMPTrajectory;
     std::vector< iDynTree::Vector2 > lZMPTrajectoryIn, rZMPTrajectoryIn;
-    interpolator.getLocalZMPTrajectories(lZMPTrajectoryIn, rZMPTrajectoryIn);
+    zmpGenerator->getLocalZMPTrajectories(lZMPTrajectoryIn, rZMPTrajectoryIn);
     lZMPTrajectory.insert(lZMPTrajectory.begin()+ mergePoint, lZMPTrajectoryIn.begin(), lZMPTrajectoryIn.end());
     lZMPTrajectory.resize(mergePoint + lZMPTrajectoryIn.size());
     rZMPTrajectory.insert(rZMPTrajectory.begin()+ mergePoint, rZMPTrajectoryIn.begin(), rZMPTrajectoryIn.end());
@@ -182,7 +189,7 @@ void printTrajectories(const FeetInterpolator& interpolator, size_t& newMergePoi
 
     static std::vector< iDynTree::Vector2 > ZMPTrajectory, ZMPVel, ZMPAcc;
     std::vector< iDynTree::Vector2 > ZMPTrajectoryIn, ZMPVelIn, ZMPAccIn;
-    interpolator.getZMPTrajectory(ZMPTrajectoryIn, ZMPVelIn, ZMPAccIn);
+    zmpGenerator->getZMPTrajectory(ZMPTrajectoryIn, ZMPVelIn, ZMPAccIn);
     ZMPTrajectory.insert(ZMPTrajectory.begin()+ mergePoint, ZMPTrajectoryIn.begin(), ZMPTrajectoryIn.end());
     ZMPTrajectory.resize(mergePoint + ZMPTrajectoryIn.size());
     ZMPVel.insert(ZMPVel.begin()+ mergePoint, ZMPVelIn.begin(), ZMPVelIn.end());
@@ -197,7 +204,7 @@ void printTrajectories(const FeetInterpolator& interpolator, size_t& newMergePoi
 
     static std::vector< double > CoMHeightTrajectory;
     std::vector< double > CoMHeightTrajectoryIn;
-    interpolator.getCoMHeightTrajectory(CoMHeightTrajectoryIn);
+    heightGenerator->getCoMHeightTrajectory(CoMHeightTrajectoryIn);
     CoMHeightTrajectory.insert(CoMHeightTrajectory.begin()+ mergePoint, CoMHeightTrajectoryIn.begin(), CoMHeightTrajectoryIn.end());
     CoMHeightTrajectory.resize(mergePoint + CoMHeightTrajectoryIn.size());
 
@@ -207,7 +214,7 @@ void printTrajectories(const FeetInterpolator& interpolator, size_t& newMergePoi
 
     static std::vector< double > CoMHeightAccelerationProfile;
     std::vector< double > CoMHeightAccelerationProfileIn;
-    interpolator.getCoMHeightAccelerationProfile(CoMHeightAccelerationProfileIn);
+    heightGenerator->getCoMHeightAccelerationProfile(CoMHeightAccelerationProfileIn);
     CoMHeightAccelerationProfile.insert(CoMHeightAccelerationProfile.begin()+ mergePoint, CoMHeightAccelerationProfileIn.begin(), CoMHeightAccelerationProfileIn.end());
     CoMHeightAccelerationProfile.resize(mergePoint + CoMHeightAccelerationProfileIn.size());
 
@@ -238,7 +245,7 @@ void printTrajectories(const FeetInterpolator& interpolator, size_t& newMergePoi
 //    printVector(lFootFixed);
 
     std::vector<InitialState> initPoints;
-    interpolator.getInitialStatesAtMergePoints(initPoints);
+    zmpGenerator->getInitialStatesAtMergePoints(initPoints);
 
     std::vector<size_t> mergePoints;
     interpolator.getMergePoints(mergePoints);
@@ -265,16 +272,17 @@ void printTrajectories(const FeetInterpolator& interpolator, size_t& newMergePoi
 
 bool interpolationTest(){
     Configuration conf;
-    UnicycleTrajectoryGenerator unicycle;
+    UnicycleGenerator unicycle;
     //FeetInterpolator unicycle;
 
-    iDynTree::assertTrue(configurePlanner(unicycle, conf));
-    iDynTree::assertTrue(configureInterpolator(unicycle, conf));
+    iDynTree::assertTrue(configurePlanner(unicycle.unicyclePlanner(), conf));
+    iDynTree::assertTrue(configureGenerator(unicycle, conf));
 
     std::shared_ptr<FootPrint> leftFoot, rightFoot;
 
-    leftFoot = std::make_shared<FootPrint>();
-    rightFoot = std::make_shared<FootPrint>();
+    leftFoot = unicycle.getLeftFootPrint();
+    rightFoot = unicycle.getRightFootPrint();
+
 
     iDynTree::Vector2 initPosition, initVelocity, finalPosition, finalVelocity;
 
@@ -288,13 +296,13 @@ bool interpolationTest(){
 
     finalVelocity.zero();
 
-    iDynTree::assertTrue(unicycle.addDesiredTrajectoryPoint(conf.initTime, initPosition, initVelocity));
-    iDynTree::assertTrue(unicycle.addDesiredTrajectoryPoint(conf.endTime, finalPosition, finalVelocity));
+    iDynTree::assertTrue(unicycle.unicyclePlanner()->addDesiredTrajectoryPoint(conf.initTime, initPosition, initVelocity));
+    iDynTree::assertTrue(unicycle.unicyclePlanner()->addDesiredTrajectoryPoint(conf.endTime, finalPosition, finalVelocity));
 
     clock_t total = clock();
     //iDynTree::assertTrue(unicycle.computeNewSteps(leftFoot, rightFoot));
     //clock_t interpolatorTime = clock();
-    iDynTree::assertTrue(unicycle.generateAndInterpolate(leftFoot, rightFoot, conf.initTime, conf.dT));
+    iDynTree::assertTrue(unicycle.generate(conf.initTime, conf.dT, conf.endTime));
     //iDynTree::assertTrue(unicycle.interpolate(*leftFoot, *rightFoot, conf.initTime, conf.dT, 0.5, false));
     clock_t end = clock();
 
@@ -311,10 +319,9 @@ bool interpolationTest(){
     double newInitTime;
     newInitTime = newMergePoint*conf.dT + conf.initTime;
     std::cerr << "New run at " << newInitTime << std::endl;
-    iDynTree::assertTrue(unicycle.setEndTime(conf.endTime + 50));
-    iDynTree::assertTrue(unicycle.getPersonPosition(newInitTime, finalPosition));
-    unicycle.clearDesiredTrajectory();
-    iDynTree::assertTrue(unicycle.addDesiredTrajectoryPoint(conf.endTime + 10, finalPosition));
+    iDynTree::assertTrue(unicycle.unicyclePlanner()->getPersonPosition(newInitTime, finalPosition));
+    unicycle.unicyclePlanner()->clearDesiredTrajectory();
+    iDynTree::assertTrue(unicycle.unicyclePlanner()->addDesiredTrajectoryPoint(conf.endTime + 10, finalPosition));
 
     iDynTree::assertTrue(leftFoot->keepOnlyPresentStep(newInitTime));
 
@@ -323,7 +330,8 @@ bool interpolationTest(){
     printSteps(leftFoot->getSteps(), rightFoot->getSteps());
 
 
-    iDynTree::assertTrue(unicycle.generateAndInterpolate(leftFoot, rightFoot, newInitTime, conf.dT, newAlpha));
+    iDynTree::assertTrue(unicycle.addZMPTrajectoryGenerator()->setWeightInitialState(newAlpha));
+    iDynTree::assertTrue(unicycle.reGenerate(newInitTime, conf.dT, conf.endTime + 50));
 
     printTrajectories(unicycle, newMergePoint, newAlpha, newMergePoint);
 

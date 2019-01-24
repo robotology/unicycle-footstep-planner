@@ -184,6 +184,7 @@ public:
 
     bool getCostValue(const iDynTree::Vector2& rPl, double deltaAngle, double deltaTime, double& cost);
     bool areConstraintsSatisfied(const iDynTree::Vector2& rPl, double deltaAngle, double deltaTime);
+    void printViolatedConstraints(const iDynTree::Vector2& rPl, double deltaAngle, double deltaTime);
 };
 
 

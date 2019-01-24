@@ -26,8 +26,9 @@ include(AddWarningsConfigurationToTargets)
 
 include(CMakePackageConfigHelpers)
 
-
-project(UnicyclePlanner CXX)
+project(UnicyclePlanner
+        LANGUAGES CXX
+        VERSION 0.1.102)
 
 option(ENABLE_RPATH "Enable RPATH for this library" ON)
 mark_as_advanced(ENABLE_RPATH)
@@ -57,7 +58,15 @@ set(UCPLANNER_SOURCES src/ControlledUnicycle.cpp
                       src/UnicycleFoot.cpp
                       src/FootPrint.cpp
                       src/FootPrintsInterpolator.cpp
-                      src/UnicycleTrajectoryGenerator.cpp)
+                      src/UnicycleTrajectoryGenerator.cpp
+                      src/FeetGenerator.cpp
+                      src/FeetCubicSplineGenerator.cpp
+                      src/UnicycleGenerator.cpp
+                      src/ZMPTrajectoryGenerator.cpp
+                      src/CoMHeightTrajectoryGenerator.cpp
+                      src/DCMTrajectoryGenerator.cpp
+                      src/DCMTrajectoryGeneratorHelper.cpp
+                      src/FeetMinimumJerkGenerator.cpp)
 
 set(UCPLANNER_HEADERS include/ControlledUnicycle.h
                       include/UnicycleController.h
@@ -66,7 +75,16 @@ set(UCPLANNER_HEADERS include/ControlledUnicycle.h
                       include/FootPrint.h
                       include/UnicyclePlanner.h
                       include/FootPrintsInterpolator.h
-                      include/UnicycleTrajectoryGenerator.h)
+                      include/UnicycleTrajectoryGenerator.h
+                      include/FeetGenerator.h
+                      include/FeetCubicSplineGenerator.h
+                      include/UnicycleGenerator.h
+                      include/ZMPTrajectoryGenerator.h
+                      include/CoMHeightTrajectoryGenerator.h
+                      include/StepPhase.h
+                      include/DCMTrajectoryGenerator.h
+                      include/DCMTrajectoryGeneratorHelper.h
+                      include/FeetMinimumJerkGenerator.h)
 
 add_library(UnicyclePlanner ${UCPLANNER_HEADERS} ${UCPLANNER_SOURCES})
 target_include_directories(UnicyclePlanner PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>)
@@ -92,7 +110,9 @@ configure_package_config_file(${CMAKE_SOURCE_DIR}/cmake/unicyclePlannerConfig.cm
                               ${CMAKE_BINARY_DIR}/UnicyclePlannerConfig.cmake
                               INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/UnicyclePlanner)
 
-install(FILES ${CMAKE_BINARY_DIR}/UnicyclePlannerConfig.cmake DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/UnicyclePlanner)
+write_basic_package_version_file(${CMAKE_CURRENT_BINARY_DIR}/UnicyclePlannerConfigVersion.cmake  VERSION ${UnicyclePlanner_VERSION} COMPATIBILITY SameMajorVersion )
+
+install(FILES ${CMAKE_BINARY_DIR}/UnicyclePlannerConfig.cmake ${CMAKE_CURRENT_BINARY_DIR}/UnicyclePlannerConfigVersion.cmake DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/UnicyclePlanner)
 
 include(AddUninstallTarget)
 

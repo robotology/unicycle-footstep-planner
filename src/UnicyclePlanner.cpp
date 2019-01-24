@@ -267,7 +267,8 @@ bool UnicyclePlanner::addTerminalStep(const iDynTree::Vector2& lastUnicyclePosit
         }
     } else {
         if (!constraintsSatisfied){
-            std::cerr << "Unable to satisfy constraints on the last step." << std::endl;
+            std::cerr << "Unable to satisfy constraints on the last step. The following constraints are not satisfied:" << std::endl;
+            m_unicycleProblem.printViolatedConstraints(rPl, deltaAngle, deltaTime);
         } else {
             iDynTree::Vector2 previousUnicycle;
 
@@ -309,7 +310,7 @@ UnicyclePlanner::UnicyclePlanner()
     ,m_maxAngle(iDynTree::deg2rad(45))
     ,m_addTerminalStep(true)
     ,m_startLeft(true)
-    ,m_resetTimings(false)
+    ,m_resetStartingFoot(false)
     ,m_firstStep(false)
     ,m_left(nullptr)
     ,m_right(nullptr)
@@ -325,21 +326,29 @@ UnicyclePlanner::UnicyclePlanner()
 
 bool UnicyclePlanner::setDesiredPersonDistance(double xPosition, double yPosition)
 {
+    std::lock_guard<std::mutex> guard(m_mutex);
+
     return m_controller->setPersonDistance(xPosition, yPosition);
 }
 
 bool UnicyclePlanner::setControllerGain(double controllerGain)
 {
+    std::lock_guard<std::mutex> guard(m_mutex);
+
     return m_controller->setGain(controllerGain);
 }
 
 bool UnicyclePlanner::setSlowWhenTurnGain(double slowWhenTurnGain)
 {
+    std::lock_guard<std::mutex> guard(m_mutex);
+
     return m_controller->setSlowWhenTurnGain(slowWhenTurnGain);
 }
 
 bool UnicyclePlanner::addDesiredTrajectoryPoint(double initTime, const iDynTree::Vector2 &yDesired)
 {
+    std::lock_guard<std::mutex> guard(m_mutex);
+
     TrajectoryPoint newPoint;
     newPoint.yDesired = yDesired;
     newPoint.yDotDesired.zero();
@@ -349,6 +358,8 @@ bool UnicyclePlanner::addDesiredTrajectoryPoint(double initTime, const iDynTree:
 
 bool UnicyclePlanner::addDesiredTrajectoryPoint(double initTime, const iDynTree::Vector2 &yDesired, const iDynTree::Vector2 &yDotDesired)
 {
+    std::lock_guard<std::mutex> guard(m_mutex);
+
     TrajectoryPoint newPoint;
     newPoint.yDesired = yDesired;
     newPoint.yDotDesired = yDotDesired;
@@ -358,16 +369,22 @@ bool UnicyclePlanner::addDesiredTrajectoryPoint(double initTime, const iDynTree:
 
 void UnicyclePlanner::clearDesiredTrajectory()
 {
+    std::lock_guard<std::mutex> guard(m_mutex);
+
     m_controller->clearDesiredTrajectory();
 }
 
 bool UnicyclePlanner::clearDesiredTrajectoryUpTo(double time)
 {
+    std::lock_guard<std::mutex> guard(m_mutex);
+
     return m_controller->clearDesiredTrajectoryUpTo(time);
 }
 
 bool UnicyclePlanner::setEndTime(double endTime)
 {
+    std::lock_guard<std::mutex> guard(m_mutex);
+
     if (endTime < 0){
         std::cerr << "The endTime is supposed to be non-negative." <<std::endl;
         return false;
@@ -378,11 +395,15 @@ bool UnicyclePlanner::setEndTime(double endTime)
 
 bool UnicyclePlanner::setMaximumIntegratorStepSize(double dT)
 {
+    std::lock_guard<std::mutex> guard(m_mutex);
+
     return m_integrator.setMaximumStepSize(dT);
 }
 
 bool UnicyclePlanner::setMaxStepLength(double maxLength)
 {
+    std::lock_guard<std::mutex> guard(m_mutex);
+
     if(m_unicycleProblem.setMaxLength(maxLength)){
         m_maxLength = maxLength;
         return true;
@@ -392,11 +413,15 @@ bool UnicyclePlanner::setMaxStepLength(double maxLength)
 
 bool UnicyclePlanner::setMinStepWidth(double minWidth)
 {
+    std::lock_guard<std::mutex> guard(m_mutex);
+
     return m_unicycleProblem.setMinWidth(minWidth);
 }
 
 bool UnicyclePlanner::setMaxAngleVariation(double maxAngleInRad)
 {
+    std::lock_guard<std::mutex> guard(m_mutex);
+
     if (m_unicycleProblem.setMaxAngleVariation(maxAngleInRad)){
         m_maxAngle = maxAngleInRad;
         return true;
@@ -406,11 +431,15 @@ bool UnicyclePlanner::setMaxAngleVariation(double maxAngleInRad)
 
 bool UnicyclePlanner::setCostWeights(double positionWeight, double timeWeight)
 {
+    std::lock_guard<std::mutex> guard(m_mutex);
+
     return m_unicycleProblem.setCostWeights(positionWeight, timeWeight);
 }
 
 bool UnicyclePlanner::setStepTimings(double minTime, double maxTime, double nominalTime)
 {
+    std::lock_guard<std::mutex> guard(m_mutex);
+
     if ((minTime < 0) || (maxTime < 0) || (nominalTime <0)){
         std::cerr << "Timings are expected to be non-negative." << std::endl;
         return false;
@@ -435,6 +464,8 @@ bool UnicyclePlanner::setStepTimings(double minTime, double maxTime, double nomi
 
 bool UnicyclePlanner::setPlannerPeriod(double dT)
 {
+    std::lock_guard<std::mutex> guard(m_mutex);
+
     if (dT < 0){
         std::cerr << "The planner period is supposed to be non-negative." << std::endl;
         return false;
@@ -447,6 +478,8 @@ bool UnicyclePlanner::setPlannerPeriod(double dT)
 
 bool UnicyclePlanner::setMinimumAngleForNewSteps(double minAngleInRad)
 {
+    std::lock_guard<std::mutex> guard(m_mutex);
+
     if (minAngleInRad < 0){
         std::cerr << "The minimum angle is supposed to be non-negative." << std::endl;
         return false;
@@ -459,6 +492,8 @@ bool UnicyclePlanner::setMinimumAngleForNewSteps(double minAngleInRad)
 
 bool UnicyclePlanner::setMinimumStepLength(double minLength)
 {
+    std::lock_guard<std::mutex> guard(m_mutex);
+
     if (minLength < 0){
         std::cerr << "The minimum length is supposed to be non-negative." << std::endl;
         return false;
@@ -469,6 +504,8 @@ bool UnicyclePlanner::setMinimumStepLength(double minLength)
 
 bool UnicyclePlanner::setNominalWidth(double nominalWidth)
 {
+    std::lock_guard<std::mutex> guard(m_mutex);
+
     if (nominalWidth < 0){
         std::cerr << "The nominal width is supposed to be non-negative." << std::endl;
         return false;
@@ -481,6 +518,8 @@ bool UnicyclePlanner::setNominalWidth(double nominalWidth)
 
 bool UnicyclePlanner::setWidthSetting(double minWidth, double nominalWidth)
 {
+    std::lock_guard<std::mutex> guard(m_mutex);
+
     if (nominalWidth < 0){
         std::cerr << "The nominal width is supposed to be non-negative." << std::endl;
         return false;
@@ -502,21 +541,29 @@ bool UnicyclePlanner::setWidthSetting(double minWidth, double nominalWidth)
 
 void UnicyclePlanner::addTerminalStep(bool addStep)
 {
+    std::lock_guard<std::mutex> guard(m_mutex);
+
     m_addTerminalStep = addStep;
 }
 
 void UnicyclePlanner::startWithLeft(bool startLeft)
 {
+    std::lock_guard<std::mutex> guard(m_mutex);
+
     m_startLeft = startLeft;
 }
 
-void UnicyclePlanner::resetTimingsIfStill(bool resetTimings)
+void UnicyclePlanner::resetStartingFootIfStill(bool resetStartingFoot)
 {
-    m_resetTimings = resetTimings;
+    std::lock_guard<std::mutex> guard(m_mutex);
+
+    m_resetStartingFoot = resetStartingFoot;
 }
 
-bool UnicyclePlanner::computeNewSteps(std::shared_ptr< FootPrint > leftFoot, std::shared_ptr< FootPrint > rightFoot, double initTime)
+bool UnicyclePlanner::computeNewSteps(std::shared_ptr< FootPrint > leftFoot, std::shared_ptr< FootPrint > rightFoot, double initTime, double endTime)
 {
+    std::lock_guard<std::mutex> guard(m_mutex);
+
     if (!leftFoot || !rightFoot){
         std::cerr <<"Empty feet pointers."<<std::endl;
         return false;
@@ -526,6 +573,13 @@ bool UnicyclePlanner::computeNewSteps(std::shared_ptr< FootPrint > leftFoot, std
         std::cerr << "Error: the maxLength parameter seems to be too restrictive. Notice that it represents the cartesian distance between the two feet (width included)." <<std::endl;
         return false;
     }
+
+    if (m_minAngle >= m_maxAngle) {
+        std::cerr << "Error: the minAngle parameter is supposed to be lower than the maxAngle. Otherwise, when the feet start parallel, it would be impossible to rotate the swing foot." << std::endl;
+        return false;
+    }
+
+    m_endTime = endTime;
 
     m_left.reset(new UnicycleFoot(leftFoot));
     m_right.reset(new UnicycleFoot(rightFoot));
@@ -542,8 +596,9 @@ bool UnicyclePlanner::computeNewSteps(std::shared_ptr< FootPrint > leftFoot, std
 
     double cost, minCost = 1e10; //this big number is actually not necessary since there is a check on tOptim also
     double deltaTime = 0, pauseTime = 0;
-    double deltaAngle;
+    double deltaAngle = 0;
     iDynTree::Vector2 unicyclePosition, rPl;
+    rPl.zero();
     double unicycleAngle;
     std::shared_ptr<UnicycleFoot> stanceFoot, swingFoot;
 
@@ -568,6 +623,9 @@ bool UnicyclePlanner::computeNewSteps(std::shared_ptr< FootPrint > leftFoot, std
         timeOffset = 0;
     }
 
+    bool pauseActivated = false;
+    bool avoidPause = false;
+
     while (t <= m_endTime){
         deltaTime = t - prevStep.impactTime;
 
@@ -578,7 +636,8 @@ bool UnicyclePlanner::computeNewSteps(std::shared_ptr< FootPrint > leftFoot, std
         deltaAngle = std::abs(prevStep.angle - unicycleAngle);
 
         if ((deltaTime >= m_minTime) && (t > (initTime + timeOffset))){ //The step is not too fast
-            if (!(swingFoot->isTinyStep(unicyclePosition, unicycleAngle)) || (deltaAngle > m_minAngle)){ //the step is not tiny
+            if (avoidPause || (!(swingFoot->isTinyStep(unicyclePosition, unicycleAngle)) || (deltaAngle > m_minAngle))){ //the step is not tiny
+                pauseActivated = false;
                 deltaTime -= pauseTime;
                 if ((deltaTime > m_maxTime) || (t == m_endTime)){ //the step is not too slow
                     if (tOptim > 0){  //a feasible point has been found
@@ -594,31 +653,52 @@ bool UnicyclePlanner::computeNewSteps(std::shared_ptr< FootPrint > leftFoot, std
 
                         t = tOptim;
                         pauseTime = 0;
+                        avoidPause = false;
 
                     } else { //if (tOptim > 0)
-                        std::cerr << "Unable to satisfy constraints" << std::endl;
+                        if (pauseActivated) {
+                            std::cerr << "Ignoring pause conditions to try to satisfy constraints." << std::endl;
+                            avoidPause = true;
+                            t = std::max(initTime, t - pauseTime);
+                        } else {
 
-                        t = prevStep.impactTime + m_nominalTime + pauseTime;
+                            std::cerr << "Unable to satisfy constraints given the specified maxStepTime. In the last evaluation of constraints, the following where not satisfied:" << std::endl;
 
-                        if(!stanceFoot->getUnicyclePositionFromFoot(prevStep.position, prevStep.angle, unicyclePosition)){
-                            std::cerr << "Error while computing the unicycle position." << std::endl;
-                            return false;
-                        }
+                            m_unicycleProblem.printViolatedConstraints(rPl, deltaAngle, deltaTime);
 
-                        bool isTiny = swingFoot->isTinyStep(unicyclePosition, prevStep.angle);
-                        //bool isTiny = false;
-
-                        if(!isTiny){
-                            if(!swingFoot->addParallelStep(*(stanceFoot), t)){
-                                std::cerr << "Error while inserting new step." << std::endl;
+                            if(!stanceFoot->getUnicyclePositionFromFoot(prevStep.position, prevStep.angle, unicyclePosition)){
+                                std::cerr << "Error while computing the unicycle position." << std::endl;
                                 return false;
                             }
 
-                            pauseTime = 0;
-                        } else {
+                            bool isTiny = swingFoot->isTinyStep(unicyclePosition, prevStep.angle);
+                            //bool isTiny = false;
 
-                            pauseTime += m_nominalTime;
+                            if(!isTiny){
+                                if(!swingFoot->addParallelStep(*(stanceFoot), t)){
+                                    std::cerr << "Error while inserting new step." << std::endl;
+                                    return false;
+                                }
+
+                                pauseTime = 0;
+                            } else {
+
+                                pauseTime += m_nominalTime;
+                            }
+
+                            Step lastSwingStep;
+                            if (!(swingFoot->getLastStep(lastSwingStep))){
+                                std::cerr << "Error getting last swing step" << std::endl;
+                                return false;
+                            }
+                            t = std::max(prevStep.impactTime, lastSwingStep.impactTime) + m_nominalTime + pauseTime;
+
+                            if (t < initTime) {
+                                std::cerr << "Something went wrong when updating time variable." << std::endl;
+                                return false;
+                            }
                         }
+
                     }
                     //reset
                     tOptim = -1.0;
@@ -656,6 +736,7 @@ bool UnicyclePlanner::computeNewSteps(std::shared_ptr< FootPrint > leftFoot, std
                 }
             } else { //Arrive here if the step is tiny
                 pauseTime += m_dT;
+                pauseActivated = true;
             }
         }
 
@@ -677,22 +758,33 @@ bool UnicyclePlanner::computeNewSteps(std::shared_ptr< FootPrint > leftFoot, std
             return false;
         }
 
-        if (m_resetTimings && (numberOfStepsLeft == leftFoot->numberOfSteps()) && (numberOfStepsRight == rightFoot->numberOfSteps())){ //no steps have been added
-            Step lastLeft, lastRight;
+    }
 
-            leftFoot->getLastStep(lastLeft);
-            rightFoot->getLastStep(lastRight);
+    if ((numberOfStepsLeft == leftFoot->numberOfSteps()) && (numberOfStepsRight == rightFoot->numberOfSteps())){ //no steps have been added
+        Step lastLeft, lastRight;
 
-            if (lastLeft.impactTime > lastRight.impactTime){
-                lastRight.impactTime = lastLeft.impactTime;
-                rightFoot->clearLastStep();
-                rightFoot->addStep(lastRight);
-            } else if (lastLeft.impactTime < lastRight.impactTime){
-                lastLeft.impactTime = lastRight.impactTime;
-                leftFoot->clearLastStep();
-                leftFoot->addStep(lastLeft);
+        leftFoot->getLastStep(lastLeft);
+        rightFoot->getLastStep(lastRight);
+
+        if (lastLeft.impactTime > lastRight.impactTime){
+            lastRight.impactTime = lastLeft.impactTime;
+            rightFoot->clearLastStep();
+            rightFoot->addStep(lastRight);
+
+            if (!m_resetStartingFoot) {
+                m_startLeft = false;
+            }
+
+        } else if (lastLeft.impactTime < lastRight.impactTime){
+            lastLeft.impactTime = lastRight.impactTime;
+            leftFoot->clearLastStep();
+            leftFoot->addStep(lastLeft);
+
+            if (!m_resetStartingFoot) {
+                m_startLeft = true;
             }
         }
+
     }
 
     return true;
@@ -705,6 +797,8 @@ bool UnicyclePlanner::startWithLeft() const
 
 bool UnicyclePlanner::getPersonPosition(double time, iDynTree::Vector2& personPosition)
 {
+    std::lock_guard<std::mutex> guard(m_mutex);
+
     double unicycleAngle;
     iDynTree::Vector2 unicyclePosition;
 
