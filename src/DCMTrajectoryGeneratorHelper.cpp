@@ -176,8 +176,8 @@ class DoubleSupportTrajectory : public GeneralSupportTrajectory
 
     friend class DCMTrajectoryGeneratorHelper;
 
-    Eigen::Vector4d m_coefficentsX; /**< 3-th order x-trajectory parameters [a3, a2, a1, a0] */
-    Eigen::Vector4d m_coefficentsY; /**< 3-th order y-trajectory parameters [a3, a2, a1, a0] */
+    iDynTree::Vector4 m_coefficentsX; /**< 3-th order x-trajectory parameters [a3, a2, a1, a0] */
+	iDynTree::Vector4 m_coefficentsY; /**< 3-th order y-trajectory parameters [a3, a2, a1, a0] */
 
     /**
      * Given desired boundary conditions (position and velocity) evaluate the cofficents of a
@@ -189,15 +189,13 @@ class DoubleSupportTrajectory : public GeneralSupportTrajectory
      * @param dsDuration duration of the Double Support phase.
      * @return the vector containing the coefficents of the 3-th order polynomial.
      */
-    Eigen::Vector4d polinominalInterpolation(const iDynTree::Vector2 &positionBoundaryConds,
-                                             const iDynTree::Vector2 &velocityBoundaryConds,
-                                             const double &dsDuration);
+    iDynTree::Vector4 polinominalInterpolation(const iDynTree::Vector2 &positionBoundaryConds,
+                                               const iDynTree::Vector2 &velocityBoundaryConds,
+                                               const double &dsDuration);
 
 
 
 public:
-
-    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
     /**
      * Constructor.
@@ -271,7 +269,7 @@ DoubleSupportTrajectory::DoubleSupportTrajectory(const DCMTrajectoryPoint &initB
                                               dsDuration);
 }
 
-Eigen::Vector4d DoubleSupportTrajectory::polinominalInterpolation(const iDynTree::Vector2 &positionBoundaryConds,
+iDynTree::Vector4 DoubleSupportTrajectory::polinominalInterpolation(const iDynTree::Vector2 &positionBoundaryConds,
                                                                   const iDynTree::Vector2 &velocityBoundaryConds,
                                                                   const double &dsDuration)
 {
@@ -296,7 +294,11 @@ Eigen::Vector4d DoubleSupportTrajectory::polinominalInterpolation(const iDynTree
     // evaluate the trajectory parameters
     coefficents = estimationMatrix * boundaryCond;
 
-    return coefficents;
+	iDynTree::Vector4 output;
+
+	iDynTree::toEigen(output) = coefficents;
+
+    return output;
 }
 
 bool DoubleSupportTrajectory::getDCMPosition(const double &t, iDynTree::Vector2 &DCMPosition,
@@ -319,8 +321,8 @@ bool DoubleSupportTrajectory::getDCMPosition(const double &t, iDynTree::Vector2 
             1;
 
     // evaluate booth x and y coordinates
-    DCMPosition(0) = tVector.dot(m_coefficentsX);
-    DCMPosition(1) = tVector.dot(m_coefficentsY);
+    DCMPosition(0) = tVector.dot(iDynTree::toEigen(m_coefficentsX));
+    DCMPosition(1) = tVector.dot(iDynTree::toEigen(m_coefficentsY));
 
     return true;
 }
@@ -346,8 +348,8 @@ bool DoubleSupportTrajectory::getDCMVelocity(const double &t, iDynTree::Vector2 
             0;
 
     // evaluate booth x and y coordinates
-    DCMVelocity(0) = tVector.dot(m_coefficentsX);
-    DCMVelocity(1) = tVector.dot(m_coefficentsY);
+    DCMVelocity(0) = tVector.dot(iDynTree::toEigen(m_coefficentsX));
+    DCMVelocity(1) = tVector.dot(iDynTree::toEigen(m_coefficentsY));
 
     return true;
 }
@@ -521,7 +523,7 @@ bool DCMTrajectoryGeneratorHelper::addLastStep(const double &singleSupportStartT
     doubleSupportInitBoundaryCondition.DCMVelocity.zero();
     doubleSupportFinalBoundaryCondition.DCMVelocity.zero();
 
-    std::shared_ptr<GeneralSupportTrajectory> newDoubleSupport = std::make_shared<DoubleSupportTrajectory>(doubleSupportInitBoundaryCondition,
+    std::shared_ptr<DoubleSupportTrajectory> newDoubleSupport = std::make_shared<DoubleSupportTrajectory>(doubleSupportInitBoundaryCondition,
                                                                                                            doubleSupportFinalBoundaryCondition);
     // add the new Double Support phase
     m_trajectory.push_back(newDoubleSupport);
