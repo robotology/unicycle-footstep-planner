@@ -47,6 +47,8 @@ public:
 
     virtual void getFeetTwistsInMixedRepresentation(std::vector<iDynTree::Twist> &lFootTwistsInMixedRepresentation, std::vector<iDynTree::Twist> &rFootTwistsInMixedRepresentation) const final;
 
+   virtual void getFeetAccelerationInMixedRepresentation(std::vector<iDynTree::Vector6> &lFootAccelerationInMixedRepresentation, std::vector<iDynTree::Vector6> &rFootAccelerationInMixedRepresentation) const final;
+
 };
 
 #endif // FEETCUBICSPLINEGENERATOR_H

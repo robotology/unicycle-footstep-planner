@@ -32,6 +32,10 @@ public:
 
     virtual void getFeetTwistsInMixedRepresentation(std::vector<iDynTree::Twist> &lFootTwistsInMixedRepresentation, std::vector<iDynTree::Twist> &rFootTwistsInMixedRepresentation) const = 0;
 
+    virtual void getFeetAccelerationInMixedRepresentation(std::vector<iDynTree::Vector6> &lFootAccelerationInMixedRepresentation, std::vector<iDynTree::Vector6> &rFootAccelerationInMixedRepresentation) const = 0;
+
+    // TODO move this method in iDynTree
+    static iDynTree::Matrix3x3 RPYRightTrivializedSecondDerivative(const double /*roll*/, const double pitch, const double yaw, const double rollDot, const double pitchDot, const double /*yawDot*/);
 };
 
 #endif // FEETGENERATOR_H
