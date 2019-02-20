@@ -7,6 +7,5 @@
 
 #include <FeetGenerator.h>
 
-
 FeetGenerator::~FeetGenerator()
 { }
