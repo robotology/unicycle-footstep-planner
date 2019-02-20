@@ -9,7 +9,8 @@
 #include <iDynTree/Core/VectorDynSize.h>
 #include <iDynTree/Core/CubicSpline.h>
 #include <iDynTree/Core/EigenHelpers.h>
-#include "iDynTree/Core/Twist.h"
+#include <iDynTree/Core/Twist.h>
+#include <iDynTree/Core/SpatialAcc.h>
 #include <cassert>
 #include <mutex>
 
@@ -22,6 +23,7 @@ public:
 
     std::vector<iDynTree::Transform> leftTrajectory, rightTrajectory;
     std::vector<iDynTree::Twist> leftMixedTwist, rightMixedTwist;
+    std::vector<iDynTree::SpatialAcc> leftMixedAcceleration, rightMixedAcceleration;
 
     std::mutex mutex;
 
@@ -62,7 +64,7 @@ public:
 
 
     bool interpolateFoot(double dT, const std::vector<size_t>& phaseShift, const std::vector<StepPhase> &stepPhase,
-                         const FootPrint &foot, std::vector<iDynTree::Transform> &output, std::vector<iDynTree::Twist> &outputTwistsInMixedRepresentation) {
+                         const FootPrint &foot, std::vector<iDynTree::Transform> &output, std::vector<iDynTree::Twist> &outputTwistsInMixedRepresentation, std::vector<iDynTree::SpatialAcc> &outputAccelerationInMixedRepresentation) {
         //NOTE this must be called after createPhasesTimings
 
         if (stepHeight < 0){
@@ -72,6 +74,7 @@ public:
 
         output.resize(stepPhase.size());
         outputTwistsInMixedRepresentation.resize(stepPhase.size());
+        outputAccelerationInMixedRepresentation.resize(stepPhase.size());
 
         const StepList& steps = foot.getSteps();
         StepList::const_iterator footState = steps.begin();
@@ -79,11 +82,14 @@ public:
         iDynTree::Transform newTransform;
         iDynTree::Position newPosition;
         iDynTree::Vector3 linearVelocity;
-        iDynTree::Twist newAcceleration;
+        iDynTree::Vector3 linearAcceleration;
         double swingLength, pitchAngle, yawAngle;
         iDynTree::Vector3 rpyDerivative;
+        iDynTree::Vector3 rpySecondDerivative;
         iDynTree::AngularMotionVector3 rightTrivializedAngVelocity;
+        iDynTree::Vector3 rightTrivializedAngAcceleration;
         rpyDerivative.zero();
+        rpySecondDerivative.zero();
         size_t endOfPhase;
 
         for (size_t phase = 1; phase < phaseShift.size(); ++phase){ //the first value is useless
@@ -136,31 +142,31 @@ public:
                     interpolationTime = (instant - startSwingInstant)*dT;
 
                     if(!minimumJerk(xPositionsBuffer(0), xPositionsBuffer(1), (interpolationTime - interpolationTime0),
-                                    swingLength, newPosition(0), linearVelocity(0), newAcceleration(0))){
+                                    swingLength, newPosition(0), linearVelocity(0), linearAcceleration(0))){
                         std::cerr << "[FEETINTERPOLATOR] Unable to evaluate the trajectory";
                         return false;
                     }
 
                     if(!minimumJerk(yPositionsBuffer(0), yPositionsBuffer(1), (interpolationTime - interpolationTime0),
-                                    swingLength, newPosition(1), linearVelocity(1), newAcceleration(1))){
+                                    swingLength, newPosition(1), linearVelocity(1), linearAcceleration(1))){
                         std::cerr << "[FEETINTERPOLATOR] Unable to evaluate the trajectory";
                         return false;
                     }
 
                     if(!minimumJerk(zPositionsBuffer(0), zPositionsBuffer(1), (interpolationTime - interpolationTime0),
-                                    halfDuration, newPosition(2), linearVelocity(2), newAcceleration(2))){
+                                    halfDuration, newPosition(2), linearVelocity(2), linearAcceleration(2))){
                         std::cerr << "[FEETINTERPOLATOR] Unable to evaluate the trajectory";
                         return false;
                     }
 
                     if(!minimumJerk(pitchAnglesBuffer(0), pitchAnglesBuffer(1), (interpolationTime - interpolationTime0),
-                                    halfDuration, pitchAngle, rpyDerivative(1), newAcceleration(4))){
+                                    halfDuration, pitchAngle, rpyDerivative(1), rpySecondDerivative(1))){
                         std::cerr << "[FEETINTERPOLATOR] Unable to evaluate the trajectory";
                         return false;
                     }
 
                     if(!minimumJerk(yawsBuffer(0), yawsBuffer(1), (interpolationTime - interpolationTime0),
-                                    swingLength, yawAngle, rpyDerivative(2), newAcceleration(5))){
+                                    swingLength, yawAngle, rpyDerivative(2), rpySecondDerivative(2))){
                         std::cerr << "[FEETINTERPOLATOR] Unable to evaluate the trajectory";
                         return false;
                     }
@@ -175,6 +181,16 @@ public:
                             iDynTree::toEigen(rpyDerivative);
                     outputTwistsInMixedRepresentation[instant].setLinearVec3(linearVelocity);
                     outputTwistsInMixedRepresentation[instant].setAngularVec3(rightTrivializedAngVelocity);
+
+                    iDynTree::toEigen(rightTrivializedAngAcceleration) =
+                        iDynTree::toEigen(iDynTree::Rotation::RPYRightTrivializedDerivativeRateOfChange(0.0, pitchAngle, yawAngle,
+                                                                                                        rpyDerivative(0), rpyDerivative(1), rpyDerivative(2))) *
+                        iDynTree::toEigen(rpyDerivative) +
+                        iDynTree::toEigen(iDynTree::Rotation::RPYRightTrivializedDerivative(0.0, pitchAngle, yawAngle)) *
+                        iDynTree::toEigen(rpySecondDerivative);
+
+                    iDynTree::toEigen(outputAccelerationInMixedRepresentation[instant].getLinearVec3()) = iDynTree::toEigen(linearAcceleration);
+                    iDynTree::toEigen(outputAccelerationInMixedRepresentation[instant].getAngularVec3()) = iDynTree::toEigen(rightTrivializedAngAcceleration);
 
                     ++instant;
                 }
@@ -186,32 +202,32 @@ public:
                     interpolationTime = (instant - startSwingInstant)*dT;
 
                     if(!minimumJerk(xPositionsBuffer(0), xPositionsBuffer(1), (interpolationTime - interpolationTime0),
-                                    swingLength, newPosition(0), linearVelocity(0), newAcceleration(0))){
+                                    swingLength, newPosition(0), linearVelocity(0), linearAcceleration(0))){
                         std::cerr << "[FEETINTERPOLATOR] Unable to evaluate the trajectory";
                         return false;
                     }
 
                     if(!minimumJerk(yPositionsBuffer(0), yPositionsBuffer(1), (interpolationTime - interpolationTime0),
-                                    swingLength, newPosition(1), linearVelocity(1), newAcceleration(1))){
+                                    swingLength, newPosition(1), linearVelocity(1), linearAcceleration(1))){
                         std::cerr << "[FEETINTERPOLATOR] Unable to evaluate the trajectory";
                         return false;
                     }
 
                     if(!minimumJerk(zPositionsBuffer(1), zPositionsBuffer(2), (interpolationTime - interpolationTime1),
-                                    halfDuration, newPosition(2), linearVelocity(2), newAcceleration(2))){
+                                    halfDuration, newPosition(2), linearVelocity(2), linearAcceleration(2))){
                         std::cerr << "[FEETINTERPOLATOR] Unable to evaluate the trajectory";
                         return false;
                     }
 
 
                     if(!minimumJerk(pitchAnglesBuffer(1), pitchAnglesBuffer(2), (interpolationTime - interpolationTime1),
-                                    halfDuration, pitchAngle, rpyDerivative(1), newAcceleration(4))){
+                                    halfDuration, pitchAngle, rpyDerivative(1), rpySecondDerivative(1))){
                         std::cerr << "[FEETINTERPOLATOR] Unable to evaluate the trajectory";
                         return false;
                     }
 
                     if(!minimumJerk(yawsBuffer(0), yawsBuffer(1), (interpolationTime - interpolationTime0),
-                                    swingLength, yawAngle, rpyDerivative(2), newAcceleration(5))){
+                                    swingLength, yawAngle, rpyDerivative(2), rpySecondDerivative(2))){
                         std::cerr << "[FEETINTERPOLATOR] Unable to evaluate the trajectory";
                         return false;
                     }
@@ -228,6 +244,16 @@ public:
                             iDynTree::toEigen(rpyDerivative);
                     outputTwistsInMixedRepresentation[instant].setLinearVec3(linearVelocity);
                     outputTwistsInMixedRepresentation[instant].setAngularVec3(rightTrivializedAngVelocity);
+
+                    iDynTree::toEigen(rightTrivializedAngAcceleration) =
+                        iDynTree::toEigen(iDynTree::Rotation::RPYRightTrivializedDerivativeRateOfChange(0.0, pitchAngle, yawAngle,
+                                                                                                        rpyDerivative(0), rpyDerivative(1), rpyDerivative(2))) *
+                            iDynTree::toEigen(rpyDerivative) +
+                            iDynTree::toEigen(iDynTree::Rotation::RPYRightTrivializedDerivative(0.0, pitchAngle, yawAngle)) *
+                            iDynTree::toEigen(rpySecondDerivative);
+
+                    iDynTree::toEigen(outputAccelerationInMixedRepresentation[instant].getLinearVec3()) = iDynTree::toEigen(linearAcceleration);
+                    iDynTree::toEigen(outputAccelerationInMixedRepresentation[instant].getAngularVec3()) = iDynTree::toEigen(rightTrivializedAngAcceleration);
 
                     ++instant;
                 }
@@ -243,6 +269,7 @@ public:
                 while (instant < endOfPhase){
                     output[instant] = newTransform;
                     outputTwistsInMixedRepresentation[instant].zero();
+                    outputAccelerationInMixedRepresentation[instant].zero();
                     ++instant;
                 }
             }
@@ -263,12 +290,12 @@ bool FeetMinimumJerkGenerator::computeNewTrajectories(double dT, const FootPrint
 {
     std::lock_guard<std::mutex> guard(m_pimpl->mutex);
 
-    if (!(m_pimpl->interpolateFoot(dT, phaseShift, lFootPhases, left, m_pimpl->leftTrajectory, m_pimpl->leftMixedTwist))){
+    if (!(m_pimpl->interpolateFoot(dT, phaseShift, lFootPhases, left, m_pimpl->leftTrajectory, m_pimpl->leftMixedTwist, m_pimpl->leftMixedAcceleration))){
         std::cerr << "[FeetMinimumJerkGenerator::computeNewTrajectories] Failed while interpolating left foot trajectory." << std::endl;
         return false;
     }
 
-    if (!(m_pimpl->interpolateFoot(dT, phaseShift, rFootPhases, right, m_pimpl->rightTrajectory, m_pimpl->rightMixedTwist))){
+    if (!(m_pimpl->interpolateFoot(dT, phaseShift, rFootPhases, right, m_pimpl->rightTrajectory, m_pimpl->rightMixedTwist, m_pimpl->rightMixedAcceleration))){
         std::cerr << "[FeetMinimumJerkGenerator::computeNewTrajectories] Failed while interpolating left foot trajectory." << std::endl;
         return false;
     }
@@ -335,3 +362,10 @@ void FeetMinimumJerkGenerator::getFeetTwistsInMixedRepresentation(std::vector<iD
     rFootTwistsInMixedRepresentation = m_pimpl->rightMixedTwist;
 }
 
+void FeetMinimumJerkGenerator::getFeetAccelerationInMixedRepresentation(std::vector<iDynTree::SpatialAcc> &lFootAccelerationInMixedRepresentation, std::vector<iDynTree::SpatialAcc> &rFootAccelerationInMixedRepresentation) const
+{
+    std::lock_guard<std::mutex> guard(m_pimpl->mutex);
+
+    lFootAccelerationInMixedRepresentation = m_pimpl->leftMixedAcceleration;
+    rFootAccelerationInMixedRepresentation = m_pimpl->rightMixedAcceleration;
+}
