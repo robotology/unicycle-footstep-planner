@@ -170,7 +170,6 @@ public:
                             iDynTree::toEigen(rpyDerivative);
                     outputTwistsInMixedRepresentation[instant].setLinearVec3(linearVelocity);
                     outputTwistsInMixedRepresentation[instant].setAngularVec3(rightTrivializedAngVelocity);
-
                     iDynTree::toEigen(rightTrivializedAngAcceleration) =
                         iDynTree::toEigen(iDynTree::Rotation::RPYRightTrivializedDerivativeRateOfChange(0.0, pitchAngle, yawAngle,
                                                                                                         rpyDerivative(0), rpyDerivative(1), rpyDerivative(2))) *
@@ -180,6 +179,7 @@ public:
 
                     iDynTree::toEigen(outputAccelerationInMixedRepresentation[instant].getLinearVec3()) = iDynTree::toEigen(linearAcceleration);
                     iDynTree::toEigen(outputAccelerationInMixedRepresentation[instant].getAngularVec3()) = iDynTree::toEigen(rightTrivializedAngAcceleration);
+
                     ++instant;
                 }
 
