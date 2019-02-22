@@ -156,6 +156,13 @@ const std::vector<iDynTree::Vector2> &DCMTrajectoryGenerator::getDCMVelocity() c
     return m_pimpl->helper.getDCMVelocity();
 }
 
+
+const std::vector<iDynTree::Vector2> &DCMTrajectoryGenerator::getZMPPosition() const
+{
+    std::lock_guard<std::mutex> guard(m_pimpl->mutex);
+    return m_pimpl->helper.getZMPPosition();
+}
+
 void DCMTrajectoryGenerator::getWeightPercentage(std::vector<double> &weightInLeft, std::vector<double> &weightInRight) const
 {
     std::lock_guard<std::mutex> guard(m_pimpl->mutex);
