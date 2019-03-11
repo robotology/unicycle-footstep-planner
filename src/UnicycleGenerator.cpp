@@ -578,9 +578,14 @@ bool UnicycleGenerator::setTerminalHalfSwitchTime(double lastHalfSwitchTime)
     return true;
 }
 
-bool UnicycleGenerator::setPauseConditions(double maxStepTime, double nominalStepTime)
+bool UnicycleGenerator::setPauseConditions(double maxStepTime, double nominalStepTime, bool pauseActive)
 {
     std::lock_guard<std::mutex> guard(m_pimpl->mutex);
+
+    if(!pauseActive){
+        m_pimpl->pauseActive = false;
+        return true;
+    }
 
     if (maxStepTime < 0){
         std::cerr << "[UnicycleGenerator::setPauseConditions] If the maxStepTime is negative, the robot won't pause in middle stance." << std::endl;
@@ -704,5 +709,3 @@ std::shared_ptr<DCMTrajectoryGenerator> UnicycleGenerator::addDCMTrajectoryGener
 
     return m_pimpl->dcmTrajectoryGenerator;
 }
-
-
