@@ -1051,6 +1051,11 @@ const std::vector<iDynTree::Vector2>& DCMTrajectoryGeneratorHelper::getZMPPositi
     return m_ZMPPosition;
 }
 
+const std::vector<std::shared_ptr<GeneralSupportTrajectory>>& DCMTrajectoryGeneratorHelper::getDCMSubTrajectories() const
+{
+    return m_trajectory;
+}
+
 void DCMTrajectoryGeneratorHelper::getWeightPercentage(std::vector<double> &weightInLeft, std::vector<double> &weightInRight) const
 {
     weightInLeft = m_weightInLeft;

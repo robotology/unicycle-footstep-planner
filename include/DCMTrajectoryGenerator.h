@@ -14,6 +14,8 @@
 #include <vector>
 #include <memory>
 
+#include <DCMTrajectoryGeneratorHelper.h>
+
 typedef struct{
     iDynTree::Vector2 initialPosition;
     iDynTree::Vector2 initialVelocity;
@@ -97,6 +99,8 @@ public:
      * @return a vector containing the position of the ZMP
      */
     const std::vector<iDynTree::Vector2>& getZMPPosition() const;
+
+    const std::vector<std::shared_ptr<GeneralSupportTrajectory>>& getDCMSubTrajectories() const;
 
 
     /**

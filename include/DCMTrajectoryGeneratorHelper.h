@@ -290,6 +290,8 @@ class DCMTrajectoryGeneratorHelper
      */
     const std::vector<iDynTree::Vector2>& getZMPPosition() const;
 
+    const std::vector<std::shared_ptr<GeneralSupportTrajectory>>& getDCMSubTrajectories() const;
+
     /**
      * Output the weight percentage carried by each foot while walking, according to the DCM trajectory.
      */
