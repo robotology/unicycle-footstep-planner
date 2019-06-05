@@ -37,14 +37,16 @@ class GeneralSupportTrajectory
  protected:
 
     std::pair<double, double> m_trajectoryDomain; /**< Time domain of the trajectory */
+    double m_omega; /**< Time constant of the 3D-LIPM */
 
  public:
     /**
      * Constructor.
      * @param startTime is the start time of the trajectory;
-     * @param endTime is the end time of the trajectory.
+     * @param endTime is the end time of the trajectory;
+     * @param omega time constant of the linear inverted pendulum.
      */
-    GeneralSupportTrajectory(const double &startTime, const double &endTime);
+    GeneralSupportTrajectory(const double &startTime, const double &endTime, const double& omega);
 
     virtual ~GeneralSupportTrajectory();
 
@@ -67,6 +69,16 @@ class GeneralSupportTrajectory
      * @return true / false in case of success / failure.
      */
     virtual bool getDCMVelocity(const double &t, iDynTree::Vector2& DCMVelocity, const bool &checkDomainCondition = true) = 0;
+
+    /**
+     * Pure virtual method. It returns the position of the ZMP
+     * trajectory evaluated at time t.
+     * @param t is the trajectory evaluation time;
+     * @param ZMPPosition cartesian position of the Zero Moment Point;
+     * @param checkDomainCondition flag used to check if the time belongs to the trajectory domain (default value true).
+     * @return true / false in case of success / failure.
+     */
+    virtual bool getZMPPosition(const double &t, iDynTree::Vector2& ZMPVelocity, const bool &checkDomainCondition = true) = 0;
 
     /**
      * Return true if the time t belongs to the trajectory time
