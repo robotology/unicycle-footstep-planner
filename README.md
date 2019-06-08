@@ -1,5 +1,5 @@
 # unicycle-footstep-planner
-This is a library aimed at generating walking trajectories, adopting the model of a unicycle under the hood. Some more details on the theory and the implementation will be coming soon.
+This repository contains a library aimed at generating walking trajectories, adopting the model of a unicycle under the hood. Some more details on the theory and the implementation will be coming soon.
 
 ## Dependencies
 
