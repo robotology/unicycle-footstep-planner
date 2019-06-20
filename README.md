@@ -3,7 +3,7 @@ This repository contains a library aimed at generating walking trajectories, ado
 
 ## Dependencies
 
-- **[``iDynTree``](https://github.com/robotology/idyntree)**, version 0.9.2
+- **[``iDynTree``](https://github.com/robotology/idyntree)**, version 0.11.103
 
 ## Build the library and the application
 ### Linux/macOs
