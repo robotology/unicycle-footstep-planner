@@ -10,6 +10,8 @@
 #include <memory>
 #include "iDynTree/Core/VectorDynSize.h"
 #include "iDynTree/Core/VectorFixSize.h"
+#include "iDynTree/Core/Twist.h"
+#include "iDynTree/Core/SpatialAcc.h"
 #include <fstream>
 #include <ctime>
 
@@ -122,9 +124,13 @@ void printTrajectories(UnicycleGenerator& interpolator, size_t& newMergePoint, I
     std::shared_ptr<CoMHeightTrajectoryGenerator> heightGenerator = interpolator.addCoMHeightTrajectoryGenerator();
     std::shared_ptr<ZMPTrajectoryGenerator> zmpGenerator = interpolator.addZMPTrajectoryGenerator();
 
-    std::ofstream posLeft, posRight, zmp, leftZmp, rightZmp, weightLeft, weightRight, height, heightAcceleration, zmpVel, zmpAcc;
+    std::ofstream posLeft, posRight, twistLeft, twistRight, accLeft, accRight, zmp, leftZmp, rightZmp, weightLeft, weightRight, height, heightAcceleration, zmpVel, zmpAcc;
     posLeft.open("pL.txt");
     posRight.open("pR.txt");
+    twistLeft.open("twistL.txt");
+    twistRight.open("twistR.txt");
+    accLeft.open("accL.txt");
+    accRight.open("accR.txt");
     zmp.open ("zmp.txt");
     zmpVel.open ("zmpVel.txt");
     zmpAcc.open("zmpAcc.txt");
@@ -136,20 +142,48 @@ void printTrajectories(UnicycleGenerator& interpolator, size_t& newMergePoint, I
     heightAcceleration.open("heightAcc.txt");
 
     static std::vector<iDynTree::Transform> lFootTrajectory, rFootTrajectory;
+    static std::vector<iDynTree::Twist> lFootTwist, rFootTwist;
+    static std::vector<iDynTree::SpatialAcc> lFootAcceleration, rFootAcceleration;
 
     std::vector<iDynTree::Transform> lFootTrajectoryInput, rFootTrajectoryInput;
+    std::vector<iDynTree::Twist> lFootTwistInput, rFootTwistInput;
+    std::vector<iDynTree::SpatialAcc> lFootAccelerationInput, rFootAccelerationInput;
     feetGenerator->getFeetTrajectories(lFootTrajectoryInput, rFootTrajectoryInput);
+    feetGenerator->getFeetTwistsInMixedRepresentation(lFootTwistInput, rFootTwistInput);
+    feetGenerator->getFeetAccelerationInMixedRepresentation(lFootAccelerationInput, rFootAccelerationInput);
+
+    std::cerr << rFootTrajectoryInput.size() << " " << rFootTwistInput.size() << " " << rFootAccelerationInput.size() << "\n";
 
     lFootTrajectory.insert(lFootTrajectory.begin() + mergePoint, lFootTrajectoryInput.begin(), lFootTrajectoryInput.end());
     lFootTrajectory.resize(mergePoint + lFootTrajectoryInput.size());
     rFootTrajectory.insert(rFootTrajectory.begin() + mergePoint, rFootTrajectoryInput.begin(), rFootTrajectoryInput.end());
     rFootTrajectory.resize(mergePoint + rFootTrajectoryInput.size());
 
+    lFootTwist.insert(lFootTwist.begin() + mergePoint, lFootTwistInput.begin(), lFootTwistInput.end());
+    lFootTwist.resize(mergePoint + lFootTwistInput.size());
+    rFootTwist.insert(rFootTwist.begin() + mergePoint, rFootTwistInput.begin(), rFootTwistInput.end());
+    rFootTwist.resize(mergePoint + rFootTwistInput.size());
+
+    lFootAcceleration.insert(lFootAcceleration.begin() + mergePoint, lFootAccelerationInput.begin(), lFootAccelerationInput.end());
+    lFootAcceleration.resize(mergePoint + lFootAccelerationInput.size());
+    rFootAcceleration.insert(rFootAcceleration.begin() + mergePoint, rFootAccelerationInput.begin(), rFootAccelerationInput.end());
+    rFootAcceleration.resize(mergePoint + rFootAccelerationInput.size());
+
     std::cerr << "--------------------------------------------->Left Trajectory." << std::endl;
     //print_iDynTree(lFootTrajectory);
     for (auto pose : lFootTrajectory){
         posLeft << pose.getPosition()(0) << "    " << pose.getPosition()(1) << "    " <<
-                "    " << pose.getPosition()(2)<<"    "<< std::endl;
+            "    " << pose.getPosition()(2)<<"    "<< std::endl;
+    }
+
+    for (auto twist : lFootTwist){
+        twistLeft << twist(0) << "    " << twist(1) << "    " << twist(2) << "    "
+                  << twist(3) << "    " << twist(4) << "    " << twist(5) <<  std::endl;
+    }
+
+    for (auto acc : lFootAcceleration){
+        accLeft << acc(0) << "    " << acc(1) << "    " << acc(2) << "    "
+                << acc(3) << "    " << acc(4) << "    " << acc(5) <<  std::endl;
     }
 
     std::cerr << "--------------------------------------------->Right Trajectory." << std::endl;
@@ -157,6 +191,16 @@ void printTrajectories(UnicycleGenerator& interpolator, size_t& newMergePoint, I
     for (auto pose : rFootTrajectory){
         posRight << pose.getPosition()(0) << " " << pose.getPosition()(1) << " " <<
                     " " << pose.getPosition()(2)<<"    "<< std::endl;
+    }
+
+    for (auto twist : rFootTwist){
+        twistRight << twist(0) << "    " << twist(1) << "    " << twist(2) << "    "
+                   << twist(3) << "    " << twist(4) << "    " << twist(5) <<  std::endl;
+    }
+
+    for (auto acc : rFootAcceleration){
+        accRight << acc(0) << "    " << acc(1) << "    " << acc(2) << "    "
+                 << acc(3) << "    " << acc(4) << "    " << acc(5) <<  std::endl;
     }
 
     static std::vector<double> weightInLeft, weightInRight;
@@ -258,6 +302,10 @@ void printTrajectories(UnicycleGenerator& interpolator, size_t& newMergePoint, I
 
     posLeft.close();
     posRight.close();
+    twistLeft.close();
+    twistRight.close();
+    accLeft.close();
+    accRight.close();
     zmp.close();
     zmpVel.close();
     zmpAcc.close();
