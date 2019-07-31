@@ -502,7 +502,8 @@ bool DCMTrajectoryGeneratorHelper::addLastStep(const double &singleSupportStartT
                                                const double &singleSupportEndTime,
                                                const double &doubleSupportEndTime,
                                                const iDynTree::Vector2 &ZMP,
-                                               const DCMTrajectoryPoint &singleSupportBoundaryCondition)
+                                               const DCMTrajectoryPoint &singleSupportBoundaryCondition,
+                                               const iDynTree::Vector2 &doubleSupportEndPosition)
 {
     // evaluate the Single Support trajectory parameters
     std::shared_ptr<GeneralSupportTrajectory> newSingleSupport = nullptr;
@@ -516,11 +517,15 @@ bool DCMTrajectoryGeneratorHelper::addLastStep(const double &singleSupportStartT
     doubleSupportInitBoundaryCondition.time = singleSupportEndTime;
     doubleSupportFinalBoundaryCondition.time = doubleSupportEndTime;
 
-    // only for the last step the final position of the DCM coincides with le initial position
-    doubleSupportFinalBoundaryCondition.DCMPosition = singleSupportBoundaryCondition.DCMPosition;
     doubleSupportInitBoundaryCondition.DCMPosition = singleSupportBoundaryCondition.DCMPosition;
+    doubleSupportFinalBoundaryCondition.DCMPosition = doubleSupportEndPosition;
 
-    doubleSupportInitBoundaryCondition.DCMVelocity.zero();
+    if(!newSingleSupport->getDCMVelocity(doubleSupportInitBoundaryCondition.time,
+                                         doubleSupportInitBoundaryCondition.DCMVelocity)){
+        std::cerr << "[DCMTrajectoryGeneratorHelper::addLastStep] Error when the velocity of the DCM in the next SS phase is evaluated." <<std::endl;
+        return false;
+    }
+    // only for the last step the final velocity of the DCM is zero
     doubleSupportFinalBoundaryCondition.DCMVelocity.zero();
 
     std::shared_ptr<DoubleSupportTrajectory> newDoubleSupport = std::make_shared<DoubleSupportTrajectory>(doubleSupportInitBoundaryCondition,
@@ -784,12 +789,13 @@ bool DCMTrajectoryGeneratorHelper::generateDCMTrajectory(const std::vector<const
         //       coincides with the end time of the single support trajectory
         //       (valid only for the last step)
         singleSupportBoundaryCondition.time = singleSupportEndTime;
-        singleSupportBoundaryCondition.DCMPosition = endDCMPosition;
+        // We assume that the DCM at the last single support phase coincides with the ZMP
+        singleSupportBoundaryCondition.DCMPosition = otherFootZMP;
         singleSupportBoundaryCondition.DCMVelocity.zero();
 
         // evaluate the last step
         if(!addLastStep(singleSupportStartTime, singleSupportEndTime,
-                        doubleSupportEndTime, otherFootZMP, singleSupportBoundaryCondition)){
+                        doubleSupportEndTime, otherFootZMP, singleSupportBoundaryCondition, endDCMPosition)){
             std::cerr << "[DCMTrajectoryGeneratorHelper::generateDCMTrajectory] Error when the DCM trajectory of the last step is generated." << std::endl;
             return false;
         }
