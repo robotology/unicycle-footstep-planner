@@ -118,14 +118,18 @@ class DCMTrajectoryGeneratorHelper
      * @param ZMP contains the position of the ZMP at the beginning of the single support phase,
      * it is assumed coincedent with the center of the reference foot;
      * @param singleSupportBoundaryCondition contains the boundary position and time
-     * of the single support trajectory.
+     * of the single support trajectory;
+     * @param doubleSupportEndPosition contains the final position at the end of the
+     * double support phase.
      * @return true / false in case of success / failure.
      */
     bool addLastStep(const double &singleSupportStartTime,
                      const double &singleSupportEndTime,
                      const double &doubleSupportEndTime,
                      const iDynTree::Vector2 &ZMP,
-                     const DCMTrajectoryPoint& singleSupportBoundaryCondition);
+                     const DCMTrajectoryPoint& singleSupportBoundaryCondition,
+                     const iDynTree::Vector2 &doubleSupportEndPosition);
+
 
     /**
      * Add the Single and Double support phases for a general step.
