@@ -83,6 +83,13 @@ public:
     const std::vector<iDynTree::Vector2>& getDCMVelocity() const;
 
     /**
+     * Get the position of the ZMP along the entire trajectory.
+     * @return a vector containing the position of the ZMP
+     */
+    const std::vector<iDynTree::Vector2>& getZMPPosition() const;
+
+
+    /**
      * Output the weight percentage carried by each foot while walking, according to the DCM trajectory.
      */
     void getWeightPercentage(std::vector<double>& weightInLeft, std::vector<double>& weightInRight) const;
