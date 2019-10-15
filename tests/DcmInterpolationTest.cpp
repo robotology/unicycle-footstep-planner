@@ -60,6 +60,9 @@ typedef struct
     double lStancePositionX = 0.0, lStancePositionY = 0.0;
     double lSwitchInitPositionX = 0.0, lSwitchInitPositionY = 0.0;
 
+    // DCM offset percentage for the last step
+    double lastStepDCMOffsetPercentage = 0.2;
+
     bool swingLeft = true;
 } Configuration;
 
@@ -111,6 +114,7 @@ bool configureGenerator(UnicycleGenerator& generator, const Configuration &conf)
     rightOffset(0) = conf.rStancePositionX;
     rightOffset(1) = conf.rStancePositionY;
     iDynTree::assertTrue(dcmGenerator->setFootOriginOffset(leftOffset, rightOffset));
+    iDynTree::assertTrue(dcmGenerator->setLastStepDCMOffsetPercentage(conf.lastStepDCMOffsetPercentage));
 
     return ok;
 }
