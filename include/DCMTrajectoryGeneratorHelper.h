@@ -97,6 +97,15 @@ class DCMTrajectoryGeneratorHelper
     iDynTree::Vector2 m_leftZMPDelta; /**< Vector containing the desired left ZMP delta. */
     iDynTree::Vector2 m_rightZMPDelta; /**< Vector containing the desired left ZMP delta. */
 
+    /**
+     * Number from 0 to 1 used to indicate the position of the DCM w.r.t. the last zmp position.
+     * If it is 0.5 the final DCM will be in the middle of the two footsteps;
+     * If it is 0 the DCM position coincides with the stance foot ZMP;
+     * If it is 1 the DCM position coincides with the next foot ZMP position.
+     * The default value is 0.
+     */
+    double m_lastStepDCMOffset;
+
     double m_maxDoubleSupportDuration; /**< Max duration of a DS phase. */
     double m_nominalDoubleSupportDuration; /**< Nominal duration of a DS phase. */
     bool m_pauseActive; /**< True if the pause feature is activate. */
@@ -222,6 +231,16 @@ class DCMTrajectoryGeneratorHelper
      * @return true if the pause conditions are set, false otherwise.
      */
     bool setPauseConditions(bool pauseActive, const double &maxDoubleSupportDuration, const double &nominalDoubleSupportDuration);
+
+    /**
+     * Set the last step DCM offset
+     * @param lastStepDCMOffset Number from 0 to 1 used to indicate the position of the DCM w.r.t. the last ZMP position.
+     * If it is 0.5 the final DCM will be in the middle of the two footsteps;
+     * If it is 0 the DCM position coincides with the stance foot ZMP;
+     * If it is 1 the DCM position coincides with the next foot ZMP position.
+     * @return true / false in case of success / failure.
+     */
+    bool setLastStepDCMOffsetPercentage(const double &lastStepDCMOffset);
 
     /**
      * Generate the Divergent Component of Motion trajectory.

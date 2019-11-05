@@ -28,7 +28,7 @@ include(CMakePackageConfigHelpers)
 
 project(UnicyclePlanner
         LANGUAGES CXX
-        VERSION 0.1.102)
+        VERSION 0.1.103)
 
 option(ENABLE_RPATH "Enable RPATH for this library" ON)
 mark_as_advanced(ENABLE_RPATH)

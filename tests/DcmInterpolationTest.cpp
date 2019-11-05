@@ -60,6 +60,9 @@ typedef struct
     double lStancePositionX = 0.0, lStancePositionY = 0.0;
     double lSwitchInitPositionX = 0.0, lSwitchInitPositionY = 0.0;
 
+    // DCM offset percentage for the last step
+    double lastStepDCMOffsetPercentage = 0.2;
+
     bool swingLeft = true;
 } Configuration;
 
@@ -104,13 +107,14 @@ bool configureGenerator(UnicycleGenerator& generator, const Configuration &conf)
     auto dcmGenerator = generator.addDCMTrajectoryGenerator();
 
     // Setup the dcm planner
-    iDynTree::assertTrue(dcmGenerator->setOmega(9.81/conf.comHeight));
+    iDynTree::assertTrue(dcmGenerator->setOmega(std::sqrt(9.81/conf.comHeight)));
     iDynTree::Vector2 leftOffset, rightOffset;
     leftOffset(0) = conf.lStancePositionX;
     leftOffset(1) = conf.lStancePositionY;
     rightOffset(0) = conf.rStancePositionX;
     rightOffset(1) = conf.rStancePositionY;
     iDynTree::assertTrue(dcmGenerator->setFootOriginOffset(leftOffset, rightOffset));
+    iDynTree::assertTrue(dcmGenerator->setLastStepDCMOffsetPercentage(conf.lastStepDCMOffsetPercentage));
 
     return ok;
 }
@@ -119,19 +123,20 @@ bool configureGenerator(UnicycleGenerator& generator, const Configuration &conf)
  * Save all the trajectories in files
  */
 void printTrajectories(UnicycleGenerator& generator, size_t& newMergePoint, size_t mergePoint, DCMInitialState& boundaryConditionAtMergePoint,
-                       const std::string& DCMPosFileName, const std::string& DCMVelFileName,
+                       const std::string& DCMPosFileName, const std::string& DCMVelFileName, const std::string& ZMPPosFileName,
                        const std::string& mergePointFileName,
                        const std::string& lFootWeightFileName, const std::string& rFootWeightFileName)
 {
     auto dcmGenerator = generator.addDCMTrajectoryGenerator();
 
     // instantiate ofstream
-    std::ofstream DCMPosStream, DCMVelStream;
+    std::ofstream DCMPosStream, DCMVelStream, ZMPPosStream;
     std::ofstream mergePointsStream;
     std::ofstream lFootWeightStream, rFootWeightStream;
 
 
     DCMPosStream.open(DCMPosFileName.c_str());
+    ZMPPosStream.open(ZMPPosFileName.c_str());
     DCMVelStream.open(DCMVelFileName.c_str());
 
     mergePointsStream.open(mergePointFileName.c_str());
@@ -170,6 +175,16 @@ void printTrajectories(UnicycleGenerator& generator, size_t& newMergePoint, size
     DCMVelStream << "DCM_vx DCM_vy" <<std::endl;
     print_iDynTree(DCMVelVector, DCMVelStream);
 
+
+    // print the position of the ZMP
+    static std::vector<iDynTree::Vector2> ZMPPosVector;
+    std::vector<iDynTree::Vector2> ZMPPosInput;
+    ZMPPosInput = dcmGenerator->getZMPPosition();
+    ZMPPosVector.insert(ZMPPosVector.begin() + mergePoint, ZMPPosInput.begin(), ZMPPosInput.end());
+    ZMPPosVector.resize(mergePoint + ZMPPosInput.size());
+    ZMPPosStream << "ZMP_x ZMP_y" <<std::endl;
+    print_iDynTree(ZMPPosVector, ZMPPosStream);
+
     static std::vector < double > lFootWeight;
     std::vector < double > lFootWeightIn;
     static std::vector < double > rFootWeight;
@@ -193,6 +208,7 @@ void printTrajectories(UnicycleGenerator& generator, size_t& newMergePoint, size
 
     DCMPosStream.close();
     DCMVelStream.close();
+    ZMPPosStream.close();
 
     mergePointsStream.close();
 
@@ -261,6 +277,7 @@ bool interpolationTest()
     std::string heightAccFileName("heightAcc1.txt");
     std::string DCMPosFileName("DCMPos1.txt");
     std::string DCMVelFileName("DCMVel1.txt");
+    std::string ZMPPosFileName("ZMPPos1.txt");
     std::string mergePointsFileName("mergePoints1.txt");
     std::string lFootWeightFileName("leftFootWeight1.txt");
     std::string rFootWeightFileName("rightFootWeight1.txt");
@@ -272,7 +289,7 @@ bool interpolationTest()
     // print the trajectory in the files
     DCMInitialState boundaryConditionAtMergePoint;
     printTrajectories(unicycleGenerator, newMergePoint, 0, boundaryConditionAtMergePoint,
-                      DCMPosFileName, DCMVelFileName,
+                      DCMPosFileName, DCMVelFileName, ZMPPosFileName,
                       mergePointsFileName,
                       lFootWeightFileName, rFootWeightFileName);
 
@@ -301,6 +318,7 @@ bool interpolationTest()
 
     // save data
     DCMPosFileName = "DCMPos2.txt";
+    ZMPPosFileName = "ZMPPos2.txt";
     DCMVelFileName = "DCMVel2.txt";
     mergePointsFileName = "mergePoints2.txt";
     lFootWeightFileName = "leftFootWeight2.txt";
@@ -309,8 +327,8 @@ bool interpolationTest()
     printSteps(unicycleGenerator.getLeftFootPrint()->getSteps(), unicycleGenerator.getRightFootPrint()->getSteps(),
                footstepsLFileName, footstepsRFileName);
 
-    printTrajectories(unicycleGenerator, newMergePoint, newMergePoint, boundaryConditionAtMergePoint,
-                      DCMPosFileName, DCMVelFileName,
+    printTrajectories(unicycleGenerator, newMergePoint, 0, boundaryConditionAtMergePoint,
+                      DCMPosFileName, DCMVelFileName, ZMPPosFileName,
                       mergePointsFileName,
                       lFootWeightFileName, rFootWeightFileName);
 
@@ -344,6 +362,7 @@ bool interpolationTest()
     heightFileName = "height3.txt";
     heightAccFileName = "heightAcc3.txt";
     DCMPosFileName = "DCMPos3.txt";
+    ZMPPosFileName = "ZMPPos3.txt";
     DCMVelFileName = "DCMVel3.txt";
     mergePointsFileName = "mergePoints3.txt";
     lFootWeightFileName = "leftFootWeight3.txt";
@@ -353,7 +372,7 @@ bool interpolationTest()
                footstepsLFileName, footstepsRFileName);
 
     printTrajectories(unicycleGenerator, newMergePoint, newMergePoint, boundaryConditionAtMergePoint,
-                      DCMPosFileName, DCMVelFileName,
+                      DCMPosFileName, DCMVelFileName, ZMPPosFileName,
                       mergePointsFileName,
                       lFootWeightFileName, rFootWeightFileName);
 
