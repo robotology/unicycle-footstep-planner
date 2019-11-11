@@ -1,5 +1,9 @@
 cmake_minimum_required(VERSION 3.1)
 
+# Defines the CMAKE_INSTALL_LIBDIR, CMAKE_INSTALL_BINDIR and many other useful macros
+# See https://cmake.org/cmake/help/latest/module/GNUInstallDirs.html
+include(GNUInstallDirs)
+
 # ouptut paths
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_BINDIR}")
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_LIBDIR}")
@@ -23,10 +27,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # include macros for warnings
 include(AddWarningsConfigurationToTargets)
-
-# Defines the CMAKE_INSTALL_LIBDIR, CMAKE_INSTALL_BINDIR and many other useful macros
-# See https://cmake.org/cmake/help/latest/module/GNUInstallDirs.html
-include(GNUInstallDirs)
 
 include(CMakePackageConfigHelpers)
 
