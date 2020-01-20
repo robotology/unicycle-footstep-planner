@@ -358,7 +358,8 @@ bool DoubleSupportTrajectory::getDCMVelocity(const double &t, iDynTree::Vector2 
 DCMTrajectoryGeneratorHelper::DCMTrajectoryGeneratorHelper():
     m_dT(0.01),
     m_omega(9.81/0.5),
-    m_pauseActive(false)
+    m_pauseActive(false),
+    m_lastStepDCMOffset(0)
 {}
 
 bool DCMTrajectoryGeneratorHelper::setOmega(const double &omega)
@@ -390,6 +391,20 @@ void DCMTrajectoryGeneratorHelper::setZMPDelta(const iDynTree::Vector2 &leftZMPD
 {
     m_leftZMPDelta = leftZMPDelta;
     m_rightZMPDelta = rightZMPDelta;
+}
+
+bool DCMTrajectoryGeneratorHelper::setLastStepDCMOffsetPercentage(const double &lastStepDCMOffset)
+{
+    if(lastStepDCMOffset > 1 || lastStepDCMOffset < 0)
+    {
+        std::cerr << "[DCMTrajectoryGeneratorHelper::setLastStepDCMOffsetPercentage] lastStepDCMOffset should be greater "
+                  << "than 0 and lower than 1." << std::endl;
+        return false;
+    }
+
+    m_lastStepDCMOffset = lastStepDCMOffset;
+
+    return true;
 }
 
 bool DCMTrajectoryGeneratorHelper::getZMPGlobalPosition(const Step* footprint,
@@ -789,8 +804,9 @@ bool DCMTrajectoryGeneratorHelper::generateDCMTrajectory(const std::vector<const
         //       coincides with the end time of the single support trajectory
         //       (valid only for the last step)
         singleSupportBoundaryCondition.time = singleSupportEndTime;
-        // We assume that the DCM at the last single support phase coincides with the ZMP
-        singleSupportBoundaryCondition.DCMPosition = otherFootZMP;
+
+        // The position of the last DCM position at the end of the single support belongs to the line connecting the left and right ZMPs
+        iDynTree::toEigen(singleSupportBoundaryCondition.DCMPosition) = (1 - m_lastStepDCMOffset) * iDynTree::toEigen(otherFootZMP) + m_lastStepDCMOffset * iDynTree::toEigen(lastZMP);
         singleSupportBoundaryCondition.DCMVelocity.zero();
 
         // evaluate the last step

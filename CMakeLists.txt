@@ -32,7 +32,7 @@ include(CMakePackageConfigHelpers)
 
 project(UnicyclePlanner
         LANGUAGES CXX
-        VERSION 0.1.102)
+        VERSION 0.1.103)
 
 option(ENABLE_RPATH "Enable RPATH for this library" ON)
 mark_as_advanced(ENABLE_RPATH)
@@ -50,7 +50,7 @@ if(NOT CMAKE_CONFIGURATION_TYPES)
   endif()
 endif()
 
-find_package(iDynTree 0.9.2 REQUIRED)
+find_package(iDynTree 0.11.103 REQUIRED)
 find_package(Eigen3 REQUIRED)
 
 include_directories(SYSTEM ${EIGEN3_INCLUDE_DIR})
@@ -124,4 +124,3 @@ include(CTest)
 if(BUILD_TESTING)
    add_subdirectory(tests)
 endif()
-

@@ -135,6 +135,13 @@ bool DCMTrajectoryGenerator::setOmega(const double &omega)
     return m_pimpl->helper.setOmega(omega);
 }
 
+bool DCMTrajectoryGenerator::setLastStepDCMOffsetPercentage(const double &lastStepDCMOffset)
+{
+    std::lock_guard<std::mutex> guard(m_pimpl->mutex);
+
+    return m_pimpl->helper.setLastStepDCMOffsetPercentage(lastStepDCMOffset);
+}
+
 bool DCMTrajectoryGenerator::setFootOriginOffset(const iDynTree::Vector2 &offsetInLeftFootFrame, const iDynTree::Vector2 &offsetInRightFootFrame)
 {
     std::lock_guard<std::mutex> guard(m_pimpl->mutex);
@@ -154,6 +161,13 @@ const std::vector<iDynTree::Vector2> &DCMTrajectoryGenerator::getDCMVelocity() c
 {
     std::lock_guard<std::mutex> guard(m_pimpl->mutex);
     return m_pimpl->helper.getDCMVelocity();
+}
+
+
+const std::vector<iDynTree::Vector2> &DCMTrajectoryGenerator::getZMPPosition() const
+{
+    std::lock_guard<std::mutex> guard(m_pimpl->mutex);
+    return m_pimpl->helper.getZMPPosition();
 }
 
 void DCMTrajectoryGenerator::getWeightPercentage(std::vector<double> &weightInLeft, std::vector<double> &weightInRight) const

@@ -63,6 +63,16 @@ public:
     bool setOmega(const double &omega);
 
     /**
+     * Set the last step DCM offset
+     * @param lastStepDCMOffset Number from 0 to 1 used to indicate the position of the DCM w.r.t. the last ZMP position.
+     * If it is 0.5 the final DCM will be in the middle of the two footsteps;
+     * If it is 0 the DCM position coincides with the stance foot ZMP;
+     * If it is 1 the DCM position coincides with the next foot ZMP position.
+     * @return true / false in case of success / failure.
+     */
+    bool setLastStepDCMOffsetPercentage(const double &lastStepDCMOffset);
+
+    /**
      * @brief Specifies an offset from the origin of the foot frame to be used when generating trajectories
      * @param offsetInLeftFootFrame Offset with respect the origin of the left foot
      * @param offsetInRightFootFrame Offset with respect the origin of the right foot
@@ -81,6 +91,13 @@ public:
      * @return a vector containing the velocity of the DCM
      */
     const std::vector<iDynTree::Vector2>& getDCMVelocity() const;
+
+    /**
+     * Get the position of the ZMP along the entire trajectory.
+     * @return a vector containing the position of the ZMP
+     */
+    const std::vector<iDynTree::Vector2>& getZMPPosition() const;
+
 
     /**
      * Output the weight percentage carried by each foot while walking, according to the DCM trajectory.

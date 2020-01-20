@@ -10,6 +10,7 @@
 #include <iDynTree/Core/VectorDynSize.h>
 #include <iDynTree/Core/CubicSpline.h>
 #include <iDynTree/Core/Twist.h>
+#include <iDynTree/Core/SpatialAcc.h>
 #include <cassert>
 #include <mutex>
 
@@ -24,6 +25,8 @@ public:
     std::vector<iDynTree::Transform> leftTrajectory, rightTrajectory;
 
     std::vector<iDynTree::Twist> leftMixedTwist, rightMixedTwist;
+
+    std::vector<iDynTree::SpatialAcc> leftMixedAcceleration, rightMixedAcceleration;
 
     std::mutex mutex;
 
@@ -43,7 +46,7 @@ public:
     { }
 
 
-    bool interpolateFoot(double dT, const std::vector<size_t>& phaseShift, const std::vector<StepPhase> &stepPhase, const FootPrint &foot, std::vector<iDynTree::Transform> &output, std::vector<iDynTree::Twist> &outputTwistsInMixedRepresentation) {
+    bool interpolateFoot(double dT, const std::vector<size_t>& phaseShift, const std::vector<StepPhase> &stepPhase, const FootPrint &foot, std::vector<iDynTree::Transform> &output, std::vector<iDynTree::Twist> &outputTwistsInMixedRepresentation, std::vector<iDynTree::SpatialAcc> &outputAccelerationInMixedRepresentation) {
         //NOTE this must be called after createPhasesTimings
 
         if (stepHeight < 0){
@@ -55,6 +58,7 @@ public:
             output.resize(stepPhase.size());
 
         outputTwistsInMixedRepresentation.resize(stepPhase.size());
+        outputAccelerationInMixedRepresentation.resize(stepPhase.size());
 
         const StepList& steps = foot.getSteps();
         StepList::const_iterator footState = steps.begin();
@@ -66,8 +70,12 @@ public:
         size_t endOfPhase;
         iDynTree::Vector3 linearVelocity;
         iDynTree::Vector3 rpyDerivative;
+        iDynTree::Vector3 linearAcceleration;
+        iDynTree::Vector3 rpySecondDerivative;
         iDynTree::AngularMotionVector3 rightTrivializedAngVelocity;
+        iDynTree::Vector3 rightTrivializedAngAcceleration;
         rpyDerivative.zero();
+        rpySecondDerivative.zero();
 
         for (size_t phase = 1; phase < phaseShift.size(); ++phase){ //the first value is useless
 
@@ -146,11 +154,11 @@ public:
                 double interpolationTime;
                 while (instant < endOfPhase){
                     interpolationTime = (instant - startSwingInstant)*dT;
-                    newPosition(0) = xSpline.evaluatePoint(interpolationTime, linearVelocity(0), dummyAcceleration);
-                    newPosition(1) = ySpline.evaluatePoint(interpolationTime, linearVelocity(1), dummyAcceleration);
-                    newPosition(2) = zSpline.evaluatePoint(interpolationTime, linearVelocity(2), dummyAcceleration);
-                    pitchAngle = pitchSpline.evaluatePoint(interpolationTime, rpyDerivative(1), dummyAcceleration);
-                    yawAngle = yawSpline.evaluatePoint(interpolationTime, rpyDerivative(2), dummyAcceleration);
+                    newPosition(0) = xSpline.evaluatePoint(interpolationTime, linearVelocity(0), linearAcceleration(0));
+                    newPosition(1) = ySpline.evaluatePoint(interpolationTime, linearVelocity(1), linearAcceleration(1));
+                    newPosition(2) = zSpline.evaluatePoint(interpolationTime, linearVelocity(2), linearAcceleration(2));
+                    pitchAngle = pitchSpline.evaluatePoint(interpolationTime, rpyDerivative(1), rpySecondDerivative(1));
+                    yawAngle = yawSpline.evaluatePoint(interpolationTime, rpyDerivative(2), rpySecondDerivative(2));
                     newTransform.setPosition(newPosition);
                     newTransform.setRotation(iDynTree::Rotation::RPY(0.0, pitchAngle, yawAngle));
 
@@ -163,6 +171,15 @@ public:
                     outputTwistsInMixedRepresentation[instant].setLinearVec3(linearVelocity);
                     outputTwistsInMixedRepresentation[instant].setAngularVec3(rightTrivializedAngVelocity);
 
+                    iDynTree::toEigen(rightTrivializedAngAcceleration) =
+                        iDynTree::toEigen(iDynTree::Rotation::RPYRightTrivializedDerivativeRateOfChange(0.0, pitchAngle, yawAngle,
+                                                                                                        rpyDerivative(0), rpyDerivative(1), rpyDerivative(2))) *
+                            iDynTree::toEigen(rpyDerivative) +
+                            iDynTree::toEigen(iDynTree::Rotation::RPYRightTrivializedDerivative(0.0, pitchAngle, yawAngle)) *
+                            iDynTree::toEigen(rpySecondDerivative);
+
+                    iDynTree::toEigen(outputAccelerationInMixedRepresentation[instant].getLinearVec3()) = iDynTree::toEigen(linearAcceleration);
+                    iDynTree::toEigen(outputAccelerationInMixedRepresentation[instant].getAngularVec3()) = iDynTree::toEigen(rightTrivializedAngAcceleration);
                     ++instant;
                 }
 
@@ -176,6 +193,7 @@ public:
                 while (instant < endOfPhase){
                     output[instant] = newTransform;
                     outputTwistsInMixedRepresentation[instant].zero();
+                    outputAccelerationInMixedRepresentation[instant].zero();
                     ++instant;
                 }
             }
@@ -200,12 +218,12 @@ bool FeetCubicSplineGenerator::computeNewTrajectories(double dT, const FootPrint
 {
     std::lock_guard<std::mutex> guard(m_pimpl->mutex);
 
-    if (!(m_pimpl->interpolateFoot(dT, phaseShift, lFootPhases, left, m_pimpl->leftTrajectory, m_pimpl->leftMixedTwist))){
+    if (!(m_pimpl->interpolateFoot(dT, phaseShift, lFootPhases, left, m_pimpl->leftTrajectory, m_pimpl->leftMixedTwist, m_pimpl->leftMixedAcceleration))){
         std::cerr << "[FeetCubicSplineGenerator::computeNewTrajectories] Failed while interpolating left foot trajectory." << std::endl;
         return false;
     }
 
-    if (!(m_pimpl->interpolateFoot(dT, phaseShift, rFootPhases, right, m_pimpl->rightTrajectory, m_pimpl->rightMixedTwist))){
+    if (!(m_pimpl->interpolateFoot(dT, phaseShift, rFootPhases, right, m_pimpl->rightTrajectory, m_pimpl->rightMixedTwist, m_pimpl->rightMixedAcceleration))){
         std::cerr << "[FeetCubicSplineGenerator::computeNewTrajectories] Failed while interpolating left foot trajectory." << std::endl;
         return false;
     }
@@ -270,4 +288,12 @@ void FeetCubicSplineGenerator::getFeetTwistsInMixedRepresentation(std::vector<iD
 
     lFootTwistsInMixedRepresentation = m_pimpl->leftMixedTwist;
     rFootTwistsInMixedRepresentation = m_pimpl->rightMixedTwist;
+}
+
+void FeetCubicSplineGenerator::getFeetAccelerationInMixedRepresentation(std::vector<iDynTree::SpatialAcc> &lFootAccelerationInMixedRepresentation, std::vector<iDynTree::SpatialAcc> &rFootAccelerationInMixedRepresentation) const
+{
+    std::lock_guard<std::mutex> guard(m_pimpl->mutex);
+
+    lFootAccelerationInMixedRepresentation = m_pimpl->leftMixedAcceleration;
+    rFootAccelerationInMixedRepresentation = m_pimpl->rightMixedAcceleration;
 }
