@@ -53,7 +53,10 @@ public:
 
     bool setTerminalHalfSwitchTime(double lastHalfSwitchTime); //if not set, it won't bring the ZMP at the center of the feet at the end
 
-    bool setPauseConditions(double maxStepTime, double nominalStepTime, bool pauseActive = false);
+    bool setPauseConditions(double maxStepTime, double nominalStepTime);
+
+    void disablePauseConditions();
+
 
     /**
      * Set the relative position of the merge point inside the double support phase.

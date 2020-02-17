@@ -578,14 +578,9 @@ bool UnicycleGenerator::setTerminalHalfSwitchTime(double lastHalfSwitchTime)
     return true;
 }
 
-bool UnicycleGenerator::setPauseConditions(double maxStepTime, double nominalStepTime, bool pauseActive)
+bool UnicycleGenerator::setPauseConditions(double maxStepTime, double nominalStepTime)
 {
     std::lock_guard<std::mutex> guard(m_pimpl->mutex);
-
-    if(!pauseActive){
-        m_pimpl->pauseActive = false;
-        return true;
-    }
 
     if (maxStepTime < 0){
         std::cerr << "[UnicycleGenerator::setPauseConditions] If the maxStepTime is negative, the robot won't pause in middle stance." << std::endl;
@@ -652,6 +647,11 @@ void UnicycleGenerator::getMergePoints(std::vector<size_t> &mergePoints) const
     std::lock_guard<std::mutex> guard(m_pimpl->mutex);
 
     mergePoints = m_pimpl->mergePoints;
+}
+
+void UnicycleGenerator::disablePauseConditions()
+{
+    m_pimpl->pauseActive = false;
 }
 
 std::shared_ptr<FeetCubicSplineGenerator> UnicycleGenerator::addFeetCubicSplineGenerator()
