@@ -435,82 +435,81 @@ bool DCMTrajectoryGeneratorHelper::computeFeetWeight(const std::vector<StepPhase
                                                      const FootPrint &left, const FootPrint &right,
                                                      const std::vector<iDynTree::Vector2> &zmpPosition)
 {
-    {
-        m_weightInLeft.resize(zmpPosition.size());
-        m_weightInRight.resize(zmpPosition.size());
 
-        Eigen::Vector2d feetDistance;
-        Eigen::Vector2d ZMPDistanceFromLeftFoot;
+    m_weightInLeft.resize(zmpPosition.size());
+    m_weightInRight.resize(zmpPosition.size());
 
-        iDynTree::Position leftFootZMPOffset;
-        iDynTree::Position rightFootZMPOffset;
+    Eigen::Vector2d feetDistance;
+    Eigen::Vector2d ZMPDistanceFromLeftFoot;
 
-        size_t instant = 0;
-        size_t endOfPhase;
+    iDynTree::Position leftFootZMPOffset;
+    iDynTree::Position rightFootZMPOffset;
 
-        const StepList& leftSteps = left.getSteps();
-        StepList::const_iterator leftState = leftSteps.begin();
+    size_t instant = 0;
+    size_t endOfPhase;
 
-        const StepList& rightSteps = right.getSteps();
-        StepList::const_iterator rightState = rightSteps.begin();
+    const StepList& leftSteps = left.getSteps();
+    StepList::const_iterator leftState = leftSteps.begin();
 
-        iDynTree::Vector2 leftFootPosition, rightFootPosition;
-        double leftYawAngle, rightYawAngle;
+    const StepList& rightSteps = right.getSteps();
+    StepList::const_iterator rightState = rightSteps.begin();
 
-        for (size_t phase = 1; phase < phaseShift.size(); ++phase){ //the first value is useless (it is simply 0)
-            endOfPhase = phaseShift[phase];
+    iDynTree::Vector2 leftFootPosition, rightFootPosition;
+    double leftYawAngle, rightYawAngle;
 
-            if (lFootPhases[instant] == StepPhase::Stance){
-                while (instant < endOfPhase){
-                    m_weightInLeft[instant] = 1.0;
-                    m_weightInRight[instant] = 0.0;
-                    instant++;
-                }
+    for (size_t phase = 1; phase < phaseShift.size(); ++phase){ //the first value is useless (it is simply 0)
+        endOfPhase = phaseShift[phase];
 
-                if (rightState + 1 == rightSteps.cend()){
-                    std::cerr << "[DCMTrajectoryGenerator::computeFeetWeight] Something went wrong. The step phases are not coherent with the right foot." << std::endl; //It's not possible to have a swing phase as last phase.
-                    return false;
-                }
+        if (lFootPhases[instant] == StepPhase::Stance){
+            while (instant < endOfPhase){
+                m_weightInLeft[instant] = 1.0;
+                m_weightInRight[instant] = 0.0;
+                instant++;
+            }
 
-                ++rightState;
-            } else if (lFootPhases[instant] == StepPhase::Swing){
-                while (instant < endOfPhase){
-                    m_weightInLeft[instant] = 1.0;
-                    m_weightInRight[instant] = 0.0;
-                    instant++;
-                }
+            if (rightState + 1 == rightSteps.cend()){
+                std::cerr << "[DCMTrajectoryGenerator::computeFeetWeight] Something went wrong. The step phases are not coherent with the right foot." << std::endl; //It's not possible to have a swing phase as last phase.
+                return false;
+            }
 
-                if (leftState + 1 == leftSteps.cend()){
-                    std::cerr << "[DCMTrajectoryGenerator::computeFeetWeight] Something went wrong. The step phases are not coherent with the left foot." << std::endl; //It's not possible to have a swing phase as last phase.
-                    return false;
-                }
+            ++rightState;
+        } else if (lFootPhases[instant] == StepPhase::Swing){
+            while (instant < endOfPhase){
+                m_weightInLeft[instant] = 0.0;
+                m_weightInRight[instant] = 1.0;
+                instant++;
+            }
 
-                ++leftState;
-            } else {
+            if (leftState + 1 == leftSteps.cend()){
+                std::cerr << "[DCMTrajectoryGenerator::computeFeetWeight] Something went wrong. The step phases are not coherent with the left foot." << std::endl; //It's not possible to have a swing phase as last phase.
+                return false;
+            }
 
-                leftYawAngle = leftState->angle;
-                leftFootPosition(0) = leftState->position(0) + cos(leftYawAngle) * m_leftZMPDelta(0) - sin(leftYawAngle) * m_leftZMPDelta(1);
-                leftFootPosition(1) = leftState->position(1) + sin(leftYawAngle) * m_leftZMPDelta(0) + cos(leftYawAngle) * m_leftZMPDelta(1);
+            ++leftState;
+        } else {
 
-                rightYawAngle = rightState->angle;
-                rightFootPosition(0) = rightState->position(0) + cos(rightYawAngle) * m_rightZMPDelta(0) - sin(rightYawAngle) * m_rightZMPDelta(1);
-                rightFootPosition(1) = rightState->position(1) + sin(rightYawAngle) * m_rightZMPDelta(0) + cos(rightYawAngle) * m_rightZMPDelta(1);
+            leftYawAngle = leftState->angle;
+            leftFootPosition(0) = leftState->position(0) + cos(leftYawAngle) * m_leftZMPDelta(0) - sin(leftYawAngle) * m_leftZMPDelta(1);
+            leftFootPosition(1) = leftState->position(1) + sin(leftYawAngle) * m_leftZMPDelta(0) + cos(leftYawAngle) * m_leftZMPDelta(1);
 
-                while (instant < endOfPhase){
-                    feetDistance = iDynTree::toEigen(rightFootPosition) - iDynTree::toEigen(leftFootPosition);
+            rightYawAngle = rightState->angle;
+            rightFootPosition(0) = rightState->position(0) + cos(rightYawAngle) * m_rightZMPDelta(0) - sin(rightYawAngle) * m_rightZMPDelta(1);
+            rightFootPosition(1) = rightState->position(1) + sin(rightYawAngle) * m_rightZMPDelta(0) + cos(rightYawAngle) * m_rightZMPDelta(1);
 
-                    ZMPDistanceFromLeftFoot = iDynTree::toEigen(zmpPosition[instant]) - iDynTree::toEigen(leftFootPosition);
+            while (instant < endOfPhase){
+                feetDistance = iDynTree::toEigen(rightFootPosition) - iDynTree::toEigen(leftFootPosition);
 
-                    m_weightInLeft[instant] = ZMPDistanceFromLeftFoot.norm() / feetDistance.norm();
-                    m_weightInRight[instant] = 1 - ZMPDistanceFromLeftFoot.norm() / feetDistance.norm();
-                    ++instant;
-                }
+                ZMPDistanceFromLeftFoot = iDynTree::toEigen(zmpPosition[instant]) - iDynTree::toEigen(leftFootPosition);
 
+                m_weightInLeft[instant] = std::abs(1 - ZMPDistanceFromLeftFoot.norm() / feetDistance.norm());
+                m_weightInRight[instant] = std::abs(ZMPDistanceFromLeftFoot.norm() / feetDistance.norm());
+                ++instant;
             }
 
         }
-        return true;
+
     }
+    return true;
 }
 
 bool DCMTrajectoryGeneratorHelper::addLastStep(const double &singleSupportStartTime,
