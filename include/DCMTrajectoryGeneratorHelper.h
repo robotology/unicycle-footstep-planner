@@ -78,7 +78,7 @@ class GeneralSupportTrajectory
      * @param checkDomainCondition flag used to check if the time belongs to the trajectory domain (default value true).
      * @return true / false in case of success / failure.
      */
-    virtual bool getZMPPosition(const double &t, iDynTree::Vector2& ZMPVelocity, const bool &checkDomainCondition = true) = 0;
+    virtual bool getZMPPosition(const double &t, iDynTree::Vector2& ZMPPosition, const bool &checkDomainCondition = true) = 0;
 
     /**
      * Return true if the time t belongs to the trajectory time

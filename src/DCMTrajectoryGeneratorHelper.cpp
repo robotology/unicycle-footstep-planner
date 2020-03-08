@@ -144,6 +144,7 @@ bool SingleSupportTrajectory::getZMPPosition(const double &t, iDynTree::Vector2 
         }
 
     ZMPPosition = m_ZMP;
+    return true;
 }
 
 bool SingleSupportTrajectory::getDCMPosition(const double &t, iDynTree::Vector2 &DCMPosition,
