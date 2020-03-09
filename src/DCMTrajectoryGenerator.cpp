@@ -176,3 +176,9 @@ void DCMTrajectoryGenerator::getWeightPercentage(std::vector<double> &weightInLe
 
     return m_pimpl->helper.getWeightPercentage(weightInLeft, weightInRight);
 }
+
+const std::vector<std::shared_ptr<GeneralSupportTrajectory>>& DCMTrajectoryGenerator::getDCMSubTrajectories() const
+{
+    std::lock_guard<std::mutex> guard(m_pimpl->mutex);
+    return m_pimpl->helper.getDCMSubTrajectories();
+}
