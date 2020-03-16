@@ -269,7 +269,8 @@ class DCMTrajectoryGeneratorHelper
                                const FootPrint &left, const FootPrint &right,
                                const iDynTree::Vector2 &initPosition,
                                const iDynTree::Vector2 &initVelocity,
-                               const std::vector<size_t> &phaseShift);
+                               const std::vector<size_t> &phaseShift,
+                               const double alpha);
 
 
     /**

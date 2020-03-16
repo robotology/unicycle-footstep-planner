@@ -49,7 +49,7 @@ class DCMTrajectoryGenerator {
     bool computeNewTrajectories(double initTime, double dT, double switchPercentage, double maxStepTime,
                                 double nominalStepTime, bool pauseActive, const std::vector<const Step *> &orderedSteps,
                                 const std::vector<size_t> &phaseShift, const std::vector<StepPhase> &lFootPhases,
-                                const FootPrint &left, const FootPrint &right);
+                                const FootPrint &left, const FootPrint &right,const double alpha);
 
 public:
 

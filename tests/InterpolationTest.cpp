@@ -350,7 +350,7 @@ bool interpolationTest(){
     clock_t total = clock();
     //iDynTree::assertTrue(unicycle.computeNewSteps(leftFoot, rightFoot));
     //clock_t interpolatorTime = clock();
-    iDynTree::assertTrue(unicycle.generate(conf.initTime, conf.dT, conf.endTime));
+    iDynTree::assertTrue(unicycle.generate(conf.initTime, conf.dT, conf.endTime,0.5));
     //iDynTree::assertTrue(unicycle.interpolate(*leftFoot, *rightFoot, conf.initTime, conf.dT, 0.5, false));
     clock_t end = clock();
 
@@ -379,7 +379,7 @@ bool interpolationTest(){
 
 
     iDynTree::assertTrue(unicycle.addZMPTrajectoryGenerator()->setWeightInitialState(newAlpha));
-    iDynTree::assertTrue(unicycle.reGenerate(newInitTime, conf.dT, conf.endTime + 50));
+    iDynTree::assertTrue(unicycle.reGenerate(newInitTime, conf.dT, conf.endTime + 50,0.5));
 
     printTrajectories(unicycle, newMergePoint, newAlpha, newMergePoint);
 

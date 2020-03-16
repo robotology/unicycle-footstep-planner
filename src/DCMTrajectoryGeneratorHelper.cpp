@@ -806,7 +806,8 @@ bool DCMTrajectoryGeneratorHelper::generateDCMTrajectory(const std::vector<const
                                                          const FootPrint &left, const FootPrint &right,
                                                          const iDynTree::Vector2 &initPosition,
                                                          const iDynTree::Vector2 &initVelocity,
-                                                         const std::vector<size_t> &phaseShift)
+                                                         const std::vector<size_t> &phaseShift,
+                                                         const double alpha)
 {
     if (orderedSteps.size() < 2) {
         std::cerr << "[ERROR][DCMTrajectoryGeneratorHelper::generateDCMTrajectory] The orderedSteps vector is supposed to contain at least two elements.";
@@ -890,7 +891,7 @@ bool DCMTrajectoryGeneratorHelper::generateDCMTrajectory(const std::vector<const
             // get the next Single Support trajectory (remember that we are constructing the trajectory from the end)
             std::shared_ptr<GeneralSupportTrajectory> nextSingleSupportTrajectory = m_trajectory.back();
             double nextsingleSupportStartTime = nextSingleSupportTrajectory->getTrajectoryDomain().first;
-            singleSupportBoundaryConditionTime = (nextsingleSupportStartTime + singleSupportEndTime) / 2;
+            singleSupportBoundaryConditionTime = (nextsingleSupportStartTime + singleSupportEndTime) *alpha;
 
             // the ZMP is shifted before evaluate the DCM
             if(!getZMPGlobalPosition(orderedSteps[orderedStepsIndex], lastZMP)){

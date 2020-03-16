@@ -41,7 +41,7 @@ DCMTrajectoryGenerator::DCMTrajectoryGenerator()
 bool DCMTrajectoryGenerator::computeNewTrajectories(double initTime, double dT, double switchPercentage, double maxStepTime,
                                                     double nominalStepTime, bool pauseActive, const std::vector<const Step *> &orderedSteps,
                                                     const std::vector<size_t> &phaseShift, const std::vector<StepPhase> &lFootPhases,
-                                                    const FootPrint &left, const FootPrint &right)
+                                                    const FootPrint &left, const FootPrint &right,const double alpha)
 {
     std::lock_guard<std::mutex> guard(m_pimpl->mutex);
 
@@ -105,7 +105,7 @@ bool DCMTrajectoryGenerator::computeNewTrajectories(double initTime, double dT, 
     initDCMPosition = m_pimpl->initialState.initialPosition;
     initDCMVelocity = m_pimpl->initialState.initialVelocity;
 
-    if (!m_pimpl->helper.generateDCMTrajectory(orderedSteps, lFootPhases, left, right, initDCMPosition, initDCMVelocity, phaseShift)){
+    if (!m_pimpl->helper.generateDCMTrajectory(orderedSteps, lFootPhases, left, right, initDCMPosition, initDCMVelocity, phaseShift,alpha)){
         std::cerr << "[DCMTrajectoryGenerator::interpolateDCM] Failed while computing the DCM trajectories." << std::endl;
         return false;
     }

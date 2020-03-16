@@ -262,7 +262,7 @@ bool interpolationTest()
 
 
     iDynTree::assertTrue(unicycleGenerator.generate(initTime,
-                                                    conf.dT, initTime + conf.plannerHorizon));
+                                                    conf.dT, initTime + conf.plannerHorizon,0.5));
     endTime = clock();
 
     std::cerr << blue << "Total time " << (static_cast<double>(endTime - startTime) / CLOCKS_PER_SEC)
@@ -310,7 +310,7 @@ bool interpolationTest()
 
     // evaluate the new trajectory
     startTime = clock();
-    iDynTree::assertTrue(unicycleGenerator.reGenerate(initTime, conf.dT, initTime + conf.plannerHorizon));
+    iDynTree::assertTrue(unicycleGenerator.reGenerate(initTime, conf.dT, initTime + conf.plannerHorizon,0.5));
     endTime = clock();
 
     std::cerr << blue << "Total time " << (static_cast<double>(endTime - startTime) / CLOCKS_PER_SEC)
@@ -348,7 +348,7 @@ bool interpolationTest()
 
     // evaluate the new trajectory
     startTime = clock();
-    iDynTree::assertTrue(unicycleGenerator.reGenerate(initTime, conf.dT, initTime + conf.plannerHorizon));
+    iDynTree::assertTrue(unicycleGenerator.reGenerate(initTime, conf.dT, initTime + conf.plannerHorizon,0.5));
     endTime = clock();
 
     std::cerr << blue << "Total time " << (static_cast<double>(endTime - startTime) / CLOCKS_PER_SEC)
