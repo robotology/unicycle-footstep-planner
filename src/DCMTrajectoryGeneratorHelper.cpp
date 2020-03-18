@@ -409,8 +409,8 @@ DCMTrajectoryGeneratorHelper::DCMTrajectoryGeneratorHelper():
     m_dT(0.01),
     m_omega(9.81/0.5),
     m_alpha(0.5),
-    m_pauseActive(false),
-    m_lastStepDCMOffset(0)
+    m_lastStepDCMOffset(0),
+    m_pauseActive(false)
 {}
 
 bool DCMTrajectoryGeneratorHelper::setOmega(const double &omega)
