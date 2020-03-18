@@ -135,6 +135,13 @@ bool DCMTrajectoryGenerator::setOmega(const double &omega)
     return m_pimpl->helper.setOmega(omega);
 }
 
+bool DCMTrajectoryGenerator::setAlpha(const double &alpha)
+{
+    std::lock_guard<std::mutex> guard(m_pimpl->mutex);
+
+    return m_pimpl->helper.setAlpha(alpha);
+}
+
 bool DCMTrajectoryGenerator::setLastStepDCMOffsetPercentage(const double &lastStepDCMOffset)
 {
     std::lock_guard<std::mutex> guard(m_pimpl->mutex);

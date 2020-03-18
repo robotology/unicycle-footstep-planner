@@ -106,6 +106,7 @@ class DCMTrajectoryGeneratorHelper
 
     double m_dT; /**< Planner period. */
     double m_omega; /**< Time constant of the 3D-LIPM. */
+    double m_alpha; /**< alpha is the parameter between zero and one for distributing the DS duration to SS phase. */
     iDynTree::Vector2 m_leftZMPDelta; /**< Vector containing the desired left ZMP delta. */
     iDynTree::Vector2 m_rightZMPDelta; /**< Vector containing the desired left ZMP delta. */
 
@@ -217,6 +218,13 @@ class DCMTrajectoryGeneratorHelper
      * @return true / false in case of success / failure.
      */
     bool setOmega(const double &omega);
+
+    /**
+     * Set the alpha parameter of DCM planner.
+     * @param alpha is the parameter between zero and one for distributing the DS duration to SS phase.
+     * @return true / false in case of success / failure.
+     */
+    bool setAlpha(const double &alpha);
 
     /**
      * Set the period of the Trajectory generator planner.

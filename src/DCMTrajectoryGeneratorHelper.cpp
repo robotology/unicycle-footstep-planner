@@ -408,8 +408,9 @@ bool DoubleSupportTrajectory::getZMPPosition(const double &t, iDynTree::Vector2 
 DCMTrajectoryGeneratorHelper::DCMTrajectoryGeneratorHelper():
     m_dT(0.01),
     m_omega(9.81/0.5),
-    m_pauseActive(false),
-    m_lastStepDCMOffset(0)
+    m_alpha(0.5),
+    m_lastStepDCMOffset(0),
+    m_pauseActive(false)
 {}
 
 bool DCMTrajectoryGeneratorHelper::setOmega(const double &omega)
@@ -421,6 +422,18 @@ bool DCMTrajectoryGeneratorHelper::setOmega(const double &omega)
     }
 
     m_omega = omega;
+    return true;
+}
+
+bool DCMTrajectoryGeneratorHelper::setAlpha(const double &alpha)
+{
+    if (alpha < 0 && alpha > 1){
+        std::cerr << "[DCMTrajectoryGeneratorHelper::setAlpha] The alpha sould be between zero and one."
+                  << std::endl;
+        return false;
+    }
+
+    m_alpha = alpha;
     return true;
 }
 
@@ -890,7 +903,8 @@ bool DCMTrajectoryGeneratorHelper::generateDCMTrajectory(const std::vector<const
             // get the next Single Support trajectory (remember that we are constructing the trajectory from the end)
             std::shared_ptr<GeneralSupportTrajectory> nextSingleSupportTrajectory = m_trajectory.back();
             double nextsingleSupportStartTime = nextSingleSupportTrajectory->getTrajectoryDomain().first;
-            singleSupportBoundaryConditionTime = (nextsingleSupportStartTime + singleSupportEndTime) / 2;
+
+            singleSupportBoundaryConditionTime = (nextsingleSupportStartTime + singleSupportEndTime) *m_alpha;
 
             // the ZMP is shifted before evaluate the DCM
             if(!getZMPGlobalPosition(orderedSteps[orderedStepsIndex], lastZMP)){

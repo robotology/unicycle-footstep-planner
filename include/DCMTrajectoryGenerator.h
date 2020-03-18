@@ -65,6 +65,13 @@ public:
     bool setOmega(const double &omega);
 
     /**
+     * Set the alpha parameter of DCM planner.
+     * @param alpha is the parameter between zero and one for distributing the DS duration to SS phase.
+     * @return true / false in case of success / failure.
+     */
+    bool setAlpha(const double &alpha);
+
+    /**
      * Set the last step DCM offset
      * @param lastStepDCMOffset Number from 0 to 1 used to indicate the position of the DCM w.r.t. the last ZMP position.
      * If it is 0.5 the final DCM will be in the middle of the two footsteps;
