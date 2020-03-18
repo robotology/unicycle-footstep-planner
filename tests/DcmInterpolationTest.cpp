@@ -108,6 +108,7 @@ bool configureGenerator(UnicycleGenerator& generator, const Configuration &conf)
 
     // Setup the dcm planner
     iDynTree::assertTrue(dcmGenerator->setOmega(std::sqrt(9.81/conf.comHeight)));
+    iDynTree::assertTrue(dcmGenerator->setAlpha(0.5));
     iDynTree::Vector2 leftOffset, rightOffset;
     leftOffset(0) = conf.lStancePositionX;
     leftOffset(1) = conf.lStancePositionY;
@@ -262,7 +263,7 @@ bool interpolationTest()
 
 
     iDynTree::assertTrue(unicycleGenerator.generate(initTime,
-                                                    conf.dT, initTime + conf.plannerHorizon,0.5));
+                                                    conf.dT, initTime + conf.plannerHorizon));
     endTime = clock();
 
     std::cerr << blue << "Total time " << (static_cast<double>(endTime - startTime) / CLOCKS_PER_SEC)
@@ -310,7 +311,7 @@ bool interpolationTest()
 
     // evaluate the new trajectory
     startTime = clock();
-    iDynTree::assertTrue(unicycleGenerator.reGenerate(initTime, conf.dT, initTime + conf.plannerHorizon,0.5));
+    iDynTree::assertTrue(unicycleGenerator.reGenerate(initTime, conf.dT, initTime + conf.plannerHorizon));
     endTime = clock();
 
     std::cerr << blue << "Total time " << (static_cast<double>(endTime - startTime) / CLOCKS_PER_SEC)
@@ -348,7 +349,7 @@ bool interpolationTest()
 
     // evaluate the new trajectory
     startTime = clock();
-    iDynTree::assertTrue(unicycleGenerator.reGenerate(initTime, conf.dT, initTime + conf.plannerHorizon,0.5));
+    iDynTree::assertTrue(unicycleGenerator.reGenerate(initTime, conf.dT, initTime + conf.plannerHorizon));
     endTime = clock();
 
     std::cerr << blue << "Total time " << (static_cast<double>(endTime - startTime) / CLOCKS_PER_SEC)

@@ -424,6 +424,18 @@ bool DCMTrajectoryGeneratorHelper::setOmega(const double &omega)
     return true;
 }
 
+bool DCMTrajectoryGeneratorHelper::setAlpha(const double &alpha)
+{
+    if (alpha < 0 && alpha > 1){
+        std::cerr << "[DCMTrajectoryGeneratorHelper::setAlpha] The alpha sould be between zero and one."
+                  << std::endl;
+        return false;
+    }
+
+    m_alpha = alpha;
+    return true;
+}
+
 bool DCMTrajectoryGeneratorHelper::setdT(const double &dT)
 {
     if (dT < 0){
@@ -806,8 +818,7 @@ bool DCMTrajectoryGeneratorHelper::generateDCMTrajectory(const std::vector<const
                                                          const FootPrint &left, const FootPrint &right,
                                                          const iDynTree::Vector2 &initPosition,
                                                          const iDynTree::Vector2 &initVelocity,
-                                                         const std::vector<size_t> &phaseShift,
-                                                         const double alpha)
+                                                         const std::vector<size_t> &phaseShift)
 {
     if (orderedSteps.size() < 2) {
         std::cerr << "[ERROR][DCMTrajectoryGeneratorHelper::generateDCMTrajectory] The orderedSteps vector is supposed to contain at least two elements.";
@@ -891,7 +902,8 @@ bool DCMTrajectoryGeneratorHelper::generateDCMTrajectory(const std::vector<const
             // get the next Single Support trajectory (remember that we are constructing the trajectory from the end)
             std::shared_ptr<GeneralSupportTrajectory> nextSingleSupportTrajectory = m_trajectory.back();
             double nextsingleSupportStartTime = nextSingleSupportTrajectory->getTrajectoryDomain().first;
-            singleSupportBoundaryConditionTime = (nextsingleSupportStartTime + singleSupportEndTime) *alpha;
+
+            singleSupportBoundaryConditionTime = (nextsingleSupportStartTime + singleSupportEndTime) *m_alpha;
 
             // the ZMP is shifted before evaluate the DCM
             if(!getZMPGlobalPosition(orderedSteps[orderedStepsIndex], lastZMP)){

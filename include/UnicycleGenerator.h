@@ -33,20 +33,20 @@ public:
 
     std::shared_ptr<FootPrint> getRightFootPrint();
 
-    bool generateFromFootPrints(std::shared_ptr<FootPrint> left, std::shared_ptr<FootPrint> right, double initTime, double dT, double alpha); //here the planner is not called
+    bool generateFromFootPrints(std::shared_ptr<FootPrint> left, std::shared_ptr<FootPrint> right, double initTime, double dT); //here the planner is not called
 
-    bool generate(double initTime, double dT, double endTime, double alpha); //here the planner is called
+    bool generate(double initTime, double dT, double endTime); //here the planner is called
 
-    bool reGenerate(double initTime, double dT, double endTime, double alpha); //here the planner is called
+    bool reGenerate(double initTime, double dT, double endTime); //here the planner is called
 
-    bool reGenerate(double initTime, double dT, double endTime, const Step &measuredLeft, const Step &measuredRight, double alpha); //automatically sets previous steps if zmp trajectory generation is used
+    bool reGenerate(double initTime, double dT, double endTime, const Step &measuredLeft, const Step &measuredRight); //automatically sets previous steps if zmp trajectory generation is used
 
     bool reGenerate(double initTime, double dT, double endTime, bool correctLeft,
-                    const iDynTree::Vector2 &measuredPosition, double measuredAngle, double alpha); //automatically sets previous steps if zmp trajectory generation is used
+                    const iDynTree::Vector2 &measuredPosition, double measuredAngle); //automatically sets previous steps if zmp trajectory generation is used
 
     bool reGenerate(double initTime, double dT, double endTime,
                     const iDynTree::Vector2 &measuredLeftPosition, double measuredLeftAngle,
-                    const iDynTree::Vector2 &measuredRightPosition, double measuredRightAngle, double alpha); //automatically sets previous steps if zmp trajectory generation is used
+                    const iDynTree::Vector2 &measuredRightPosition, double measuredRightAngle); //automatically sets previous steps if zmp trajectory generation is used
 
     //Settings
     bool setSwitchOverSwingRatio(double ratio = 1.0); //indeed the swing time cannot be null, while the switch time can be very close to zero (but not zero)

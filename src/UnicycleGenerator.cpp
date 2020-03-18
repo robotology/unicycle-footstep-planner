@@ -274,7 +274,7 @@ std::shared_ptr<FootPrint> UnicycleGenerator::getRightFootPrint()
     return m_pimpl->rightFootPrint;
 }
 
-bool UnicycleGenerator::generateFromFootPrints(std::shared_ptr<FootPrint> left, std::shared_ptr<FootPrint> right, double initTime, double dT,double alpha)
+bool UnicycleGenerator::generateFromFootPrints(std::shared_ptr<FootPrint> left, std::shared_ptr<FootPrint> right, double initTime, double dT)
 {
     std::lock_guard<std::mutex> guard(m_pimpl->mutex);
 
@@ -359,7 +359,7 @@ bool UnicycleGenerator::generateFromFootPrints(std::shared_ptr<FootPrint> left, 
     if (m_pimpl->dcmTrajectoryGenerator) {
         if (!(m_pimpl->dcmTrajectoryGenerator->computeNewTrajectories(initTime, dT, m_pimpl->switchPercentage, m_pimpl->maxStepTime, m_pimpl->nominalStepTime,
                                                                       m_pimpl->pauseActive, m_pimpl->orderedSteps, m_pimpl->phaseShift, *(m_pimpl->lFootPhases),
-                                                                      *left, *right,alpha))) {
+                                                                      *left, *right))) {
             std::cerr << "[UnicycleGenerator::generate] Failed while computing new DCM trajectories." << std::endl;
             return false;
         }
@@ -375,7 +375,7 @@ bool UnicycleGenerator::generateFromFootPrints(std::shared_ptr<FootPrint> left, 
     return true;
 }
 
-bool UnicycleGenerator::generate(double initTime, double dT, double endTime, double alpha)
+bool UnicycleGenerator::generate(double initTime, double dT, double endTime)
 {
     {
         std::lock_guard<std::mutex> guard(m_pimpl->mutex);
@@ -385,10 +385,10 @@ bool UnicycleGenerator::generate(double initTime, double dT, double endTime, dou
             return false;
         }
     }
-    return generateFromFootPrints(m_pimpl->leftFootPrint, m_pimpl->rightFootPrint, initTime, dT, alpha);
+    return generateFromFootPrints(m_pimpl->leftFootPrint, m_pimpl->rightFootPrint, initTime, dT);
 }
 
-bool UnicycleGenerator::reGenerate(double initTime, double dT, double endTime,double alpha)
+bool UnicycleGenerator::reGenerate(double initTime, double dT, double endTime)
 {
     {
         std::lock_guard<std::mutex> guard(m_pimpl->mutex);
@@ -409,10 +409,10 @@ bool UnicycleGenerator::reGenerate(double initTime, double dT, double endTime,do
         }
     }
 
-    return generateFromFootPrints(m_pimpl->leftFootPrint, m_pimpl->rightFootPrint, initTime, dT, alpha);
+    return generateFromFootPrints(m_pimpl->leftFootPrint, m_pimpl->rightFootPrint, initTime, dT);
 }
 
-bool UnicycleGenerator::reGenerate(double initTime, double dT, double endTime, const Step &measuredLeft, const Step &measuredRight, double alpha)
+bool UnicycleGenerator::reGenerate(double initTime, double dT, double endTime, const Step &measuredLeft, const Step &measuredRight)
 {
     {
         std::lock_guard<std::mutex> guard(m_pimpl->mutex);
@@ -458,10 +458,10 @@ bool UnicycleGenerator::reGenerate(double initTime, double dT, double endTime, c
         }
     }
 
-    return generateFromFootPrints(m_pimpl->leftFootPrint, m_pimpl->rightFootPrint, initTime, dT,alpha);
+    return generateFromFootPrints(m_pimpl->leftFootPrint, m_pimpl->rightFootPrint, initTime, dT);
 }
 
-bool UnicycleGenerator::reGenerate(double initTime, double dT, double endTime, bool correctLeft, const iDynTree::Vector2 &measuredPosition, double measuredAngle,double alpha)
+bool UnicycleGenerator::reGenerate(double initTime, double dT, double endTime, bool correctLeft, const iDynTree::Vector2 &measuredPosition, double measuredAngle)
 {
     {
         std::lock_guard<std::mutex> guard(m_pimpl->mutex);
@@ -503,10 +503,10 @@ bool UnicycleGenerator::reGenerate(double initTime, double dT, double endTime, b
         }
     }
 
-    return generateFromFootPrints(m_pimpl->leftFootPrint, m_pimpl->rightFootPrint, initTime, dT, alpha);
+    return generateFromFootPrints(m_pimpl->leftFootPrint, m_pimpl->rightFootPrint, initTime, dT);
 }
 
-bool UnicycleGenerator::reGenerate(double initTime, double dT, double endTime, const iDynTree::Vector2 &measuredLeftPosition, double measuredLeftAngle, const iDynTree::Vector2 &measuredRightPosition, double measuredRightAngle,double alpha)
+bool UnicycleGenerator::reGenerate(double initTime, double dT, double endTime, const iDynTree::Vector2 &measuredLeftPosition, double measuredLeftAngle, const iDynTree::Vector2 &measuredRightPosition, double measuredRightAngle)
 {
     {
         std::lock_guard<std::mutex> guard(m_pimpl->mutex);
@@ -549,7 +549,7 @@ bool UnicycleGenerator::reGenerate(double initTime, double dT, double endTime, c
         }
     }
 
-    return generateFromFootPrints(m_pimpl->leftFootPrint, m_pimpl->rightFootPrint, initTime, dT,alpha);
+    return generateFromFootPrints(m_pimpl->leftFootPrint, m_pimpl->rightFootPrint, initTime, dT);
 }
 
 bool UnicycleGenerator::setSwitchOverSwingRatio(double ratio)

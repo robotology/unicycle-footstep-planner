@@ -49,7 +49,7 @@ class DCMTrajectoryGenerator {
     bool computeNewTrajectories(double initTime, double dT, double switchPercentage, double maxStepTime,
                                 double nominalStepTime, bool pauseActive, const std::vector<const Step *> &orderedSteps,
                                 const std::vector<size_t> &phaseShift, const std::vector<StepPhase> &lFootPhases,
-                                const FootPrint &left, const FootPrint &right,const double alpha);
+                                const FootPrint &left, const FootPrint &right);
 
 public:
 
@@ -63,6 +63,13 @@ public:
      * @return true / false in case of success / failure.
      */
     bool setOmega(const double &omega);
+
+    /**
+     * Set the alpha parameter of DCM planner.
+     * @param alpha is the parameter between zero and one for distributing the DS duration to SS phase.
+     * @return true / false in case of success / failure.
+     */
+    bool setAlpha(const double &alpha);
 
     /**
      * Set the last step DCM offset
