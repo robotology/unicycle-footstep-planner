@@ -11,6 +11,7 @@
 #include <math.h>
 #include <vector>
 #include <iostream>
+#include <algorithm>
 
 // eigen
 #include <Eigen/Dense>
@@ -501,8 +502,9 @@ bool DCMTrajectoryGeneratorHelper::computeFeetWeight(const std::vector<StepPhase
 
                 ZMPDistanceFromLeftFoot = iDynTree::toEigen(zmpPosition[instant]) - iDynTree::toEigen(leftFootPosition);
 
-                m_weightInLeft[instant] = std::abs(1 - ZMPDistanceFromLeftFoot.norm() / feetDistance.norm());
-                m_weightInRight[instant] = std::abs(ZMPDistanceFromLeftFoot.norm() / feetDistance.norm());
+                m_weightInLeft[instant] = std::min(1.0, std::max(0.0, 1 - ZMPDistanceFromLeftFoot.norm() / feetDistance.norm()));
+                m_weightInRight[instant] = 1.0 - m_weightInLeft[instant];
+
                 ++instant;
             }
 
