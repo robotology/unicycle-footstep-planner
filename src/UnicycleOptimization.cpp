@@ -16,9 +16,9 @@ UnicycleOptimization::UnicycleOptimization()
 
     m_cost = std::make_shared<UnicycleCost>();
 
-    m_problem.addContraint(m_lengthConstraint);
-    m_problem.addContraint(m_widthConstraint);
-    m_problem.addContraint(m_angleConstraint);
+    m_problem.addConstraint(m_lengthConstraint);
+    m_problem.addConstraint(m_widthConstraint);
+    m_problem.addConstraint(m_angleConstraint);
 
     m_problem.addLagrangeTerm(1.0, m_cost);
 
