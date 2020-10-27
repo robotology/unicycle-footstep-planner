@@ -108,6 +108,7 @@ bool configureGenerator(UnicycleGenerator& generator, const Configuration &conf)
 
     // Setup the dcm planner
     iDynTree::assertTrue(dcmGenerator->setOmega(std::sqrt(9.81/conf.comHeight)));
+    iDynTree::assertTrue(dcmGenerator->setAlpha(0.5));
     iDynTree::Vector2 leftOffset, rightOffset;
     leftOffset(0) = conf.lStancePositionX;
     leftOffset(1) = conf.lStancePositionY;

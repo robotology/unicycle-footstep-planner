@@ -37,14 +37,16 @@ class GeneralSupportTrajectory
  protected:
 
     std::pair<double, double> m_trajectoryDomain; /**< Time domain of the trajectory */
+    double m_omega; /**< Time constant of the 3D-LIPM */
 
  public:
     /**
      * Constructor.
      * @param startTime is the start time of the trajectory;
-     * @param endTime is the end time of the trajectory.
+     * @param endTime is the end time of the trajectory;
+     * @param omega time constant of the linear inverted pendulum.
      */
-    GeneralSupportTrajectory(const double &startTime, const double &endTime);
+    GeneralSupportTrajectory(const double &startTime, const double &endTime, const double& omega);
 
     virtual ~GeneralSupportTrajectory();
 
@@ -67,6 +69,16 @@ class GeneralSupportTrajectory
      * @return true / false in case of success / failure.
      */
     virtual bool getDCMVelocity(const double &t, iDynTree::Vector2& DCMVelocity, const bool &checkDomainCondition = true) = 0;
+
+    /**
+     * Pure virtual method. It returns the position of the ZMP
+     * trajectory evaluated at time t.
+     * @param t is the trajectory evaluation time;
+     * @param ZMPPosition cartesian position of the Zero Moment Point;
+     * @param checkDomainCondition flag used to check if the time belongs to the trajectory domain (default value true).
+     * @return true / false in case of success / failure.
+     */
+    virtual bool getZMPPosition(const double &t, iDynTree::Vector2& ZMPPosition, const bool &checkDomainCondition = true) = 0;
 
     /**
      * Return true if the time t belongs to the trajectory time
@@ -94,6 +106,7 @@ class DCMTrajectoryGeneratorHelper
 
     double m_dT; /**< Planner period. */
     double m_omega; /**< Time constant of the 3D-LIPM. */
+    double m_alpha; /**< alpha is the parameter between zero and one for distributing the DS duration to SS phase. */
     iDynTree::Vector2 m_leftZMPDelta; /**< Vector containing the desired left ZMP delta. */
     iDynTree::Vector2 m_rightZMPDelta; /**< Vector containing the desired left ZMP delta. */
 
@@ -207,6 +220,13 @@ class DCMTrajectoryGeneratorHelper
     bool setOmega(const double &omega);
 
     /**
+     * Set the alpha parameter of DCM planner.
+     * @param alpha is the parameter between zero and one for distributing the DS duration to SS phase.
+     * @return true / false in case of success / failure.
+     */
+    bool setAlpha(const double &alpha);
+
+    /**
      * Set the period of the Trajectory generator planner.
      * @param dT is the period (in seconds) of the Trajectory generator planner
      * @return true / false in case of success / failure.
@@ -277,6 +297,8 @@ class DCMTrajectoryGeneratorHelper
      * @return a vector containing the DCM velocity during all the trajectory domain.
      */
     const std::vector<iDynTree::Vector2>& getZMPPosition() const;
+
+    const std::vector<std::shared_ptr<GeneralSupportTrajectory>>& getDCMSubTrajectories() const;
 
     /**
      * Output the weight percentage carried by each foot while walking, according to the DCM trajectory.

@@ -55,6 +55,9 @@ public:
 
     bool setPauseConditions(double maxStepTime, double nominalStepTime);
 
+    void disablePauseConditions();
+
+
     /**
      * Set the relative position of the merge point inside the double support phase.
      * If it is equal to 0 the merge point is placed at the beginning of the DS phase;

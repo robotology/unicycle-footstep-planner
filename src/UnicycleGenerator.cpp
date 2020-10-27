@@ -649,6 +649,11 @@ void UnicycleGenerator::getMergePoints(std::vector<size_t> &mergePoints) const
     mergePoints = m_pimpl->mergePoints;
 }
 
+void UnicycleGenerator::disablePauseConditions()
+{
+    m_pimpl->pauseActive = false;
+}
+
 std::shared_ptr<FeetCubicSplineGenerator> UnicycleGenerator::addFeetCubicSplineGenerator()
 {
     std::lock_guard<std::mutex> guard(m_pimpl->mutex);
@@ -704,5 +709,3 @@ std::shared_ptr<DCMTrajectoryGenerator> UnicycleGenerator::addDCMTrajectoryGener
 
     return m_pimpl->dcmTrajectoryGenerator;
 }
-
-

@@ -30,8 +30,6 @@ public:
 
     FootPrint(std::shared_ptr<StepList> &steps); //it sorts the step
 
-    FootPrint(const FootPrint& other) = delete;
-
     bool addStep(const iDynTree::Vector2& position, double theta, double impactTime);
 
     bool addStep(const Step& newStep);
@@ -49,6 +47,8 @@ public:
     size_t numberOfSteps() const;
 
     const StepList& getSteps() const;
+
+    StepList& getSteps();
 
     /**
      * Set the foot name

@@ -11,6 +11,7 @@
 #include <math.h>
 #include <vector>
 #include <iostream>
+#include <algorithm>
 
 // eigen
 #include <Eigen/Dense>
@@ -21,11 +22,15 @@
 
 //--------General Support Trajectory definition
 
-GeneralSupportTrajectory::GeneralSupportTrajectory(const double &startTime, const double &endTime)
+GeneralSupportTrajectory::GeneralSupportTrajectory(const double &startTime, const double &endTime,
+                                                   const double &omega)
 {
     // set the general support trajectory domain
     assert(startTime <= endTime);
+    assert(omega > 0);
+
     m_trajectoryDomain = std::make_pair(startTime, endTime);
+    m_omega = omega;
 }
 
 GeneralSupportTrajectory::~GeneralSupportTrajectory()
@@ -62,7 +67,6 @@ class SingleSupportTrajectory : public GeneralSupportTrajectory
     friend class DCMTrajectoryGeneratorHelper;
 
     iDynTree::Vector2 m_ZMP; /**< Desired position of the ZMP at the beginning of the step */
-    double m_omega; /**< Time constant of the 3D-LIPM */
 
     double m_boundaryConditionTime; /**< Absolute time of the DCM boundary condition */
     iDynTree::Vector2 m_boundaryConditionDCMPosition; /**< Boundary condition of the DCM trajectory */
@@ -83,11 +87,6 @@ public:
                             const iDynTree::Vector2 &ZMP,
                             const DCMTrajectoryPoint& boundaryCondition);
 
-    /**
-     * ZMP getter.
-     * @return the position of the ZMP.
-     */
-    const iDynTree::Vector2& getZMP() const;
 
     /**
      * Implementation of the getDCMPosition method of the
@@ -108,6 +107,16 @@ public:
      * @return true / false in case of success / failure.
      */
     bool getDCMVelocity(const double &t, iDynTree::Vector2& DCMVelocity, const bool &checkDomainCondition = true) override;
+
+    /**
+     * Implementation of the getZMPPosition method of the
+     * GeneralSupportTrajectory class.
+     * @param t is the trajectory evaluation time;
+     * @param ZMPPosition cartesian position of the Zero Moment Point;
+     * @param checkDomainCondition flag used to check if the time belongs to the trajectory domain (default value true).
+     * @return true / false in case of success / failure.
+     */
+    virtual bool getZMPPosition(const double &t, iDynTree::Vector2& ZMPVelocity, const bool &checkDomainCondition = true) override;
 };
 
 //--------Single Support Trajectory definition
@@ -117,17 +126,26 @@ SingleSupportTrajectory::SingleSupportTrajectory(const double &startTime,
                                                  const double &omega,
                                                  const iDynTree::Vector2 &ZMP,
                                                  const DCMTrajectoryPoint& boundaryCondition):
-    GeneralSupportTrajectory(startTime, endTime),
-    m_ZMP(ZMP),
-    m_omega(omega)
+    GeneralSupportTrajectory(startTime, endTime, omega),
+    m_ZMP(ZMP)
 {
     m_boundaryConditionTime = boundaryCondition.time;
     m_boundaryConditionDCMPosition = boundaryCondition.DCMPosition;
 }
 
-const iDynTree::Vector2& SingleSupportTrajectory::getZMP() const
+bool SingleSupportTrajectory::getZMPPosition(const double &t, iDynTree::Vector2 &ZMPPosition,
+                                             const bool &checkDomainCondition)
 {
-    return m_ZMP;
+    // Evaluate the position of the ZMP at time t
+    if (checkDomainCondition)
+        if (!timeBelongsToDomain(t)){
+            std::cerr << "[SINGLE SUPPORT TRAJECTORY] the time t: " << t
+                      << " does not belong to the trajectory domain." << std::endl;
+            return false;
+        }
+
+    ZMPPosition = m_ZMP;
+    return true;
 }
 
 bool SingleSupportTrajectory::getDCMPosition(const double &t, iDynTree::Vector2 &DCMPosition,
@@ -203,9 +221,11 @@ public:
      * double support trajectory
      * @param finalBoundaryCondition desired final position and velocity of the
      * double support trajectory
+     * @param omega time constant of the 3D-LIPM
      */
     DoubleSupportTrajectory(const DCMTrajectoryPoint &initBoundaryCondition,
-                            const DCMTrajectoryPoint &finalBoundaryCondition);
+                            const DCMTrajectoryPoint &finalBoundaryCondition,
+                            const double& omega);
 
     /**
      * Implementation of the getDCMPosition method of the
@@ -226,13 +246,25 @@ public:
      * @return true / false in case of success / failure.
      */
     bool getDCMVelocity(const double &t, iDynTree::Vector2& DCMVelocity, const bool &checkDomainCondition = true) override;
+
+    /**
+     * Implementation of the getZMPPosition method of the
+     * GeneralSupportTrajectory class.
+     * @param t is the trajectory evaluation time;
+     * @param ZMPPosition cartesian position of the Zero Moment Point;
+     * @param checkDomainCondition flag used to check if the time belongs to the trajectory domain (default value true).
+     * @return true / false in case of success / failure.
+     */
+    virtual bool getZMPPosition(const double &t, iDynTree::Vector2& ZMPVelocity, const bool &checkDomainCondition = true) override;
+
 };
 
 //--------Double Support Trajectory definition
 
 DoubleSupportTrajectory::DoubleSupportTrajectory(const DCMTrajectoryPoint &initBoundaryCondition,
-                                                 const DCMTrajectoryPoint &finalBoundaryCondition):
-    GeneralSupportTrajectory(initBoundaryCondition.time, finalBoundaryCondition.time)
+                                                 const DCMTrajectoryPoint &finalBoundaryCondition,
+                                                 const double &omega):
+    GeneralSupportTrajectory(initBoundaryCondition.time, finalBoundaryCondition.time, omega)
 {
 
     double dsDuration = finalBoundaryCondition.time - initBoundaryCondition.time;
@@ -327,7 +359,6 @@ bool DoubleSupportTrajectory::getDCMPosition(const double &t, iDynTree::Vector2 
     return true;
 }
 
-
 bool DoubleSupportTrajectory::getDCMVelocity(const double &t, iDynTree::Vector2 &DCMVelocity,
                                              const bool &checkDomainCondition)
 {
@@ -354,12 +385,33 @@ bool DoubleSupportTrajectory::getDCMVelocity(const double &t, iDynTree::Vector2 
     return true;
 }
 
+bool DoubleSupportTrajectory::getZMPPosition(const double &t, iDynTree::Vector2 &ZMPPosition,
+                                             const bool &checkDomainCondition)
+{
+    // Evaluate the position of the ZMP at time t
+    if (checkDomainCondition)
+        if (!timeBelongsToDomain(t)){
+            std::cerr << "[DOUBLE SUPPORT TRAJECTORY] the time t: " << t
+                      << " does not belong to the trajectory domain." << std::endl;
+            return false;
+        }
+
+    // We can avoid to check the Domain condition since it was already evaluated above
+    iDynTree::Vector2 DCMPosition, DCMVelocity;
+    getDCMPosition(t, DCMPosition);
+    getDCMVelocity(t, DCMVelocity);
+
+    iDynTree::toEigen(ZMPPosition) = iDynTree::toEigen(DCMPosition) - iDynTree::toEigen(DCMVelocity) / m_omega;
+
+    return true;
+}
 
 DCMTrajectoryGeneratorHelper::DCMTrajectoryGeneratorHelper():
     m_dT(0.01),
     m_omega(9.81/0.5),
-    m_pauseActive(false),
-    m_lastStepDCMOffset(0)
+    m_alpha(0.5),
+    m_lastStepDCMOffset(0),
+    m_pauseActive(false)
 {}
 
 bool DCMTrajectoryGeneratorHelper::setOmega(const double &omega)
@@ -371,6 +423,18 @@ bool DCMTrajectoryGeneratorHelper::setOmega(const double &omega)
     }
 
     m_omega = omega;
+    return true;
+}
+
+bool DCMTrajectoryGeneratorHelper::setAlpha(const double &alpha)
+{
+    if (alpha < 0 && alpha > 1){
+        std::cerr << "[DCMTrajectoryGeneratorHelper::setAlpha] The alpha sould be between zero and one."
+                  << std::endl;
+        return false;
+    }
+
+    m_alpha = alpha;
     return true;
 }
 
@@ -435,82 +499,82 @@ bool DCMTrajectoryGeneratorHelper::computeFeetWeight(const std::vector<StepPhase
                                                      const FootPrint &left, const FootPrint &right,
                                                      const std::vector<iDynTree::Vector2> &zmpPosition)
 {
-    {
-        m_weightInLeft.resize(zmpPosition.size());
-        m_weightInRight.resize(zmpPosition.size());
 
-        Eigen::Vector2d feetDistance;
-        Eigen::Vector2d ZMPDistanceFromLeftFoot;
+    m_weightInLeft.resize(zmpPosition.size());
+    m_weightInRight.resize(zmpPosition.size());
 
-        iDynTree::Position leftFootZMPOffset;
-        iDynTree::Position rightFootZMPOffset;
+    Eigen::Vector2d feetDistance;
+    Eigen::Vector2d ZMPDistanceFromLeftFoot;
 
-        size_t instant = 0;
-        size_t endOfPhase;
+    iDynTree::Position leftFootZMPOffset;
+    iDynTree::Position rightFootZMPOffset;
 
-        const StepList& leftSteps = left.getSteps();
-        StepList::const_iterator leftState = leftSteps.begin();
+    size_t instant = 0;
+    size_t endOfPhase;
 
-        const StepList& rightSteps = right.getSteps();
-        StepList::const_iterator rightState = rightSteps.begin();
+    const StepList& leftSteps = left.getSteps();
+    StepList::const_iterator leftState = leftSteps.begin();
 
-        iDynTree::Vector2 leftFootPosition, rightFootPosition;
-        double leftYawAngle, rightYawAngle;
+    const StepList& rightSteps = right.getSteps();
+    StepList::const_iterator rightState = rightSteps.begin();
 
-        for (size_t phase = 1; phase < phaseShift.size(); ++phase){ //the first value is useless (it is simply 0)
-            endOfPhase = phaseShift[phase];
+    iDynTree::Vector2 leftFootPosition, rightFootPosition;
+    double leftYawAngle, rightYawAngle;
 
-            if (lFootPhases[instant] == StepPhase::Stance){
-                while (instant < endOfPhase){
-                    m_weightInLeft[instant] = 1.0;
-                    m_weightInRight[instant] = 0.0;
-                    instant++;
-                }
+    for (size_t phase = 1; phase < phaseShift.size(); ++phase){ //the first value is useless (it is simply 0)
+        endOfPhase = phaseShift[phase];
 
-                if (rightState + 1 == rightSteps.cend()){
-                    std::cerr << "[DCMTrajectoryGenerator::computeFeetWeight] Something went wrong. The step phases are not coherent with the right foot." << std::endl; //It's not possible to have a swing phase as last phase.
-                    return false;
-                }
+        if (lFootPhases[instant] == StepPhase::Stance){
+            while (instant < endOfPhase){
+                m_weightInLeft[instant] = 1.0;
+                m_weightInRight[instant] = 0.0;
+                instant++;
+            }
 
-                ++rightState;
-            } else if (lFootPhases[instant] == StepPhase::Swing){
-                while (instant < endOfPhase){
-                    m_weightInLeft[instant] = 1.0;
-                    m_weightInRight[instant] = 0.0;
-                    instant++;
-                }
+            if (rightState + 1 == rightSteps.cend()){
+                std::cerr << "[DCMTrajectoryGenerator::computeFeetWeight] Something went wrong. The step phases are not coherent with the right foot." << std::endl; //It's not possible to have a swing phase as last phase.
+                return false;
+            }
 
-                if (leftState + 1 == leftSteps.cend()){
-                    std::cerr << "[DCMTrajectoryGenerator::computeFeetWeight] Something went wrong. The step phases are not coherent with the left foot." << std::endl; //It's not possible to have a swing phase as last phase.
-                    return false;
-                }
+            ++rightState;
+        } else if (lFootPhases[instant] == StepPhase::Swing){
+            while (instant < endOfPhase){
+                m_weightInLeft[instant] = 0.0;
+                m_weightInRight[instant] = 1.0;
+                instant++;
+            }
 
-                ++leftState;
-            } else {
+            if (leftState + 1 == leftSteps.cend()){
+                std::cerr << "[DCMTrajectoryGenerator::computeFeetWeight] Something went wrong. The step phases are not coherent with the left foot." << std::endl; //It's not possible to have a swing phase as last phase.
+                return false;
+            }
 
-                leftYawAngle = leftState->angle;
-                leftFootPosition(0) = leftState->position(0) + cos(leftYawAngle) * m_leftZMPDelta(0) - sin(leftYawAngle) * m_leftZMPDelta(1);
-                leftFootPosition(1) = leftState->position(1) + sin(leftYawAngle) * m_leftZMPDelta(0) + cos(leftYawAngle) * m_leftZMPDelta(1);
+            ++leftState;
+        } else {
 
-                rightYawAngle = rightState->angle;
-                rightFootPosition(0) = rightState->position(0) + cos(rightYawAngle) * m_rightZMPDelta(0) - sin(rightYawAngle) * m_rightZMPDelta(1);
-                rightFootPosition(1) = rightState->position(1) + sin(rightYawAngle) * m_rightZMPDelta(0) + cos(rightYawAngle) * m_rightZMPDelta(1);
+            leftYawAngle = leftState->angle;
+            leftFootPosition(0) = leftState->position(0) + cos(leftYawAngle) * m_leftZMPDelta(0) - sin(leftYawAngle) * m_leftZMPDelta(1);
+            leftFootPosition(1) = leftState->position(1) + sin(leftYawAngle) * m_leftZMPDelta(0) + cos(leftYawAngle) * m_leftZMPDelta(1);
 
-                while (instant < endOfPhase){
-                    feetDistance = iDynTree::toEigen(rightFootPosition) - iDynTree::toEigen(leftFootPosition);
+            rightYawAngle = rightState->angle;
+            rightFootPosition(0) = rightState->position(0) + cos(rightYawAngle) * m_rightZMPDelta(0) - sin(rightYawAngle) * m_rightZMPDelta(1);
+            rightFootPosition(1) = rightState->position(1) + sin(rightYawAngle) * m_rightZMPDelta(0) + cos(rightYawAngle) * m_rightZMPDelta(1);
 
-                    ZMPDistanceFromLeftFoot = iDynTree::toEigen(zmpPosition[instant]) - iDynTree::toEigen(leftFootPosition);
+            while (instant < endOfPhase){
+                feetDistance = iDynTree::toEigen(rightFootPosition) - iDynTree::toEigen(leftFootPosition);
 
-                    m_weightInLeft[instant] = ZMPDistanceFromLeftFoot.norm() / feetDistance.norm();
-                    m_weightInRight[instant] = 1 - ZMPDistanceFromLeftFoot.norm() / feetDistance.norm();
-                    ++instant;
-                }
+                ZMPDistanceFromLeftFoot = iDynTree::toEigen(zmpPosition[instant]) - iDynTree::toEigen(leftFootPosition);
 
+                m_weightInLeft[instant] = std::min(1.0, std::max(0.0, 1 - ZMPDistanceFromLeftFoot.norm() / feetDistance.norm()));
+                m_weightInRight[instant] = 1.0 - m_weightInLeft[instant];
+
+                ++instant;
             }
 
         }
-        return true;
+
     }
+    return true;
 }
 
 bool DCMTrajectoryGeneratorHelper::addLastStep(const double &singleSupportStartTime,
@@ -544,7 +608,8 @@ bool DCMTrajectoryGeneratorHelper::addLastStep(const double &singleSupportStartT
     doubleSupportFinalBoundaryCondition.DCMVelocity.zero();
 
     std::shared_ptr<DoubleSupportTrajectory> newDoubleSupport = std::make_shared<DoubleSupportTrajectory>(doubleSupportInitBoundaryCondition,
-                                                                                                           doubleSupportFinalBoundaryCondition);
+                                                                                                          doubleSupportFinalBoundaryCondition,
+                                                                                                          m_omega);
     // add the new Double Support phase
     m_trajectory.push_back(newDoubleSupport);
 
@@ -618,7 +683,9 @@ bool DCMTrajectoryGeneratorHelper::addNewStep(const double &singleSupportStartTi
         DCMTrajectoryPoint doubleSupportStanceFinalBoundaryCondition;
 
         std::shared_ptr<SingleSupportTrajectory> nextSingleSupport_cast = std::static_pointer_cast<SingleSupportTrajectory>(nextSingleSupport);
-        iDynTree::toEigen(doubleSupportStanceInitBoundaryCondition.DCMPosition) = (iDynTree::toEigen(ZMP) + iDynTree::toEigen(nextSingleSupport_cast->getZMP())) / 2;
+        iDynTree::Vector2 ZMPAtNextSingleSupport;
+        nextSingleSupport->getZMPPosition(0, ZMPAtNextSingleSupport, false);
+        iDynTree::toEigen(doubleSupportStanceInitBoundaryCondition.DCMPosition) = (iDynTree::toEigen(ZMP) + iDynTree::toEigen(ZMPAtNextSingleSupport)) / 2;
         doubleSupportStanceInitBoundaryCondition.DCMVelocity.zero();
         // the constraints at the beginning and at the end of the double support stance phases are equal except for the times
         doubleSupportStanceFinalBoundaryCondition = doubleSupportStanceInitBoundaryCondition;
@@ -628,22 +695,26 @@ bool DCMTrajectoryGeneratorHelper::addNewStep(const double &singleSupportStartTi
 
         // add the 3-th part of the Double Support phase
         newDoubleSupport = std::make_shared<DoubleSupportTrajectory>(doubleSupportStanceFinalBoundaryCondition,
-                                                                     doubleSupportFinalBoundaryCondition);
+                                                                     doubleSupportFinalBoundaryCondition,
+                                                                     m_omega);
         m_trajectory.push_back(newDoubleSupport);
 
         // add 2-th part of the Double Support phase (stance phase)
         newDoubleSupport = std::make_shared<DoubleSupportTrajectory>(doubleSupportStanceInitBoundaryCondition,
-                                                                     doubleSupportStanceFinalBoundaryCondition);
+                                                                     doubleSupportStanceFinalBoundaryCondition,
+                                                                     m_omega);
         m_trajectory.push_back(newDoubleSupport);
 
         // add 1-th part of the Double Support phase
         newDoubleSupport = std::make_shared<DoubleSupportTrajectory>(doubleSupportInitBoundaryCondition,
-                                                                     doubleSupportStanceInitBoundaryCondition);
+                                                                     doubleSupportStanceInitBoundaryCondition,
+                                                                     m_omega);
         m_trajectory.push_back(newDoubleSupport);
     }else{
         // add the new Double Support phase
         newDoubleSupport = std::make_shared<DoubleSupportTrajectory>(doubleSupportInitBoundaryCondition,
-                                                                     doubleSupportFinalBoundaryCondition);
+                                                                     doubleSupportFinalBoundaryCondition,
+                                                                     m_omega);
         m_trajectory.push_back(newDoubleSupport);
     }
     // add the new Single Support phase
@@ -704,7 +775,9 @@ bool DCMTrajectoryGeneratorHelper::addFirstDoubleSupportPhase(const DCMTrajector
             return false;
         }
 
-        iDynTree::toEigen(doubleSupportStanceInitBoundaryCondition.DCMPosition) = (iDynTree::toEigen(positionOfTheFirstSwingFoot) + iDynTree::toEigen(nextSingleSupport->getZMP())) / 2;
+        iDynTree::Vector2 ZMPAtNextSingleSupport;
+        nextSingleSupport->getZMPPosition(0, ZMPAtNextSingleSupport, false);
+        iDynTree::toEigen(doubleSupportStanceInitBoundaryCondition.DCMPosition) = (iDynTree::toEigen(positionOfTheFirstSwingFoot) + iDynTree::toEigen(ZMPAtNextSingleSupport)) / 2;
         doubleSupportStanceInitBoundaryCondition.DCMVelocity.zero();
         // the constraints at the beginning and at the end of the double support stance phases are equal except for the times
         doubleSupportStanceFinalBoundaryCondition = doubleSupportStanceInitBoundaryCondition;
@@ -714,22 +787,26 @@ bool DCMTrajectoryGeneratorHelper::addFirstDoubleSupportPhase(const DCMTrajector
 
         // add the 3-th part of the Double Support phase
         newDoubleSupport = std::make_shared<DoubleSupportTrajectory>(doubleSupportStanceFinalBoundaryCondition,
-                                                                     doubleSupportFinalBoundaryCondition);
+                                                                     doubleSupportFinalBoundaryCondition,
+                                                                     m_omega);
         m_trajectory.push_back(newDoubleSupport);
 
         // add 2-th part of the Double Support phase (stance phase)
         newDoubleSupport = std::make_shared<DoubleSupportTrajectory>(doubleSupportStanceInitBoundaryCondition,
-                                                                     doubleSupportStanceFinalBoundaryCondition);
+                                                                     doubleSupportStanceFinalBoundaryCondition,
+                                                                     m_omega);
         m_trajectory.push_back(newDoubleSupport);
 
         // add 1-th part of the Double Support phase
         newDoubleSupport = std::make_shared<DoubleSupportTrajectory>(doubleSupportInitBoundaryCondition,
-                                                                     doubleSupportStanceInitBoundaryCondition);
+                                                                     doubleSupportStanceInitBoundaryCondition,
+                                                                     m_omega);
         m_trajectory.push_back(newDoubleSupport);
     }else{
         // add the new Double Support phase
         newDoubleSupport = std::make_shared<DoubleSupportTrajectory>(doubleSupportInitBoundaryCondition,
-                                                                     doubleSupportFinalBoundaryCondition);
+                                                                     doubleSupportFinalBoundaryCondition,
+                                                                     m_omega);
         // add the new Double Support phase
         m_trajectory.push_back(newDoubleSupport);
     }
@@ -827,7 +904,8 @@ bool DCMTrajectoryGeneratorHelper::generateDCMTrajectory(const std::vector<const
             // get the next Single Support trajectory (remember that we are constructing the trajectory from the end)
             std::shared_ptr<GeneralSupportTrajectory> nextSingleSupportTrajectory = m_trajectory.back();
             double nextsingleSupportStartTime = nextSingleSupportTrajectory->getTrajectoryDomain().first;
-            singleSupportBoundaryConditionTime = (nextsingleSupportStartTime + singleSupportEndTime) / 2;
+
+            singleSupportBoundaryConditionTime = (nextsingleSupportStartTime + singleSupportEndTime) *m_alpha;
 
             // the ZMP is shifted before evaluate the DCM
             if(!getZMPGlobalPosition(orderedSteps[orderedStepsIndex], lastZMP)){
@@ -904,7 +982,8 @@ bool DCMTrajectoryGeneratorHelper::generateDCMTrajectory(const std::vector<const
 
         std::shared_ptr<GeneralSupportTrajectory> newDoubleSupport = nullptr;
         newDoubleSupport = std::make_shared<DoubleSupportTrajectory>(doubleSupportInitBoundaryCondition,
-                                                                     doubleSupportFinalBoundaryCondition);
+                                                                     doubleSupportFinalBoundaryCondition,
+                                                                     m_omega);
         // add the new Double Support phase
         m_trajectory.push_back(newDoubleSupport);
     }
@@ -924,13 +1003,6 @@ bool DCMTrajectoryGeneratorHelper::generateDCMTrajectory(const std::vector<const
     return true;
 }
 
-iDynTree::Vector2 DCMTrajectoryGeneratorHelper::evaluateZMPPosition(const iDynTree::Vector2 &DCMPosition,
-                                                                    const iDynTree::Vector2 &DCMVelocity)
-{
-    iDynTree::Vector2 ZMP;
-    iDynTree::toEigen(ZMP) = iDynTree::toEigen(DCMPosition) - iDynTree::toEigen(DCMVelocity) / m_omega;
-    return ZMP;
-}
 
 bool DCMTrajectoryGeneratorHelper::evaluateDCMTrajectory()
 {
@@ -947,7 +1019,7 @@ bool DCMTrajectoryGeneratorHelper::evaluateDCMTrajectory()
     m_ZMPPosition.clear();
     m_ZMPPosition.reserve(timeVectorLength);
 
-    iDynTree::Vector2 DCMPosition, DCMVelocity;
+    iDynTree::Vector2 DCMPosition, DCMVelocity, ZMPPosition;
     double time;
     std::vector<std::shared_ptr<GeneralSupportTrajectory>>::reverse_iterator subTrajectory = m_trajectory.rbegin();
 
@@ -967,9 +1039,15 @@ bool DCMTrajectoryGeneratorHelper::evaluateDCMTrajectory()
             std::cerr << "[DCMTrajectoryGeneratorHelper::evaluateDCMTrajectory] Error when the velocity of the DCM is evaluated." << std::endl;
             return false;
         }
+
+        if(!(*subTrajectory)->getZMPPosition(time, ZMPPosition)){
+            std::cerr << "[DCMTrajectoryGeneratorHelper::evaluateDCMTrajectory] Error when the position of the ZMP is evaluated." << std::endl;
+            return false;
+        }
+
         m_DCMPosition.push_back(DCMPosition);
         m_DCMVelocity.push_back(DCMVelocity);
-        m_ZMPPosition.push_back(evaluateZMPPosition(DCMPosition, DCMVelocity));
+        m_ZMPPosition.push_back(ZMPPosition);
     }
     return true;
 }
@@ -987,6 +1065,11 @@ const std::vector<iDynTree::Vector2>& DCMTrajectoryGeneratorHelper::getDCMVeloci
 const std::vector<iDynTree::Vector2>& DCMTrajectoryGeneratorHelper::getZMPPosition() const
 {
     return m_ZMPPosition;
+}
+
+const std::vector<std::shared_ptr<GeneralSupportTrajectory>>& DCMTrajectoryGeneratorHelper::getDCMSubTrajectories() const
+{
+    return m_trajectory;
 }
 
 void DCMTrajectoryGeneratorHelper::getWeightPercentage(std::vector<double> &weightInLeft, std::vector<double> &weightInRight) const

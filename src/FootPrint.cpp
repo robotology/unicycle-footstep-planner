@@ -110,6 +110,11 @@ const StepList &FootPrint::getSteps() const
     return *m_steps;
 }
 
+StepList &FootPrint::getSteps()
+{
+    return *m_steps;
+}
+
 void FootPrint::setFootName(const std::string& footName)
 {
     m_footName = footName;
