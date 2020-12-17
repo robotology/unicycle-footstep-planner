@@ -12,6 +12,7 @@
 #include "UnicycleController.h"
 #include "UnicycleOptimization.h"
 #include "UnicycleFoot.h"
+#include "FreeSpaceEllipse.h"
 #include <iDynTree/Integrators/RK4.h>
 #include <memory>
 #include <mutex>
@@ -21,6 +22,7 @@ class UnicyclePlanner {
     std::shared_ptr<ControlledUnicycle> m_unicycle;
     iDynTree::optimalcontrol::integrators::RK4 m_integrator;
     UnicycleOptimization m_unicycleProblem;
+    FreeSpaceEllipse m_freeSpace;
     double m_endTime, m_minTime, m_maxTime, m_nominalTime, m_dT, m_minAngle, m_nominalWidth, m_maxLength, m_minLength, m_maxAngle;
     bool m_addTerminalStep, m_startLeft, m_resetStartingFoot, m_firstStep;
     std::mutex m_mutex;
@@ -111,6 +113,8 @@ public:
     bool startWithLeft() const;
 
     bool getPersonPosition(double time, iDynTree::Vector2 &personPosition);
+
+    bool setFreeSpaceEllipse(const FreeSpaceEllipse& freeSpaceEllipse);
 };
 
 #endif // UNICYCLEPLANNER_H

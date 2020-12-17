@@ -810,4 +810,10 @@ bool UnicyclePlanner::getPersonPosition(double time, iDynTree::Vector2& personPo
     return true;
 }
 
+bool UnicyclePlanner::setFreeSpaceEllipse(const FreeSpaceEllipse &freeSpaceEllipse)
+{
+    m_freeSpace = freeSpaceEllipse;
+    return m_controller->setFreeSpaceEllipse(freeSpaceEllipse);
+}
+
 
