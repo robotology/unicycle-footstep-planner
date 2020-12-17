@@ -49,9 +49,9 @@ public:
 
     //Returns true if the point is inside the ellipse, boundary included.
     // If the ellipsoid has never been set, it returns true by default
-    bool isPointInside(const iDynTree::VectorFixSize<2>& testPoint);
+    bool isPointInside(const iDynTree::VectorFixSize<2>& testPoint) const;
 
-    iDynTree::Vector2 projectPointInsideEllipse(const iDynTree::VectorFixSize<2>& testPoint);
+    iDynTree::Vector2 projectPointInsideEllipse(const iDynTree::VectorFixSize<2>& testPoint) const;
 
 };
 

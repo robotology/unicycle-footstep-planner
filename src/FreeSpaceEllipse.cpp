@@ -23,7 +23,7 @@ FreeSpaceEllipse::FreeSpaceEllipse(double a, double b, double theta, const iDynT
     assert(ok);
 }
 
-bool FreeSpaceEllipse::isPointInside(const iDynTree::VectorFixSize<2> &testPoint)
+bool FreeSpaceEllipse::isPointInside(const iDynTree::VectorFixSize<2> &testPoint) const
 {
     if (!m_isSet)
     {
@@ -96,7 +96,7 @@ FreeSpaceEllipse::FreeSpaceEllipse()
     m_isSet = false;
 }
 
-iDynTree::Vector2 FreeSpaceEllipse::projectPointInsideEllipse(const iDynTree::VectorFixSize<2> &testPoint)
+iDynTree::Vector2 FreeSpaceEllipse::projectPointInsideEllipse(const iDynTree::VectorFixSize<2> &testPoint) const
 {
     if (!m_isSet)
     {
