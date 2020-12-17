@@ -70,7 +70,8 @@ set(UCPLANNER_SOURCES src/ControlledUnicycle.cpp
                       src/CoMHeightTrajectoryGenerator.cpp
                       src/DCMTrajectoryGenerator.cpp
                       src/DCMTrajectoryGeneratorHelper.cpp
-                      src/FeetMinimumJerkGenerator.cpp)
+                      src/FeetMinimumJerkGenerator.cpp
+                      src/FreeSpaceEllipse.cpp)
 
 set(UCPLANNER_HEADERS include/ControlledUnicycle.h
                       include/UnicycleController.h
@@ -88,7 +89,8 @@ set(UCPLANNER_HEADERS include/ControlledUnicycle.h
                       include/StepPhase.h
                       include/DCMTrajectoryGenerator.h
                       include/DCMTrajectoryGeneratorHelper.h
-                      include/FeetMinimumJerkGenerator.h)
+                      include/FeetMinimumJerkGenerator.h
+                      include/FreeSpaceEllipse.h)
 
 add_library(UnicyclePlanner ${UCPLANNER_HEADERS} ${UCPLANNER_SOURCES})
 target_include_directories(UnicyclePlanner PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>)
