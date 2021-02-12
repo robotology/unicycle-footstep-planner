@@ -96,7 +96,7 @@ iDynTree::Vector2 FreeSpaceEllipse::computeGenerators(const iDynTree::VectorFixS
 
 double FreeSpaceEllipse::generatorsModule(const iDynTree::VectorFixSize<2> &generators) const
 {
-    return (iDynTree::toEigen(generators)).squaredNorm();
+    return (iDynTree::toEigen(generators)).norm();
 }
 
 FreeSpaceEllipse::FreeSpaceEllipse()
