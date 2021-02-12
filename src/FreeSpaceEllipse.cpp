@@ -17,9 +17,9 @@ FreeSpaceEllipse::FreeSpaceEllipse(const iDynTree::MatrixFixSize<2, 2> &imageMat
     assert(ok);
 }
 
-FreeSpaceEllipse::FreeSpaceEllipse(double a, double b, double theta, const iDynTree::VectorFixSize<2> &centerOffset)
+FreeSpaceEllipse::FreeSpaceEllipse(double a, double b, double theta, double centerOffsetX, double centerOffsetY)
 {
-    bool ok = setEllipse(a, b, theta, centerOffset);
+    bool ok = setEllipse(a, b, theta, centerOffsetX, centerOffsetY);
     assert(ok);
 }
 
@@ -33,7 +33,7 @@ bool FreeSpaceEllipse::isPointInside(const iDynTree::VectorFixSize<2> &testPoint
     return generatorsModule(computeGenerators(testPoint)) <= 1.0;
 }
 
-bool FreeSpaceEllipse::setEllipse(double a, double b, double theta, const iDynTree::VectorFixSize<2> &centerOffset)
+bool FreeSpaceEllipse::setEllipse(double a, double b, double theta, double centerOffsetX, double centerOffsetY)
 {
     if (a < 1e-10 || b < 1e-10)
     {
@@ -54,10 +54,21 @@ bool FreeSpaceEllipse::setEllipse(double a, double b, double theta, const iDynTr
 
     iDynTree::toEigen(m_C) = rotationMatrix * defaultC;
     iDynTree::toEigen(m_C_inverse) = iDynTree::toEigen(m_C).inverse();
-    m_d = centerOffset;
+    m_d(0) = centerOffsetX;
+    m_d(1) = centerOffsetY;
     m_isSet = true;
 
     return true;
+}
+
+const iDynTree::VectorFixSize<2> &FreeSpaceEllipse::centerOffset() const
+{
+    return m_d;
+}
+
+const iDynTree::MatrixFixSize<2, 2> &FreeSpaceEllipse::imageMatrix() const
+{
+    return m_C;
 }
 
 bool FreeSpaceEllipse::setEllipse(const iDynTree::MatrixFixSize<2, 2> &imageMatrix, const iDynTree::VectorFixSize<2> &centerOffset)

@@ -29,7 +29,7 @@ public:
     FreeSpaceEllipse(const iDynTree::MatrixFixSize<2,2>& imageMatrix, const iDynTree::VectorFixSize<2>& centerOffset);
 
     // Define the ellipse given the principal axis half-length, the rotation wrt the inertial frame, and the center position
-    FreeSpaceEllipse(double a, double b, double theta, const iDynTree::VectorFixSize<2>& centerOffset);
+    FreeSpaceEllipse(double a, double b, double theta, double centerOffsetX, double centerOffsetY);
 
     FreeSpaceEllipse();
 
@@ -45,7 +45,13 @@ public:
 
     bool setEllipse(const iDynTree::MatrixFixSize<2,2>& imageMatrix, const iDynTree::VectorFixSize<2>& centerOffset);
 
-    bool setEllipse(double a, double b, double theta, const iDynTree::VectorFixSize<2>& centerOffset);
+    bool setEllipse(double a, double b, double theta, double centerOffsetX, double centerOffsetY);
+
+    bool isSet();
+
+    const iDynTree::VectorFixSize<2>& centerOffset() const;
+
+    const iDynTree::MatrixFixSize<2,2>& imageMatrix() const;
 
     //Returns true if the point is inside the ellipse, boundary included.
     // If the ellipsoid has never been set, it returns true by default
