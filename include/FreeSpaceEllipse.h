@@ -59,6 +59,8 @@ public:
 
     iDynTree::Vector2 projectPointInsideEllipse(const iDynTree::VectorFixSize<2>& testPoint) const;
 
+    std::string printInfo() const;
+
 };
 
 

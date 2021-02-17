@@ -10,6 +10,7 @@
 #include <FreeSpaceEllipse.h>
 #include <cassert>
 #include <iostream>
+#include <sstream>
 
 FreeSpaceEllipse::FreeSpaceEllipse(const iDynTree::MatrixFixSize<2, 2> &imageMatrix, const iDynTree::VectorFixSize<2> &centerOffset)
 {
@@ -130,4 +131,12 @@ iDynTree::Vector2 FreeSpaceEllipse::projectPointInsideEllipse(const iDynTree::Ve
     iDynTree::toEigen(output) = iDynTree::toEigen(m_C) * iDynTree::toEigen(normalizedGenerators) + iDynTree::toEigen(m_d);
 
     return output;
+}
+
+std::string FreeSpaceEllipse::printInfo() const
+{
+    std::stringstream stream;
+    stream << "Image matrix:" << std::endl << imageMatrix().toString() << "Center offset: " << centerOffset().toString() << std::endl;
+
+    return stream.str();
 }
