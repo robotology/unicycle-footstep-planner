@@ -314,6 +314,7 @@ UnicyclePlanner::UnicyclePlanner()
     ,m_startLeft(true)
     ,m_resetStartingFoot(false)
     ,m_firstStep(false)
+    ,m_freeSpaceMethod(FreeSpaceEllipseMethod::REFERENCE_ONLY)
     ,m_left(nullptr)
     ,m_right(nullptr)
     ,m_swingLeft(true)
@@ -817,9 +818,38 @@ bool UnicyclePlanner::getPersonPosition(double time, iDynTree::Vector2& personPo
     return true;
 }
 
+void UnicyclePlanner::setFreeSpaceEllipseMethod(FreeSpaceEllipseMethod method)
+{
+    std::lock_guard<std::mutex> guard(m_mutex);
+
+    m_freeSpaceMethod = method;
+    m_controller->setFreeSpaceEllipse(FreeSpaceEllipse()); //Reset the ellipse
+    m_unicycleProblem.setFreeSpaceEllipse(FreeSpaceEllipse()); //Reset the ellipse
+}
+
 bool UnicyclePlanner::setFreeSpaceEllipse(const FreeSpaceEllipse &freeSpaceEllipse)
 {
-    return m_controller->setFreeSpaceEllipse(freeSpaceEllipse) && m_unicycleProblem.setFreeSpaceEllipse(freeSpaceEllipse);
+    std::lock_guard<std::mutex> guard(m_mutex);
+
+    if (m_freeSpaceMethod == FreeSpaceEllipseMethod::REFERENCE_ONLY ||
+            m_freeSpaceMethod == FreeSpaceEllipseMethod::REFERENCE_AND_FOOTSTEPS)
+    {
+        if (!m_controller->setFreeSpaceEllipse(freeSpaceEllipse))
+        {
+            return false;
+        }
+    }
+
+    if (m_freeSpaceMethod == FreeSpaceEllipseMethod::FOOTSTEPS_ONLY ||
+            m_freeSpaceMethod == FreeSpaceEllipseMethod::REFERENCE_AND_FOOTSTEPS)
+    {
+        if (!m_unicycleProblem.setFreeSpaceEllipse(freeSpaceEllipse))
+        {
+            return false;
+        }
+    }
+
+    return true;
 }
 
 
