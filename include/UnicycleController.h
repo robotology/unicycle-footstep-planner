@@ -8,6 +8,7 @@
 #ifndef UNICYCLECONTROLLER_H
 #define UNICYCLECONTROLLER_H
 
+#include "FreeSpaceEllipse.h"
 #include <iDynTree/Controller.h>
 #include <iDynTree/TimeRange.h>
 #include <iDynTree/Core/VectorFixSize.h>
@@ -29,6 +30,7 @@ class UnicyleController : public iDynTree::optimalcontrol::Controller{
     std::deque<TrajectoryPoint> m_desiredTrajectory;
     double m_gain, m_maxVelocity, m_maxAngularVelocity, m_time;
     double m_slowWhenTurnGain;
+    FreeSpaceEllipse m_freeSpace;
 
     double saturate(double input, double saturation);
 
@@ -67,6 +69,8 @@ public:
     void clearDesiredTrajectory();
 
     bool clearDesiredTrajectoryUpTo(double time);
+
+    bool setFreeSpaceEllipse(const FreeSpaceEllipse& freeSpaceEllipse);
 };
 
 #endif // UNICYCLECONTROLLER_H

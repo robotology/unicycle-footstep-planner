@@ -240,17 +240,19 @@ bool UnicyclePlanner::addTerminalStep(const iDynTree::Vector2& lastUnicyclePosit
     if (!(stanceFoot->getLastStep(prevStep)))
         return false;
 
-    iDynTree::Vector2 rPl;
+    iDynTree::Vector2 rPl, plannedPosition;
 
     if (!get_rPl(lastUnicyclePosition, lastUnicycleAngle, rPl))
         return false;
+
+    swingFoot->getFootPositionFromUnicycle(lastUnicyclePosition, lastUnicycleAngle, plannedPosition);
 
     double deltaAngle = std::abs(lastUnicycleAngle - prevStep.angle);
     double deltaTime = m_endTime - prevStep.impactTime;
 
     bool isTinyForStance = stanceFoot->isTinyStep(lastUnicyclePosition, lastUnicycleAngle);
     isTinyForStance = isTinyForStance && (deltaAngle < m_minAngle); //two steps will be taken, first by the swing leg and then by the stance leg to make the two feet parallel. Since the constriants on this second step are implicitly satisfied by the geometry of the unicycle, we focus in avoiding that this second step break the "tiny step" cosntraint. The constraints are checked for the first step.
-    bool constraintsSatisfied = m_unicycleProblem.areConstraintsSatisfied(rPl, deltaAngle, deltaTime);
+    bool constraintsSatisfied = m_unicycleProblem.areConstraintsSatisfied(rPl, deltaAngle, deltaTime, plannedPosition);
     bool isTinyForSwing = swingFoot->isTinyStep(lastUnicyclePosition, lastUnicycleAngle);
     isTinyForSwing = isTinyForSwing && (deltaAngle < m_minAngle);
 
@@ -268,7 +270,7 @@ bool UnicyclePlanner::addTerminalStep(const iDynTree::Vector2& lastUnicyclePosit
     } else {
         if (!constraintsSatisfied){
             std::cerr << "Unable to satisfy constraints on the last step. The following constraints are not satisfied:" << std::endl;
-            m_unicycleProblem.printViolatedConstraints(rPl, deltaAngle, deltaTime);
+            m_unicycleProblem.printViolatedConstraints(rPl, deltaAngle, deltaTime, plannedPosition);
         } else {
             iDynTree::Vector2 previousUnicycle;
 
@@ -312,6 +314,7 @@ UnicyclePlanner::UnicyclePlanner()
     ,m_startLeft(true)
     ,m_resetStartingFoot(false)
     ,m_firstStep(false)
+    ,m_freeSpaceMethod(FreeSpaceEllipseMethod::REFERENCE_ONLY)
     ,m_left(nullptr)
     ,m_right(nullptr)
     ,m_swingLeft(true)
@@ -597,8 +600,10 @@ bool UnicyclePlanner::computeNewSteps(std::shared_ptr< FootPrint > leftFoot, std
     double cost, minCost = 1e10; //this big number is actually not necessary since there is a check on tOptim also
     double deltaTime = 0, pauseTime = 0;
     double deltaAngle = 0;
-    iDynTree::Vector2 unicyclePosition, rPl;
+    iDynTree::Vector2 unicyclePosition, rPl, newFootPosition;
     rPl.zero();
+    newFootPosition.zero();
+
     double unicycleAngle;
     std::shared_ptr<UnicycleFoot> stanceFoot, swingFoot;
 
@@ -664,7 +669,7 @@ bool UnicyclePlanner::computeNewSteps(std::shared_ptr< FootPrint > leftFoot, std
 
                             std::cerr << "Unable to satisfy constraints given the specified maxStepTime. In the last evaluation of constraints, the following where not satisfied:" << std::endl;
 
-                            m_unicycleProblem.printViolatedConstraints(rPl, deltaAngle, deltaTime);
+                            m_unicycleProblem.printViolatedConstraints(rPl, deltaAngle, deltaTime, newFootPosition);
 
                             if(!stanceFoot->getUnicyclePositionFromFoot(prevStep.position, prevStep.angle, unicyclePosition)){
                                 std::cerr << "Error while computing the unicycle position." << std::endl;
@@ -721,9 +726,12 @@ bool UnicyclePlanner::computeNewSteps(std::shared_ptr< FootPrint > leftFoot, std
                         return false;
                     }
 
-                    if((deltaTime > 0) && (m_unicycleProblem.areConstraintsSatisfied(rPl, deltaAngle, deltaTime))){ //constraints are satisfied
+                    swingFoot->getFootPositionFromUnicycle(unicyclePosition, unicycleAngle, newFootPosition);
 
-                        if(!m_unicycleProblem.getCostValue(rPl, deltaAngle, deltaTime, cost)){
+
+                    if((deltaTime > 0) && (m_unicycleProblem.areConstraintsSatisfied(rPl, deltaAngle, deltaTime, newFootPosition))){ //constraints are satisfied
+
+                        if(!m_unicycleProblem.getCostValue(rPl, deltaAngle, deltaTime, newFootPosition, cost)){
                             std::cerr << "Error while evaluating the cost function." << std::endl;
                             return false;
                         }
@@ -807,6 +815,40 @@ bool UnicyclePlanner::getPersonPosition(double time, iDynTree::Vector2& personPo
         return false;
     }
     personPosition = m_controller->getPersonPosition(unicyclePosition, unicycleAngle);
+    return true;
+}
+
+void UnicyclePlanner::setFreeSpaceEllipseMethod(FreeSpaceEllipseMethod method)
+{
+    std::lock_guard<std::mutex> guard(m_mutex);
+
+    m_freeSpaceMethod = method;
+    m_controller->setFreeSpaceEllipse(FreeSpaceEllipse()); //Reset the ellipse
+    m_unicycleProblem.setFreeSpaceEllipse(FreeSpaceEllipse()); //Reset the ellipse
+}
+
+bool UnicyclePlanner::setFreeSpaceEllipse(const FreeSpaceEllipse &freeSpaceEllipse)
+{
+    std::lock_guard<std::mutex> guard(m_mutex);
+
+    if (m_freeSpaceMethod == FreeSpaceEllipseMethod::REFERENCE_ONLY ||
+            m_freeSpaceMethod == FreeSpaceEllipseMethod::REFERENCE_AND_FOOTSTEPS)
+    {
+        if (!m_controller->setFreeSpaceEllipse(freeSpaceEllipse))
+        {
+            return false;
+        }
+    }
+
+    if (m_freeSpaceMethod == FreeSpaceEllipseMethod::FOOTSTEPS_ONLY ||
+            m_freeSpaceMethod == FreeSpaceEllipseMethod::REFERENCE_AND_FOOTSTEPS)
+    {
+        if (!m_unicycleProblem.setFreeSpaceEllipse(freeSpaceEllipse))
+        {
+            return false;
+        }
+    }
+
     return true;
 }
 

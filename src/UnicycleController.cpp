@@ -238,6 +238,12 @@ bool UnicyleController::clearDesiredTrajectoryUpTo(double time)
     return true;
 }
 
+bool UnicyleController::setFreeSpaceEllipse(const FreeSpaceEllipse &freeSpaceEllipse)
+{
+    m_freeSpace = freeSpaceEllipse;
+    return true;
+}
+
 bool UnicyleController::getDesiredPoint(double time, iDynTree::Vector2 &yDesired, iDynTree::Vector2 &yDotDesired)
 {
     if (time < 0){
@@ -271,6 +277,8 @@ bool UnicyleController::getDesiredPoint(double time, iDynTree::Vector2 &yDesired
         yDotDesired = pointIterator->yDotDesired;
     } else
         interpolateReferences(time, pointIterator, yDesired, yDotDesired);
+
+    yDesired = m_freeSpace.projectPointInsideEllipse(yDesired);
 
     return true;
 }

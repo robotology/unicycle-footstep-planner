@@ -12,9 +12,17 @@
 #include "UnicycleController.h"
 #include "UnicycleOptimization.h"
 #include "UnicycleFoot.h"
+#include "FreeSpaceEllipse.h"
 #include <iDynTree/Integrators/RK4.h>
 #include <memory>
 #include <mutex>
+
+enum class FreeSpaceEllipseMethod
+{
+    REFERENCE_ONLY,
+    FOOTSTEPS_ONLY,
+    REFERENCE_AND_FOOTSTEPS
+};
 
 class UnicyclePlanner {
     std::shared_ptr<UnicyleController> m_controller;
@@ -23,6 +31,7 @@ class UnicyclePlanner {
     UnicycleOptimization m_unicycleProblem;
     double m_endTime, m_minTime, m_maxTime, m_nominalTime, m_dT, m_minAngle, m_nominalWidth, m_maxLength, m_minLength, m_maxAngle;
     bool m_addTerminalStep, m_startLeft, m_resetStartingFoot, m_firstStep;
+    FreeSpaceEllipseMethod m_freeSpaceMethod;
     std::mutex m_mutex;
 
     std::shared_ptr<UnicycleFoot> m_left, m_right;
@@ -111,6 +120,10 @@ public:
     bool startWithLeft() const;
 
     bool getPersonPosition(double time, iDynTree::Vector2 &personPosition);
+
+    void setFreeSpaceEllipseMethod(FreeSpaceEllipseMethod method);
+
+    bool setFreeSpaceEllipse(const FreeSpaceEllipse& freeSpaceEllipse);
 };
 
 #endif // UNICYCLEPLANNER_H
