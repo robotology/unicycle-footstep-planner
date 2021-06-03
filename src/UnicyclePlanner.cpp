@@ -348,6 +348,13 @@ bool UnicyclePlanner::setSlowWhenTurnGain(double slowWhenTurnGain)
     return m_controller->setSlowWhenTurnGain(slowWhenTurnGain);
 }
 
+bool UnicyclePlanner::setSlowWhenBackwardFactor(double slowWhenBackwardFactor)
+{
+    std::lock_guard<std::mutex> guard(m_mutex);
+
+    return m_controller->setSlowWhenBackwardFactor(slowWhenBackwardFactor);
+}
+
 bool UnicyclePlanner::addDesiredTrajectoryPoint(double initTime, const iDynTree::Vector2 &yDesired)
 {
     std::lock_guard<std::mutex> guard(m_mutex);
