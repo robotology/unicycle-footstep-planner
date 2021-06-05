@@ -43,11 +43,11 @@ class UnicyclePlanner {
 
     bool initializePlanner(double initTime);
 
-    bool get_rPl(const iDynTree::Vector2 &unicyclePosition, double unicycleAngle, iDynTree::Vector2 &rPl); //depending on left and right foot and on swing_left
+    bool get_rPl(const UnicycleState &unicycleState, iDynTree::Vector2 &rPl); //depending on left and right foot and on swing_left
 
-    bool getIntegratorSolution(double time, iDynTree::Vector2& unicyclePosition, double &unicycleAngle) const;
+    bool getIntegratorSolution(double time, UnicycleState &unicycleState) const;
 
-    bool addTerminalStep(const iDynTree::Vector2 &lastUnicyclePosition, double lastUnicycleAngle);
+    bool addTerminalStep(const UnicycleState &lastUnicycleState);
 
 public:
 

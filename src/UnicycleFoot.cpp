@@ -60,7 +60,7 @@ double UnicycleFoot::yawOffsetInRadians() const
     return m_yawOffset;
 }
 
-bool UnicycleFoot::addStepFromUnicycle(const iDynTree::Vector2 &position, double theta, double impactTime)
+bool UnicycleFoot::addStepFromUnicycle(const UnicycleState &unicycleState, double impactTime)
 {
     if(!m_distanceSet){
         std::cerr << "First you have to set the unicycle distance." << std::endl;
@@ -69,11 +69,11 @@ bool UnicycleFoot::addStepFromUnicycle(const iDynTree::Vector2 &position, double
     Step newStep;
 
     newStep.impactTime = impactTime;
-    newStep.angle = theta + m_yawOffset;
+    newStep.angle = unicycleState.angle + m_yawOffset;
 
-    computeRotationMatrix(theta, m_bufferR);
+    computeRotationMatrix(unicycleState.angle, m_bufferR);
 
-    iDynTree::toEigen(newStep.position) = iDynTree::toEigen(position) + iDynTree::toEigen(m_bufferR)*iDynTree::toEigen(m_distance);
+    iDynTree::toEigen(newStep.position) = iDynTree::toEigen(unicycleState.position) + iDynTree::toEigen(m_bufferR)*iDynTree::toEigen(m_distance);
 
     return m_steps_ptr->addStep(newStep);
 }
@@ -121,7 +121,7 @@ bool UnicycleFoot::setTinyStepLength(double length)
     return true;
 }
 
-bool UnicycleFoot::isTinyStep(const iDynTree::Vector2 &unicyclePosition, double unicycleAngle)
+bool UnicycleFoot::isTinyStep(const UnicycleState &unicycleState)
 {
     Step previousStep;
     if (!m_steps_ptr->getLastStep(previousStep))
@@ -129,9 +129,9 @@ bool UnicycleFoot::isTinyStep(const iDynTree::Vector2 &unicyclePosition, double 
 
     iDynTree::Vector2& previousPosition = previousStep.position;
 
-    computeRotationMatrix(unicycleAngle, m_bufferR);
+    computeRotationMatrix(unicycleState.angle, m_bufferR);
     iDynTree::Vector2 newPosition;
-    iDynTree::toEigen(newPosition) = iDynTree::toEigen(unicyclePosition) + iDynTree::toEigen(m_bufferR)*iDynTree::toEigen(m_distance);
+    iDynTree::toEigen(newPosition) = iDynTree::toEigen(unicycleState.position) + iDynTree::toEigen(m_bufferR)*iDynTree::toEigen(m_distance);
 
     double stepLength = std::sqrt(std::pow((newPosition(0) - previousPosition(0)), 2) + std::pow((newPosition(1) - previousPosition(1)), 2));
 
@@ -144,17 +144,16 @@ size_t UnicycleFoot::numberOfSteps() const
 }
 
 bool UnicycleFoot::getUnicycleStateFromStep(const Step& inputStep,
-                                            iDynTree::Vector2 &unicyclePosition,
-                                            double &unicycleAngle)
+                                            UnicycleState &unicycleState)
 {
     if(!m_distanceSet){
         std::cerr << "First you have to set the unicycle distance." << std::endl;
         return false;
     }
-    unicycleAngle = getUnicycleAngleFromStep(inputStep);
-    computeRotationMatrix(unicycleAngle, m_bufferR);
+    unicycleState.angle = getUnicycleAngleFromStep(inputStep);
+    computeRotationMatrix(unicycleState.angle, m_bufferR);
 
-    iDynTree::toEigen(unicyclePosition) =
+    iDynTree::toEigen(unicycleState.position) =
             iDynTree::toEigen(inputStep.position) - iDynTree::toEigen(m_bufferR)*iDynTree::toEigen(m_distance);
 
     return true;
@@ -165,17 +164,17 @@ double UnicycleFoot::getUnicycleAngleFromStep(const Step &inputStep) const
     return inputStep.angle - m_yawOffset;
 }
 
-bool UnicycleFoot::getFootPositionFromUnicycle(const iDynTree::Vector2 &unicyclePosition, double theta, iDynTree::Vector2 &footPosition)
+bool UnicycleFoot::getFootPositionFromUnicycle(const UnicycleState &unicycleState, iDynTree::Vector2 &footPosition)
 {
     if(!m_distanceSet){
         std::cerr << "First you have to set the unicycle distance." << std::endl;
         return false;
     }
 
-    computeRotationMatrix(theta, m_bufferR);
+    computeRotationMatrix(unicycleState.angle, m_bufferR);
 
     iDynTree::toEigen(footPosition) =
-            iDynTree::toEigen(unicyclePosition) + iDynTree::toEigen(m_bufferR)*iDynTree::toEigen(m_distance);
+            iDynTree::toEigen(unicycleState.position) + iDynTree::toEigen(m_bufferR)*iDynTree::toEigen(m_distance);
 
     return true;
 }
