@@ -20,6 +20,7 @@ class UnicycleFoot {
     iDynTree::Vector2 m_distance;
     bool m_distanceSet;
     double m_minimumStep;
+    double m_yawOffset;
     iDynTree::MatrixDynSize m_bufferR;
 
     bool computeRotationMatrix(double theta, iDynTree::MatrixDynSize& R);
@@ -31,6 +32,10 @@ public:
     bool setDistanceFromUnicycle(const iDynTree::Vector2& nominalDistance);
 
     const iDynTree::Vector2& distanceFromUnicycle() const;
+
+    bool setYawOffsetInRadians(double yawOffsetInRadians);
+
+    double yawOffsetInRadians() const;
 
     bool addStepFromUnicycle(const iDynTree::Vector2& position, double theta, double impactTime);
 
@@ -44,7 +49,9 @@ public:
 
     size_t numberOfSteps() const;
 
-    bool getUnicyclePositionFromFoot(const iDynTree::Vector2& footPosition, double theta, iDynTree::Vector2 &unicyclePosition);
+    bool getUnicycleStateFromStep(const Step &inputStep, iDynTree::Vector2 &unicyclePosition, double &unicycleAngle);
+
+    double getUnicycleAngleFromStep(const Step &inputStep) const;
 
     bool getFootPositionFromUnicycle(const iDynTree::Vector2& unicyclePosition, double theta, iDynTree::Vector2 &footPosition);
 

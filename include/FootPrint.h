@@ -12,12 +12,12 @@
 #include <memory>
 #include "iDynTree/Core/VectorFixSize.h"
 
-typedef struct{
+struct Step{
     iDynTree::Vector2 position;
     double angle;
     double impactTime;
     std::string footName{"footprint"};
-}Step;
+};
 
 typedef std::deque<Step> StepList;
 

@@ -42,10 +42,9 @@ bool UnicyclePlanner::getInitialStateFromFeet(double initTime)
             if (!(m_right->getLastStep(lastFoot)))
                 return false;
 
-            if (!(m_right->getUnicyclePositionFromFoot(lastFoot.position, lastFoot.angle, initialUnicycle)))
+            if (!(m_right->getUnicycleStateFromStep(lastFoot, initialUnicycle, initialAngle)))
                 return false;
 
-            initialAngle = lastFoot.angle;
             initTimeFromFeet = lastFoot.impactTime;
             m_swingLeft = true;
             m_firstStep = false;
@@ -56,10 +55,9 @@ bool UnicyclePlanner::getInitialStateFromFeet(double initTime)
             if (!(m_left->getLastStep(lastFoot)))
                 return false;
 
-            if (!(m_left->getUnicyclePositionFromFoot(lastFoot.position, lastFoot.angle, initialUnicycle)))
+            if (!(m_left->getUnicycleStateFromStep(lastFoot, initialUnicycle, initialAngle)))
                 return false;
 
-            initialAngle = lastFoot.angle;
             initTimeFromFeet = lastFoot.impactTime;
             m_swingLeft = false;
             m_firstStep = false;
@@ -72,33 +70,29 @@ bool UnicyclePlanner::getInitialStateFromFeet(double initTime)
 
             if(lastFootL.impactTime == lastFootR.impactTime){
                 if (m_startLeft){
-                    if (!(m_right->getUnicyclePositionFromFoot(lastFootR.position, lastFootR.angle, initialUnicycle)))
+                    if (!(m_right->getUnicycleStateFromStep(lastFootR, initialUnicycle, initialAngle)))
                         return false;
 
-                    initialAngle = lastFootR.angle;
                     m_swingLeft = true;
                 } else {
-                    if (!(m_left->getUnicyclePositionFromFoot(lastFootL.position, lastFootL.angle, initialUnicycle)))
+                    if (!(m_left->getUnicycleStateFromStep(lastFootL, initialUnicycle, initialAngle)))
                         return false;
 
-                    initialAngle = lastFootL.angle;
                     m_swingLeft = false;
                 }
                 initTimeFromFeet = lastFootL.impactTime;
                 m_firstStep = true;
             } else if (lastFootL.impactTime < lastFootR.impactTime) {
-                if (!(m_right->getUnicyclePositionFromFoot(lastFootR.position, lastFootR.angle, initialUnicycle)))
+                if (!(m_right->getUnicycleStateFromStep(lastFootR, initialUnicycle, initialAngle)))
                     return false;
 
-                initialAngle = lastFootR.angle;
                 m_swingLeft = true;
                 m_firstStep = false;
                 initTimeFromFeet = lastFootR.impactTime;
             } else {
-                if (!(m_left->getUnicyclePositionFromFoot(lastFootL.position, lastFootL.angle, initialUnicycle)))
+                if (!(m_left->getUnicycleStateFromStep(lastFootL, initialUnicycle, initialAngle)))
                     return false;
 
-                initialAngle = lastFootL.angle;
                 m_swingLeft = false;
                 m_firstStep = false;
                 initTimeFromFeet = lastFootL.impactTime;
@@ -274,10 +268,10 @@ bool UnicyclePlanner::addTerminalStep(const iDynTree::Vector2& lastUnicyclePosit
         } else {
             iDynTree::Vector2 previousUnicycle;
 
-            if(!stanceFoot->getUnicyclePositionFromFoot(prevStep.position, prevStep.angle, previousUnicycle)){
+            double previousUnicycleAngle;
+            if(!stanceFoot->getUnicycleStateFromStep(prevStep, previousUnicycle, previousUnicycleAngle)){
                 return false;
             }
-            double previousUnicycleAngle = prevStep.angle;
             isTinyForSwing = swingFoot->isTinyStep(previousUnicycle, previousUnicycleAngle);
 
             if (!isTinyForSwing){
@@ -678,12 +672,12 @@ bool UnicyclePlanner::computeNewSteps(std::shared_ptr< FootPrint > leftFoot, std
 
                             m_unicycleProblem.printViolatedConstraints(rPl, deltaAngle, deltaTime, newFootPosition);
 
-                            if(!stanceFoot->getUnicyclePositionFromFoot(prevStep.position, prevStep.angle, unicyclePosition)){
+                            if(!stanceFoot->getUnicycleStateFromStep(prevStep, unicyclePosition, unicycleAngle)){
                                 std::cerr << "Error while computing the unicycle position." << std::endl;
                                 return false;
                             }
 
-                            bool isTiny = swingFoot->isTinyStep(unicyclePosition, prevStep.angle);
+                            bool isTiny = swingFoot->isTinyStep(unicyclePosition, unicycleAngle);
                             //bool isTiny = false;
 
                             if(!isTiny){
