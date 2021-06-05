@@ -32,6 +32,7 @@ class UnicyclePlanner {
     double m_endTime, m_minTime, m_maxTime, m_nominalTime, m_dT, m_minAngle, m_nominalWidth, m_maxLength, m_minLength, m_maxAngle;
     bool m_addTerminalStep, m_startLeft, m_resetStartingFoot, m_firstStep;
     FreeSpaceEllipseMethod m_freeSpaceMethod;
+    double m_leftYawOffset, m_rightYawOffset;
     std::mutex m_mutex;
 
     std::shared_ptr<UnicycleFoot> m_left, m_right;
@@ -111,6 +112,10 @@ public:
     }
 
     void resetStartingFootIfStill(bool resetStartingFoot);
+
+    void setLeftFootYawOffsetInRadians(double leftYawOffsetInRadians);
+
+    void setRightFootYawOffsetInRadians(double rightYawOffsetInRadians);
 
     [[deprecated("the setEndTime method has been deprecated. Use the computeNewSteps method which sets also the endTime.")]]
     bool computeNewSteps(std::shared_ptr<FootPrint> leftFoot, std::shared_ptr<FootPrint> rightFoot, double initTime) {

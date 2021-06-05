@@ -143,6 +143,12 @@ bool UnicyclePlanner::initializePlanner(double initTime)
     widths(1) = -m_nominalWidth/2;
     m_right->setDistanceFromUnicycle(widths);
 
+    if (!m_left->setYawOffsetInRadians(m_leftYawOffset))
+        return false;
+
+    if (!m_right->setYawOffsetInRadians(m_rightYawOffset))
+        return false;
+
     if (!(m_left->setTinyStepLength(m_minLength)))
         return false;
     if (!(m_right->setTinyStepLength(m_minLength)))
@@ -310,6 +316,8 @@ UnicyclePlanner::UnicyclePlanner()
     ,m_resetStartingFoot(false)
     ,m_firstStep(false)
     ,m_freeSpaceMethod(FreeSpaceEllipseMethod::REFERENCE_ONLY)
+    ,m_leftYawOffset(0.0)
+    ,m_rightYawOffset(0.0)
     ,m_left(nullptr)
     ,m_right(nullptr)
     ,m_swingLeft(true)
@@ -563,6 +571,20 @@ void UnicyclePlanner::resetStartingFootIfStill(bool resetStartingFoot)
     std::lock_guard<std::mutex> guard(m_mutex);
 
     m_resetStartingFoot = resetStartingFoot;
+}
+
+void UnicyclePlanner::setLeftFootYawOffsetInRadians(double leftYawOffsetInRadians)
+{
+    std::lock_guard<std::mutex> guard(m_mutex);
+
+    m_leftYawOffset = leftYawOffsetInRadians;
+}
+
+void UnicyclePlanner::setRightFootYawOffsetInRadians(double rightYawOffsetInRadians)
+{
+    std::lock_guard<std::mutex> guard(m_mutex);
+
+    m_rightYawOffset = rightYawOffsetInRadians;
 }
 
 bool UnicyclePlanner::computeNewSteps(std::shared_ptr< FootPrint > leftFoot, std::shared_ptr< FootPrint > rightFoot, double initTime, double endTime)
