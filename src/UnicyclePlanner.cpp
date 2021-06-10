@@ -14,23 +14,24 @@
 bool UnicyclePlanner::getInitialStateFromFeet(double initTime)
 {
 
-    iDynTree::Vector2 initialUnicycle, dummyVector;
-    initialUnicycle.zero();
+    UnicycleState unicycleState;
+    iDynTree::Vector2 dummyVector;
     dummyVector.zero();
-    double initialAngle = 0;
+    unicycleState.position.zero();
+    unicycleState.angle = 0;
     double initTimeFromFeet;
 
     if ((m_left->numberOfSteps() == 0) && (m_right->numberOfSteps() == 0)){
 
-        if (!m_controller->getDesiredPoint(initTime, initialUnicycle, dummyVector))
+        if (!m_controller->getDesiredPoint(initTime, unicycleState.position, dummyVector))
             return false;
 
-        initialUnicycle(0) = initialUnicycle(0) - m_controller->getPersonDistance()(0);
-        initialUnicycle(1) = initialUnicycle(1) - m_controller->getPersonDistance()(1);
-        initialAngle = 0;
+        unicycleState.position(0) = unicycleState.position(0) - m_controller->getPersonDistance()(0);
+        unicycleState.position(1) = unicycleState.position(1) - m_controller->getPersonDistance()(1);
+        unicycleState.angle = 0;
 
-        m_left->addStepFromUnicycle(initialUnicycle, initialAngle, initTime);
-        m_right->addStepFromUnicycle(initialUnicycle, initialAngle, initTime);
+        m_left->addStepFromUnicycle(unicycleState, initTime);
+        m_right->addStepFromUnicycle(unicycleState, initTime);
 
         m_firstStep = true;
         m_swingLeft = m_startLeft;
@@ -42,10 +43,9 @@ bool UnicyclePlanner::getInitialStateFromFeet(double initTime)
             if (!(m_right->getLastStep(lastFoot)))
                 return false;
 
-            if (!(m_right->getUnicyclePositionFromFoot(lastFoot.position, lastFoot.angle, initialUnicycle)))
+            if (!(m_right->getUnicycleStateFromStep(lastFoot, unicycleState)))
                 return false;
 
-            initialAngle = lastFoot.angle;
             initTimeFromFeet = lastFoot.impactTime;
             m_swingLeft = true;
             m_firstStep = false;
@@ -56,10 +56,9 @@ bool UnicyclePlanner::getInitialStateFromFeet(double initTime)
             if (!(m_left->getLastStep(lastFoot)))
                 return false;
 
-            if (!(m_left->getUnicyclePositionFromFoot(lastFoot.position, lastFoot.angle, initialUnicycle)))
+            if (!(m_left->getUnicycleStateFromStep(lastFoot, unicycleState)))
                 return false;
 
-            initialAngle = lastFoot.angle;
             initTimeFromFeet = lastFoot.impactTime;
             m_swingLeft = false;
             m_firstStep = false;
@@ -72,33 +71,29 @@ bool UnicyclePlanner::getInitialStateFromFeet(double initTime)
 
             if(lastFootL.impactTime == lastFootR.impactTime){
                 if (m_startLeft){
-                    if (!(m_right->getUnicyclePositionFromFoot(lastFootR.position, lastFootR.angle, initialUnicycle)))
+                    if (!(m_right->getUnicycleStateFromStep(lastFootR, unicycleState)))
                         return false;
 
-                    initialAngle = lastFootR.angle;
                     m_swingLeft = true;
                 } else {
-                    if (!(m_left->getUnicyclePositionFromFoot(lastFootL.position, lastFootL.angle, initialUnicycle)))
+                    if (!(m_left->getUnicycleStateFromStep(lastFootL, unicycleState)))
                         return false;
 
-                    initialAngle = lastFootL.angle;
                     m_swingLeft = false;
                 }
                 initTimeFromFeet = lastFootL.impactTime;
                 m_firstStep = true;
             } else if (lastFootL.impactTime < lastFootR.impactTime) {
-                if (!(m_right->getUnicyclePositionFromFoot(lastFootR.position, lastFootR.angle, initialUnicycle)))
+                if (!(m_right->getUnicycleStateFromStep(lastFootR, unicycleState)))
                     return false;
 
-                initialAngle = lastFootR.angle;
                 m_swingLeft = true;
                 m_firstStep = false;
                 initTimeFromFeet = lastFootR.impactTime;
             } else {
-                if (!(m_left->getUnicyclePositionFromFoot(lastFootL.position, lastFootL.angle, initialUnicycle)))
+                if (!(m_left->getUnicycleStateFromStep(lastFootL, unicycleState)))
                     return false;
 
-                initialAngle = lastFootL.angle;
                 m_swingLeft = false;
                 m_firstStep = false;
                 initTimeFromFeet = lastFootL.impactTime;
@@ -111,7 +106,7 @@ bool UnicyclePlanner::getInitialStateFromFeet(double initTime)
 
         TrajectoryPoint initialPoint;
         initialPoint.initTime = initTime;
-        initialPoint.yDesired = m_controller->getPersonPosition(initialUnicycle, initialAngle);
+        initialPoint.yDesired = m_controller->getPersonPosition(unicycleState.position, unicycleState.angle);
         dummyVector.zero();
         initialPoint.yDotDesired = dummyVector;
 
@@ -130,7 +125,7 @@ bool UnicyclePlanner::getInitialStateFromFeet(double initTime)
         }
     }
 
-    if(!(m_unicycle->setInitialState(initialUnicycle, initialAngle))){
+    if(!(m_unicycle->setInitialState(unicycleState.position, unicycleState.angle))){
         std::cerr << "Error while setting the initial state for the integrator." << std::endl;
         return false;
     }
@@ -147,6 +142,12 @@ bool UnicyclePlanner::initializePlanner(double initTime)
     m_left->setDistanceFromUnicycle(widths);
     widths(1) = -m_nominalWidth/2;
     m_right->setDistanceFromUnicycle(widths);
+
+    if (!m_left->setYawOffsetInRadians(m_leftYawOffset))
+        return false;
+
+    if (!m_right->setYawOffsetInRadians(m_rightYawOffset))
+        return false;
 
     if (!(m_left->setTinyStepLength(m_minLength)))
         return false;
@@ -174,7 +175,7 @@ bool UnicyclePlanner::initializePlanner(double initTime)
 
 }
 
-bool UnicyclePlanner::get_rPl(const iDynTree::Vector2& unicyclePosition, double unicycleAngle, iDynTree::Vector2& rPl)
+bool UnicyclePlanner::get_rPl(const UnicycleState &unicycleState, iDynTree::Vector2& rPl)
 {
     static iDynTree::MatrixDynSize rTranspose(2,2);
     iDynTree::Vector2 newPosition;
@@ -183,7 +184,7 @@ bool UnicyclePlanner::get_rPl(const iDynTree::Vector2& unicyclePosition, double 
     if (m_swingLeft){
         if (!(m_right->getLastStep(prevStep)))
             return false;
-        if(!(m_left->getFootPositionFromUnicycle(unicyclePosition, unicycleAngle, newPosition)))
+        if(!(m_left->getFootPositionFromUnicycle(unicycleState, newPosition)))
             return false;
 
         double c_theta = std::cos(prevStep.angle);
@@ -199,11 +200,11 @@ bool UnicyclePlanner::get_rPl(const iDynTree::Vector2& unicyclePosition, double 
     } else {
         if (!(m_left->getLastStep(prevStep)))
             return false;
-        if(!(m_right->getFootPositionFromUnicycle(unicyclePosition, unicycleAngle, newPosition)))
+        if(!(m_right->getFootPositionFromUnicycle(unicycleState, newPosition)))
             return false;
 
-        double c_theta = std::cos(unicycleAngle);
-        double s_theta = std::sin(unicycleAngle);
+        double c_theta = std::cos(unicycleState.angle);
+        double s_theta = std::sin(unicycleState.angle);
 
         rTranspose(0,0) = c_theta;
         rTranspose(1,0) = -s_theta;
@@ -216,20 +217,20 @@ bool UnicyclePlanner::get_rPl(const iDynTree::Vector2& unicyclePosition, double 
     return true;
 }
 
-bool UnicyclePlanner::getIntegratorSolution(double time, iDynTree::Vector2 &unicyclePosition, double& unicycleAngle) const
+bool UnicyclePlanner::getIntegratorSolution(double time, UnicycleState &unicycleState) const
 {
     static iDynTree::VectorDynSize stateBuffer(3);
     if(!m_integrator.getSolution(time,stateBuffer)){
         std::cerr << "Error while retrieving the integrator solution." << std::endl;
         return false;
     }
-    unicyclePosition(0) = stateBuffer(0);
-    unicyclePosition(1) = stateBuffer(1);
-    unicycleAngle = stateBuffer(2);
+    unicycleState.position(0) = stateBuffer(0);
+    unicycleState.position(1) = stateBuffer(1);
+    unicycleState.angle = stateBuffer(2);
     return true;
 }
 
-bool UnicyclePlanner::addTerminalStep(const iDynTree::Vector2& lastUnicyclePosition, double lastUnicycleAngle)
+bool UnicyclePlanner::addTerminalStep(const UnicycleState &lastUnicycleState)
 {
     std::shared_ptr<UnicycleFoot> stanceFoot, swingFoot;
 
@@ -242,28 +243,28 @@ bool UnicyclePlanner::addTerminalStep(const iDynTree::Vector2& lastUnicyclePosit
 
     iDynTree::Vector2 rPl, plannedPosition;
 
-    if (!get_rPl(lastUnicyclePosition, lastUnicycleAngle, rPl))
+    if (!get_rPl(lastUnicycleState, rPl))
         return false;
 
-    swingFoot->getFootPositionFromUnicycle(lastUnicyclePosition, lastUnicycleAngle, plannedPosition);
+    swingFoot->getFootPositionFromUnicycle(lastUnicycleState, plannedPosition);
 
-    double deltaAngle = std::abs(lastUnicycleAngle - prevStep.angle);
+    double deltaAngle = std::abs(lastUnicycleState.angle - prevStep.angle);
     double deltaTime = m_endTime - prevStep.impactTime;
 
-    bool isTinyForStance = stanceFoot->isTinyStep(lastUnicyclePosition, lastUnicycleAngle);
+    bool isTinyForStance = stanceFoot->isTinyStep(lastUnicycleState);
     isTinyForStance = isTinyForStance && (deltaAngle < m_minAngle); //two steps will be taken, first by the swing leg and then by the stance leg to make the two feet parallel. Since the constriants on this second step are implicitly satisfied by the geometry of the unicycle, we focus in avoiding that this second step break the "tiny step" cosntraint. The constraints are checked for the first step.
     bool constraintsSatisfied = m_unicycleProblem.areConstraintsSatisfied(rPl, deltaAngle, deltaTime, plannedPosition);
-    bool isTinyForSwing = swingFoot->isTinyStep(lastUnicyclePosition, lastUnicycleAngle);
+    bool isTinyForSwing = swingFoot->isTinyStep(lastUnicycleState);
     isTinyForSwing = isTinyForSwing && (deltaAngle < m_minAngle);
 
 
     if (constraintsSatisfied && !isTinyForStance && !isTinyForSwing){
-        if(!(swingFoot->addStepFromUnicycle(lastUnicyclePosition, lastUnicycleAngle, m_endTime + m_nominalTime))){
+        if(!(swingFoot->addStepFromUnicycle(lastUnicycleState, m_endTime + m_nominalTime))){
             std::cerr << "Error while adding terminal step." << std::endl;
             return false;
         }
 
-        if(!(stanceFoot->addStepFromUnicycle(lastUnicyclePosition, lastUnicycleAngle, m_endTime + 2*m_nominalTime))){
+        if(!(stanceFoot->addStepFromUnicycle(lastUnicycleState, m_endTime + 2*m_nominalTime))){
             std::cerr << "Error while adding terminal step." << std::endl;
             return false;
         }
@@ -272,13 +273,13 @@ bool UnicyclePlanner::addTerminalStep(const iDynTree::Vector2& lastUnicyclePosit
             std::cerr << "Unable to satisfy constraints on the last step. The following constraints are not satisfied:" << std::endl;
             m_unicycleProblem.printViolatedConstraints(rPl, deltaAngle, deltaTime, plannedPosition);
         } else {
-            iDynTree::Vector2 previousUnicycle;
 
-            if(!stanceFoot->getUnicyclePositionFromFoot(prevStep.position, prevStep.angle, previousUnicycle)){
+            UnicycleState previousUnicycleState;
+
+            if(!stanceFoot->getUnicycleStateFromStep(prevStep, previousUnicycleState)){
                 return false;
             }
-            double previousUnicycleAngle = prevStep.angle;
-            isTinyForSwing = swingFoot->isTinyStep(previousUnicycle, previousUnicycleAngle);
+            isTinyForSwing = swingFoot->isTinyStep(previousUnicycleState);
 
             if (!isTinyForSwing){
                 //std::cerr <<"Avoiding tiny step as last step. Setting feet parallel." << std::endl;
@@ -315,6 +316,8 @@ UnicyclePlanner::UnicyclePlanner()
     ,m_resetStartingFoot(false)
     ,m_firstStep(false)
     ,m_freeSpaceMethod(FreeSpaceEllipseMethod::REFERENCE_ONLY)
+    ,m_leftYawOffset(0.0)
+    ,m_rightYawOffset(0.0)
     ,m_left(nullptr)
     ,m_right(nullptr)
     ,m_swingLeft(true)
@@ -346,6 +349,13 @@ bool UnicyclePlanner::setSlowWhenTurnGain(double slowWhenTurnGain)
     std::lock_guard<std::mutex> guard(m_mutex);
 
     return m_controller->setSlowWhenTurnGain(slowWhenTurnGain);
+}
+
+bool UnicyclePlanner::setSlowWhenBackwardFactor(double slowWhenBackwardFactor)
+{
+    std::lock_guard<std::mutex> guard(m_mutex);
+
+    return m_controller->setSlowWhenBackwardFactor(slowWhenBackwardFactor);
 }
 
 bool UnicyclePlanner::addDesiredTrajectoryPoint(double initTime, const iDynTree::Vector2 &yDesired)
@@ -563,6 +573,20 @@ void UnicyclePlanner::resetStartingFootIfStill(bool resetStartingFoot)
     m_resetStartingFoot = resetStartingFoot;
 }
 
+void UnicyclePlanner::setLeftFootYawOffsetInRadians(double leftYawOffsetInRadians)
+{
+    std::lock_guard<std::mutex> guard(m_mutex);
+
+    m_leftYawOffset = leftYawOffsetInRadians;
+}
+
+void UnicyclePlanner::setRightFootYawOffsetInRadians(double rightYawOffsetInRadians)
+{
+    std::lock_guard<std::mutex> guard(m_mutex);
+
+    m_rightYawOffset = rightYawOffsetInRadians;
+}
+
 bool UnicyclePlanner::computeNewSteps(std::shared_ptr< FootPrint > leftFoot, std::shared_ptr< FootPrint > rightFoot, double initTime, double endTime)
 {
     std::lock_guard<std::mutex> guard(m_mutex);
@@ -600,11 +624,11 @@ bool UnicyclePlanner::computeNewSteps(std::shared_ptr< FootPrint > leftFoot, std
     double cost, minCost = 1e10; //this big number is actually not necessary since there is a check on tOptim also
     double deltaTime = 0, pauseTime = 0;
     double deltaAngle = 0;
-    iDynTree::Vector2 unicyclePosition, rPl, newFootPosition;
+    iDynTree::Vector2 rPl, newFootPosition;
     rPl.zero();
     newFootPosition.zero();
 
-    double unicycleAngle;
+    UnicycleState unicycleState;
     std::shared_ptr<UnicycleFoot> stanceFoot, swingFoot;
 
     size_t numberOfStepsLeft = leftFoot->numberOfSteps();
@@ -634,24 +658,24 @@ bool UnicyclePlanner::computeNewSteps(std::shared_ptr< FootPrint > leftFoot, std
     while (t <= m_endTime){
         deltaTime = t - prevStep.impactTime;
 
-        if(!getIntegratorSolution(t, unicyclePosition, unicycleAngle)){
+        if(!getIntegratorSolution(t, unicycleState)){
             return false;
         }
 
-        deltaAngle = std::abs(prevStep.angle - unicycleAngle);
+        deltaAngle = std::abs(prevStep.angle - unicycleState.angle);
 
         if ((deltaTime >= m_minTime) && (t > (initTime + timeOffset))){ //The step is not too fast
-            if (avoidPause || (!(swingFoot->isTinyStep(unicyclePosition, unicycleAngle)) || (deltaAngle > m_minAngle))){ //the step is not tiny
+            if (avoidPause || (!(swingFoot->isTinyStep(unicycleState)) || (deltaAngle > m_minAngle))){ //the step is not tiny
                 pauseActivated = false;
                 deltaTime -= pauseTime;
                 if ((deltaTime > m_maxTime) || (t == m_endTime)){ //the step is not too slow
                     if (tOptim > 0){  //a feasible point has been found
 
-                        if(!getIntegratorSolution(tOptim, unicyclePosition, unicycleAngle)){
+                        if(!getIntegratorSolution(tOptim, unicycleState)){
                             return false;
                         }
 
-                        if(!swingFoot->addStepFromUnicycle(unicyclePosition, unicycleAngle, tOptim)){
+                        if(!swingFoot->addStepFromUnicycle(unicycleState, tOptim)){
                             std::cerr << "Error while inserting new step." << std::endl;
                             return false;
                         }
@@ -671,12 +695,12 @@ bool UnicyclePlanner::computeNewSteps(std::shared_ptr< FootPrint > leftFoot, std
 
                             m_unicycleProblem.printViolatedConstraints(rPl, deltaAngle, deltaTime, newFootPosition);
 
-                            if(!stanceFoot->getUnicyclePositionFromFoot(prevStep.position, prevStep.angle, unicyclePosition)){
+                            if(!stanceFoot->getUnicycleStateFromStep(prevStep, unicycleState)){
                                 std::cerr << "Error while computing the unicycle position." << std::endl;
                                 return false;
                             }
 
-                            bool isTiny = swingFoot->isTinyStep(unicyclePosition, prevStep.angle);
+                            bool isTiny = swingFoot->isTinyStep(unicycleState);
                             //bool isTiny = false;
 
                             if(!isTiny){
@@ -721,12 +745,12 @@ bool UnicyclePlanner::computeNewSteps(std::shared_ptr< FootPrint > leftFoot, std
 
                 } else { //if ((deltaTime > m_maxTime) || (t == m_endTime)) //here I need to find the best solution
 
-                    if(!get_rPl(unicyclePosition, unicycleAngle, rPl)){
+                    if(!get_rPl(unicycleState, rPl)){
                         std::cerr << "Error while retrieving the relative position" << std::endl;
                         return false;
                     }
 
-                    swingFoot->getFootPositionFromUnicycle(unicyclePosition, unicycleAngle, newFootPosition);
+                    swingFoot->getFootPositionFromUnicycle(unicycleState, newFootPosition);
 
 
                     if((deltaTime > 0) && (m_unicycleProblem.areConstraintsSatisfied(rPl, deltaAngle, deltaTime, newFootPosition))){ //constraints are satisfied
@@ -757,11 +781,11 @@ bool UnicyclePlanner::computeNewSteps(std::shared_ptr< FootPrint > leftFoot, std
 
     if (m_addTerminalStep){
 
-        if(!getIntegratorSolution(m_endTime, unicyclePosition, unicycleAngle)){
+        if(!getIntegratorSolution(m_endTime, unicycleState)){
             return false;
         }
 
-        if(!addTerminalStep(unicyclePosition, unicycleAngle)){
+        if(!addTerminalStep(unicycleState)){
             std::cerr << "Error while adding the terminal step." << std::endl;
             return false;
         }
@@ -807,14 +831,13 @@ bool UnicyclePlanner::getPersonPosition(double time, iDynTree::Vector2& personPo
 {
     std::lock_guard<std::mutex> guard(m_mutex);
 
-    double unicycleAngle;
-    iDynTree::Vector2 unicyclePosition;
+    UnicycleState unicycleState;
 
-    if(!getIntegratorSolution(time, unicyclePosition, unicycleAngle)){
+    if(!getIntegratorSolution(time, unicycleState)){
         std::cerr << "Time is out of range." << std::endl;
         return false;
     }
-    personPosition = m_controller->getPersonPosition(unicyclePosition, unicycleAngle);
+    personPosition = m_controller->getPersonPosition(unicycleState.position, unicycleState.angle);
     return true;
 }
 

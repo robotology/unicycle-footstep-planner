@@ -32,6 +32,7 @@ class UnicyclePlanner {
     double m_endTime, m_minTime, m_maxTime, m_nominalTime, m_dT, m_minAngle, m_nominalWidth, m_maxLength, m_minLength, m_maxAngle;
     bool m_addTerminalStep, m_startLeft, m_resetStartingFoot, m_firstStep;
     FreeSpaceEllipseMethod m_freeSpaceMethod;
+    double m_leftYawOffset, m_rightYawOffset;
     std::mutex m_mutex;
 
     std::shared_ptr<UnicycleFoot> m_left, m_right;
@@ -43,11 +44,11 @@ class UnicyclePlanner {
 
     bool initializePlanner(double initTime);
 
-    bool get_rPl(const iDynTree::Vector2 &unicyclePosition, double unicycleAngle, iDynTree::Vector2 &rPl); //depending on left and right foot and on swing_left
+    bool get_rPl(const UnicycleState &unicycleState, iDynTree::Vector2 &rPl); //depending on left and right foot and on swing_left
 
-    bool getIntegratorSolution(double time, iDynTree::Vector2& unicyclePosition, double &unicycleAngle) const;
+    bool getIntegratorSolution(double time, UnicycleState &unicycleState) const;
 
-    bool addTerminalStep(const iDynTree::Vector2 &lastUnicyclePosition, double lastUnicycleAngle);
+    bool addTerminalStep(const UnicycleState &lastUnicycleState);
 
 public:
 
@@ -59,6 +60,8 @@ public:
     bool setControllerGain(double controllerGain); //optional
 
     bool setSlowWhenTurnGain(double slowWhenTurnGain); //if >0 the unicycle progress more slowly when also turning.
+
+    bool setSlowWhenBackwardFactor(double slowWhenBackwardFactor); //if >0 the unicycle progress more slowly when going backward. It is a multiplicative gain
 
     bool addDesiredTrajectoryPoint(double initTime, const iDynTree::Vector2& yDesired, const iDynTree::Vector2& yDotDesired); //If two points have the same initTime it is an undefined behavior. It keeps the desired values constant from initTime to the initTime of the next desired point (they are automatically ordered)
 
@@ -109,6 +112,10 @@ public:
     }
 
     void resetStartingFootIfStill(bool resetStartingFoot);
+
+    void setLeftFootYawOffsetInRadians(double leftYawOffsetInRadians);
+
+    void setRightFootYawOffsetInRadians(double rightYawOffsetInRadians);
 
     [[deprecated("the setEndTime method has been deprecated. Use the computeNewSteps method which sets also the endTime.")]]
     bool computeNewSteps(std::shared_ptr<FootPrint> leftFoot, std::shared_ptr<FootPrint> rightFoot, double initTime) {

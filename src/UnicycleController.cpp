@@ -14,13 +14,18 @@
 
 double UnicyleController::saturate(double input, double saturation)
 {
-    if (saturation < 0)
+    return saturate(input, saturation, -saturation);
+}
+
+double UnicyleController::saturate(double input, double positiveSaturation, double negativeSaturation)
+{
+    if ((positiveSaturation < 0) || (negativeSaturation > positiveSaturation))
         return input;
 
-    if (input > saturation)
-        return saturation;
-    else if (input < (-saturation))
-        return -saturation;
+    if (input > positiveSaturation)
+        return positiveSaturation;
+    else if (input < negativeSaturation)
+        return negativeSaturation;
     else return input;
 }
 
@@ -44,6 +49,7 @@ UnicyleController::UnicyleController()
     ,m_maxAngularVelocity(-1) //negative value -> don't saturate
     ,m_time(0)
     ,m_slowWhenTurnGain(0.0)
+    ,m_slowWhenBackwardFactor(1.0)
 {
     m_personDistance(0) = 0.2;
     m_personDistance(1) = 0.0;
@@ -92,7 +98,7 @@ bool UnicyleController::doControl(iDynTree::VectorDynSize &controllerOutput)
 
     controllerOutput(1) = saturate(controllerOutput(1), m_maxAngularVelocity);
     double velocitySaturation = m_maxVelocity / (1.0 + m_slowWhenTurnGain * (std::sqrt(controllerOutput(1) * controllerOutput(1))));
-    controllerOutput(0) = saturate(controllerOutput(0), velocitySaturation);
+    controllerOutput(0) = saturate(controllerOutput(0), velocitySaturation, -m_slowWhenBackwardFactor * velocitySaturation);
 
     return true;
 }
@@ -175,6 +181,17 @@ bool UnicyleController::setSlowWhenTurnGain(double slowWhenTurnGain)
     }
 
     m_slowWhenTurnGain = slowWhenTurnGain;
+    return true;
+}
+
+bool UnicyleController::setSlowWhenBackwardFactor(double slowWhenBackwardFactor)
+{
+    if (slowWhenBackwardFactor < 0){
+        std::cerr << "The slowWhenBackwardFactor multiplier is supposed to be non-negative." << std::endl;
+        return false;
+    }
+
+    m_slowWhenBackwardFactor = slowWhenBackwardFactor;
     return true;
 }
 

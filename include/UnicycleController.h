@@ -30,9 +30,12 @@ class UnicyleController : public iDynTree::optimalcontrol::Controller{
     std::deque<TrajectoryPoint> m_desiredTrajectory;
     double m_gain, m_maxVelocity, m_maxAngularVelocity, m_time;
     double m_slowWhenTurnGain;
+    double m_slowWhenBackwardFactor;
     FreeSpaceEllipse m_freeSpace;
 
     double saturate(double input, double saturation);
+
+    double saturate(double input, double positiveSaturation, double negativeSaturation);
 
     void interpolateReferences(double time,
                                const std::deque<TrajectoryPoint>::reverse_iterator& point,
@@ -59,6 +62,8 @@ public:
     bool setSaturations(double maxVelocity, double maxAngularVelocity);
 
     bool setSlowWhenTurnGain(double slowWhenTurnGain); //if >0 the unicycle progress more slowly when also turning.
+
+    bool setSlowWhenBackwardFactor(double slowWhenBackwardFactor); //if >0 the unicycle progress more slowly when going backward. It is a multiplicative gain
 
     bool setDesiredPoint(const TrajectoryPoint &desiredPoint);
 
