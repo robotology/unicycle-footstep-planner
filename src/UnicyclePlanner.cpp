@@ -241,6 +241,8 @@ bool UnicyclePlanner::addTerminalStep(const UnicycleState &lastUnicycleState)
     if (!(stanceFoot->getLastStep(prevStep)))
         return false;
 
+    double prevUnicycleAngle = stanceFoot->getUnicycleAngleFromStep(prevStep);
+
     iDynTree::Vector2 rPl, plannedPosition;
 
     if (!get_rPl(lastUnicycleState, rPl))
@@ -248,7 +250,7 @@ bool UnicyclePlanner::addTerminalStep(const UnicycleState &lastUnicycleState)
 
     swingFoot->getFootPositionFromUnicycle(lastUnicycleState, plannedPosition);
 
-    double deltaAngle = std::abs(lastUnicycleState.angle - prevStep.angle);
+    double deltaAngle = std::abs(lastUnicycleState.angle - prevUnicycleAngle);
     double deltaTime = m_endTime - prevStep.impactTime;
 
     bool isTinyForStance = stanceFoot->isTinyStep(lastUnicycleState);
@@ -641,6 +643,8 @@ bool UnicyclePlanner::computeNewSteps(std::shared_ptr< FootPrint > leftFoot, std
     if (!(stanceFoot->getLastStep(prevStep)))
         return false;
 
+    double prevUnicycleAngle = stanceFoot->getUnicycleAngleFromStep(prevStep);
+
     double t = initTime, tOptim = -1.0;
     pauseTime = t - prevStep.impactTime;
 
@@ -662,7 +666,7 @@ bool UnicyclePlanner::computeNewSteps(std::shared_ptr< FootPrint > leftFoot, std
             return false;
         }
 
-        deltaAngle = std::abs(prevStep.angle - unicycleState.angle);
+        deltaAngle = std::abs(prevUnicycleAngle - unicycleState.angle);
 
         if ((deltaTime >= m_minTime) && (t > (initTime + timeOffset))){ //The step is not too fast
             if (avoidPause || (!(swingFoot->isTinyStep(unicycleState)) || (deltaAngle > m_minAngle))){ //the step is not tiny
