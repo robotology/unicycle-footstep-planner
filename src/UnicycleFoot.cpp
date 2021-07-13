@@ -35,6 +35,8 @@ UnicycleFoot::UnicycleFoot(std::shared_ptr<FootPrint> footPrint_ptr)
     m_bufferR.resize(2,2);
     iDynTree::toEigen(m_bufferR).setIdentity();
     m_yawOffset = 0.0;
+    m_minimumStep = 0.0;
+    m_minimumAngle = 0.0;
 }
 
 bool UnicycleFoot::setDistanceFromUnicycle(const iDynTree::Vector2 &nominalDistance)
@@ -121,6 +123,16 @@ bool UnicycleFoot::setTinyStepLength(double length)
     return true;
 }
 
+bool UnicycleFoot::setTinyStepAngle(double angle)
+{
+    if (angle < 0){
+        std::cerr << "The angle is supposed to be non-negative." <<std::endl;
+        return false;
+    }
+    m_minimumAngle = angle;
+    return true;
+}
+
 bool UnicycleFoot::isTinyStep(const UnicycleState &unicycleState)
 {
     Step previousStep;
@@ -134,8 +146,9 @@ bool UnicycleFoot::isTinyStep(const UnicycleState &unicycleState)
     iDynTree::toEigen(newPosition) = iDynTree::toEigen(unicycleState.position) + iDynTree::toEigen(m_bufferR)*iDynTree::toEigen(m_distance);
 
     double stepLength = std::sqrt(std::pow((newPosition(0) - previousPosition(0)), 2) + std::pow((newPosition(1) - previousPosition(1)), 2));
+    double deltaAngle = std::abs(getUnicycleAngleFromStep(previousStep) - unicycleState.angle);
 
-    return (stepLength < m_minimumStep);
+    return ((stepLength < m_minimumStep) && (deltaAngle < m_minimumAngle));
 }
 
 size_t UnicycleFoot::numberOfSteps() const

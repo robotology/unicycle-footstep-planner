@@ -25,6 +25,7 @@ class UnicycleFoot {
     iDynTree::Vector2 m_distance;
     bool m_distanceSet;
     double m_minimumStep;
+    double m_minimumAngle;
     double m_yawOffset;
     iDynTree::MatrixDynSize m_bufferR;
 
@@ -49,6 +50,8 @@ public:
     bool getLastStep(Step& lastStep) const;
 
     bool setTinyStepLength(double length);
+
+    bool setTinyStepAngle(double angle);
 
     bool isTinyStep(const UnicycleState &unicycleState); //given the position of the unicycle return true if the step would be tiny
 
