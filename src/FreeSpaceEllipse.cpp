@@ -11,17 +11,28 @@
 #include <cassert>
 #include <iostream>
 #include <sstream>
+#include <cmath>
 
 FreeSpaceEllipse::FreeSpaceEllipse(const iDynTree::MatrixFixSize<2, 2> &imageMatrix, const iDynTree::VectorFixSize<2> &centerOffset)
 {
     bool ok = setEllipse(imageMatrix, centerOffset);
     assert(ok);
+
+    if (!ok)
+    {
+        clear();
+    }
 }
 
 FreeSpaceEllipse::FreeSpaceEllipse(double a, double b, double theta, double centerOffsetX, double centerOffsetY)
 {
     bool ok = setEllipse(a, b, theta, centerOffsetX, centerOffsetY);
     assert(ok);
+
+    if (!ok)
+    {
+        clear();
+    }
 }
 
 bool FreeSpaceEllipse::isPointInside(const iDynTree::VectorFixSize<2> &testPoint) const
@@ -57,6 +68,11 @@ bool FreeSpaceEllipse::setEllipse(double a, double b, double theta, double cente
     iDynTree::toEigen(m_C_inverse) = iDynTree::toEigen(m_C).inverse();
     m_d(0) = centerOffsetX;
     m_d(1) = centerOffsetY;
+
+    m_semiMajorAxis = a;
+    m_semiMinorAxis = b;
+    m_angle = theta;
+
     m_isSet = true;
 
     return true;
@@ -72,17 +88,66 @@ const iDynTree::MatrixFixSize<2, 2> &FreeSpaceEllipse::imageMatrix() const
     return m_C;
 }
 
+double FreeSpaceEllipse::semiMajorAxis() const
+{
+    return m_semiMajorAxis;
+}
+
+double FreeSpaceEllipse::semiMinorAxis() const
+{
+    return m_semiMinorAxis;
+}
+
+double FreeSpaceEllipse::angle() const
+{
+    return m_angle;
+}
+
 bool FreeSpaceEllipse::setEllipse(const iDynTree::MatrixFixSize<2, 2> &imageMatrix, const iDynTree::VectorFixSize<2> &centerOffset)
 {
-    if (iDynTree::toEigen(imageMatrix).determinant() < 1e-10)
+    double determinant = iDynTree::toEigen(imageMatrix).determinant();
+
+    if (determinant < 1e-10)
     {
         std::cerr << "[FreeSpaceEllipse::setEllipse] The input image matrix is almost singular." << std::endl;
         return false;
     }
 
+    //The image matrix should be in the form
+    //  _                           _
+    // |  c_theta * a  -s_theta * b  |
+    // |_ s_theta * a   c_theta * b _|
+
+    double theta = std::atan2(imageMatrix(1,0), imageMatrix(0,0));
+    double stheta = std::sin(theta);
+    double ctheta = std::cos(theta);
+
+    double a,b;
+    if (std::abs(stheta) > std::abs(ctheta))
+    {
+        a = imageMatrix(1, 0) / stheta;
+        b = imageMatrix(0, 1) / stheta;
+    }
+    else
+    {
+        a = imageMatrix(0, 0) / ctheta;
+        b = imageMatrix(1, 1) / ctheta;
+    }
+
+    if (std::abs(determinant - a * b) > 1e-10)
+    {
+        std::cerr << "[FreeSpaceEllipse::setEllipse] The specified imagematrix does not seem to correspond to an ellipse." << std::endl;
+        return false;
+    }
+
+    m_angle = theta;
+    m_semiMajorAxis = a;
+    m_semiMinorAxis = b;
+
     m_C = imageMatrix;
     iDynTree::toEigen(m_C_inverse) = iDynTree::toEigen(m_C).inverse();
     m_d = centerOffset;
+
     m_isSet = true;
 
     return true;
@@ -102,10 +167,7 @@ double FreeSpaceEllipse::generatorsModule(const iDynTree::VectorFixSize<2> &gene
 
 FreeSpaceEllipse::FreeSpaceEllipse()
 {
-    iDynTree::toEigen(m_C).setIdentity();
-    m_C_inverse = m_C;
-    m_d.zero();
-    m_isSet = false;
+    clear();
 }
 
 iDynTree::Vector2 FreeSpaceEllipse::projectPointInsideEllipse(const iDynTree::VectorFixSize<2> &testPoint) const
@@ -139,4 +201,15 @@ std::string FreeSpaceEllipse::printInfo() const
     stream << "Image matrix:" << std::endl << imageMatrix().toString() << "Center offset: " << centerOffset().toString() << std::endl;
 
     return stream.str();
+}
+
+void FreeSpaceEllipse::clear()
+{
+    iDynTree::toEigen(m_C).setIdentity();
+    m_C_inverse = m_C;
+    m_d.zero();
+    m_angle = 0;
+    m_semiMajorAxis = 1.0;
+    m_semiMinorAxis = 1.0;
+    m_isSet = false;
 }

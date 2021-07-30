@@ -18,6 +18,9 @@ class FreeSpaceEllipse
     iDynTree::MatrixFixSize<2,2> m_C;
     iDynTree::MatrixFixSize<2,2> m_C_inverse;
     iDynTree::VectorFixSize<2> m_d;
+    double m_semiMajorAxis;
+    double m_semiMinorAxis;
+    double m_angle;
     bool m_isSet;
 
     iDynTree::Vector2 computeGenerators(const iDynTree::VectorFixSize<2>& inputPoint) const;
@@ -53,6 +56,12 @@ public:
 
     const iDynTree::MatrixFixSize<2,2>& imageMatrix() const;
 
+    double semiMajorAxis() const;
+
+    double semiMinorAxis() const;
+
+    double angle() const;
+
     //Returns true if the point is inside the ellipse, boundary included.
     // If the ellipsoid has never been set, it returns true by default
     bool isPointInside(const iDynTree::VectorFixSize<2>& testPoint) const;
@@ -60,6 +69,8 @@ public:
     iDynTree::Vector2 projectPointInsideEllipse(const iDynTree::VectorFixSize<2>& testPoint) const;
 
     std::string printInfo() const;
+
+    void clear();
 
 };
 
