@@ -68,6 +68,9 @@ public:
 
     iDynTree::Vector2 projectPointInsideEllipse(const iDynTree::VectorFixSize<2>& testPoint) const;
 
+    bool getIntersectionsWithLine(const iDynTree::VectorFixSize<2>& linePoint1, const iDynTree::VectorFixSize<2>& linePoint2,
+                                  iDynTree::VectorFixSize<2>& intersection1, iDynTree::VectorFixSize<2>& intersection2) const;
+
     std::string printInfo() const;
 
     void clear();

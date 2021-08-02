@@ -195,6 +195,102 @@ iDynTree::Vector2 FreeSpaceEllipse::projectPointInsideEllipse(const iDynTree::Ve
     return output;
 }
 
+bool FreeSpaceEllipse::getIntersectionsWithLine(const iDynTree::VectorFixSize<2> &linePoint1, const iDynTree::VectorFixSize<2> &linePoint2,
+                                                iDynTree::VectorFixSize<2> &intersection1, iDynTree::VectorFixSize<2> &intersection2) const
+{
+    if (!m_isSet)
+    {
+        return false; //No intersections
+    }
+
+    iDynTree::VectorFixSize<2> linePoint1InCircle, linePoint2InCircle;
+    linePoint1InCircle.zero();
+    linePoint2InCircle.zero();
+
+    // Move the points in the "ellipse space"
+    iDynTree::toEigen(linePoint1InCircle) = iDynTree::toEigen(m_C_inverse) *  (iDynTree::toEigen(linePoint1) - iDynTree::toEigen(m_d));
+    iDynTree::toEigen(linePoint2InCircle) = iDynTree::toEigen(m_C_inverse) *  (iDynTree::toEigen(linePoint2) - iDynTree::toEigen(m_d));
+
+    double alpha = linePoint1InCircle(1) - linePoint2InCircle(1);
+    double beta = linePoint2InCircle(0) - linePoint1InCircle(0);
+    double gamma = linePoint1InCircle(0)*linePoint2InCircle(1) - linePoint2InCircle(0) * linePoint1InCircle(1); //alpha * x + beta * y + gamma = 0 is the line equation passing via linePoint1 and linePoint2
+
+    // Compute the intersection between the line and the unit circle centered in zero
+    if (std::abs(alpha) < 1e-15 && std::abs(beta) < 1e-15)
+    {
+        std::cerr << "[ERROR][FreeSpaceEllipse::getIntersectionsWithLine] The line points coincide." << std::endl;;
+        return false;
+    }
+
+    iDynTree::VectorFixSize<2> intersection1InCircle, intersection2InCircle;
+    intersection1InCircle.zero();
+    intersection2InCircle.zero();
+
+    if (std::abs(alpha) < 1e-15) // The line is horizontal, y = -gamma / beta. There is an intersection is y <= 1
+    {
+
+        intersection1InCircle(1) = -gamma / beta;
+        intersection2InCircle(1) = intersection1InCircle(1);
+
+        if (std::abs(intersection1InCircle(1)) <= 1.0)
+        {
+            intersection1InCircle(0) = sqrt(1 - intersection1InCircle(1) * intersection1InCircle(1));
+            intersection2InCircle(0) = -intersection1InCircle(0);
+        }
+        else
+        {
+            return false; //No intersections
+        }
+    }
+
+    else if (std::abs(beta) < 1e-15) // The line is vertical, x = -gamma / alpha. There is an intersection is x <= 1
+    {
+
+        intersection1InCircle(0) = -gamma / alpha;
+        intersection2InCircle(0) = intersection1InCircle(0);
+
+        if (std::abs(intersection1InCircle(0)) <= 1.0)
+        {
+            intersection1InCircle(1) = sqrt(1 - intersection1InCircle(0) * intersection1InCircle(0));
+            intersection2InCircle(1) = -intersection1InCircle(1);
+        }
+        else
+        {
+            return false; //No intersections
+        }
+    }
+    else
+    {
+        //We rewrite the line as y = sigma * x + delta
+        double sigma = -alpha / beta;
+        double delta = -gamma / beta;
+        //We inject the line equation into x^2 + y^2 = 1 obtaining
+        //(1 + sigma^2) * x^2 + 2 * delta * sigma * x + delta^2 - 1 = aPoly * x^2 + bPoly * x + cPoly
+        double aPoly = 1.0 + sigma * sigma;
+        double bPoly = 2.0 * delta * sigma;
+        double cPoly = delta * delta - 1.0;
+
+        double determinant = bPoly * bPoly - 4.0 * aPoly * cPoly;
+
+        if (determinant < 0)
+        {
+            return false; //No intersections
+        }
+        else
+        {
+            intersection1InCircle(0) = (-bPoly + std::sqrt(determinant)) / (2.0 * aPoly);
+            intersection2InCircle(0) = (-bPoly - std::sqrt(determinant)) / (2.0 * aPoly);
+            intersection1InCircle(1) = sigma * intersection1InCircle(0) + delta;
+            intersection2InCircle(1) = sigma * intersection2InCircle(0) + delta;
+        }
+    }
+
+    //Port the points back to the initial space
+    iDynTree::toEigen(intersection1) = iDynTree::toEigen(m_C) * iDynTree::toEigen(intersection1InCircle) + iDynTree::toEigen(m_d);
+    iDynTree::toEigen(intersection2) = iDynTree::toEigen(m_C) * iDynTree::toEigen(intersection2InCircle) + iDynTree::toEigen(m_d);
+    return true;
+}
+
 std::string FreeSpaceEllipse::printInfo() const
 {
     std::stringstream stream;
