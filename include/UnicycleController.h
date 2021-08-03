@@ -24,14 +24,15 @@ typedef struct{
 } TrajectoryPoint;
 
 class UnicyleController : public iDynTree::optimalcontrol::Controller{
-    iDynTree::Vector2 m_personDistance, m_y, m_personPosition;
+    iDynTree::Vector2 m_personDistance, m_y, m_personPosition, m_unicyclePosition;
     double m_theta;
     iDynTree::MatrixDynSize m_inverseB, m_R;
     std::deque<TrajectoryPoint> m_desiredTrajectory;
     double m_gain, m_maxVelocity, m_maxAngularVelocity, m_time;
     double m_slowWhenTurnGain;
     double m_slowWhenBackwardFactor;
-    FreeSpaceEllipse m_freeSpace;
+    double m_nominalWidth;
+    FreeSpaceEllipse m_outerEllipse, m_innerEllipse;
 
     double saturate(double input, double saturation);
 
@@ -57,6 +58,8 @@ public:
 
     const iDynTree::Vector2& getPersonPosition(const iDynTree::Vector2& unicyclePosition, double unicycleAngle);
 
+    bool setNominalWidth(double nominalWidth);
+
     bool setGain(double controllerGain);
 
     bool setSaturations(double maxVelocity, double maxAngularVelocity);
@@ -68,6 +71,8 @@ public:
     bool setDesiredPoint(const TrajectoryPoint &desiredPoint);
 
     bool getDesiredPoint(double time, iDynTree::Vector2& yDesired, iDynTree::Vector2& yDotDesired);
+
+    bool getDesiredPointInFreeSpaceEllipse(double time, const iDynTree::Vector2& unicyclePosition, double unicycleAngle, iDynTree::Vector2& yDesired, iDynTree::Vector2& yDotDesired);
 
     bool getDesiredTrajectoryInitialTime(double& firstTime);
 

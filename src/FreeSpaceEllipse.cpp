@@ -78,6 +78,11 @@ bool FreeSpaceEllipse::setEllipse(double a, double b, double theta, double cente
     return true;
 }
 
+bool FreeSpaceEllipse::isSet()
+{
+    return m_isSet;
+}
+
 const iDynTree::VectorFixSize<2> &FreeSpaceEllipse::centerOffset() const
 {
     return m_d;

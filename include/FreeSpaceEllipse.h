@@ -23,8 +23,6 @@ class FreeSpaceEllipse
     double m_angle;
     bool m_isSet;
 
-    iDynTree::Vector2 computeGenerators(const iDynTree::VectorFixSize<2>& inputPoint) const;
-
     double generatorsModule(const iDynTree::VectorFixSize<2>& generators) const;
 
 public:
@@ -70,6 +68,8 @@ public:
 
     bool getIntersectionsWithLine(const iDynTree::VectorFixSize<2>& linePoint1, const iDynTree::VectorFixSize<2>& linePoint2,
                                   iDynTree::VectorFixSize<2>& intersection1, iDynTree::VectorFixSize<2>& intersection2) const;
+
+    iDynTree::Vector2 computeGenerators(const iDynTree::VectorFixSize<2>& inputPoint) const;
 
     std::string printInfo() const;
 

@@ -332,6 +332,7 @@ UnicyclePlanner::UnicyclePlanner()
     m_unicycleProblem.setMinWidth(0.08);
     m_unicycleProblem.setMaxAngleVariation(iDynTree::deg2rad(45));
     m_unicycleProblem.setCostWeights(1.0, 2.5);
+    m_controller->setNominalWidth(m_nominalWidth);
 }
 
 bool UnicyclePlanner::setDesiredPersonDistance(double xPosition, double yPosition)
@@ -528,6 +529,11 @@ bool UnicyclePlanner::setNominalWidth(double nominalWidth)
         return false;
     }
 
+    if (!m_controller->setNominalWidth(nominalWidth))
+    {
+        return false;
+    }
+
     m_nominalWidth = nominalWidth;
 
     return true;
@@ -548,6 +554,11 @@ bool UnicyclePlanner::setWidthSetting(double minWidth, double nominalWidth)
     }
 
     if (!m_unicycleProblem.setMinWidth(minWidth)){
+        return false;
+    }
+
+    if (!m_controller->setNominalWidth(nominalWidth))
+    {
         return false;
     }
 

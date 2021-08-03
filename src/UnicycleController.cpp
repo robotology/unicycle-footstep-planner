@@ -50,12 +50,15 @@ UnicyleController::UnicyleController()
     ,m_time(0)
     ,m_slowWhenTurnGain(0.0)
     ,m_slowWhenBackwardFactor(1.0)
+    ,m_nominalWidth(0.14)
 {
     m_personDistance(0) = 0.2;
     m_personDistance(1) = 0.0;
     m_personPosition.zero();
 
     m_y.zero();
+
+    m_unicyclePosition.zero();
 
     m_inverseB.resize(2,2);
     m_inverseB.zero();
@@ -88,7 +91,7 @@ bool UnicyleController::doControl(iDynTree::VectorDynSize &controllerOutput)
 
     iDynTree::Vector2 yDesired, yDotDesired;
 
-    if (!getDesiredPoint(m_time, yDesired, yDotDesired)){
+    if (!getDesiredPointInFreeSpaceEllipse(m_time, m_unicyclePosition, m_theta, yDesired, yDotDesired)){
         std::cerr << "Error while reading the desired point." << std::endl;
         return false;
     }
@@ -110,11 +113,10 @@ bool UnicyleController::setStateFeedback(const double t, const iDynTree::VectorD
 
     m_theta = stateFeedback(2);
 
-    iDynTree::Vector2 unicyclePosition;
-    unicyclePosition(0) = stateFeedback(0);
-    unicyclePosition(1) = stateFeedback(1);
+    m_unicyclePosition(0) = stateFeedback(0);
+    m_unicyclePosition(1) = stateFeedback(1);
 
-    m_y = getPersonPosition(unicyclePosition, m_theta);
+    m_y = getPersonPosition(m_unicyclePosition, m_theta);
 
     return true;
 }
@@ -148,6 +150,12 @@ const iDynTree::Vector2 &UnicyleController::getPersonPosition(const iDynTree::Ve
     iDynTree::toEigen(m_personPosition) = iDynTree::toEigen(unicyclePosition) + iDynTree::toEigen(m_R)*iDynTree::toEigen(m_personDistance);
 
     return m_personPosition;
+}
+
+bool UnicyleController::setNominalWidth(double nominalWidth)
+{
+    m_nominalWidth = nominalWidth;
+    return setFreeSpaceEllipse(m_outerEllipse);
 }
 
 bool UnicyleController::setGain(double controllerGain)
@@ -257,11 +265,30 @@ bool UnicyleController::clearDesiredTrajectoryUpTo(double time)
 
 bool UnicyleController::setFreeSpaceEllipse(const FreeSpaceEllipse &freeSpaceEllipse)
 {
-    m_freeSpace = freeSpaceEllipse;
+    m_outerEllipse = freeSpaceEllipse;
+    m_innerEllipse = freeSpaceEllipse;
+    if (m_outerEllipse.isSet())
+    {
+        double innerEllipseSemiMajorAxis = m_outerEllipse.semiMajorAxis() - 1.5 * m_nominalWidth; //Using 1.5 as a safety measure
+        double innerEllipseSemiMinorAxis = m_outerEllipse.semiMajorAxis() - 1.5 * m_nominalWidth;
+
+        if ((innerEllipseSemiMajorAxis <= 0.0) || (innerEllipseSemiMinorAxis <= 0.0))
+        {
+            std::cerr << "[ERROR][UnicyleController::setFreeSpaceEllipse] The specified free space ellipse is too small for the given nominal width." << std::endl;
+            return false;
+        }
+        if (!m_innerEllipse.setEllipse(innerEllipseSemiMajorAxis, innerEllipseSemiMinorAxis, m_outerEllipse.angle(),
+                                       m_outerEllipse.centerOffset()(0), m_outerEllipse.centerOffset()(1)))
+        {
+            return false;
+        }
+    }
+
     return true;
 }
 
-bool UnicyleController::getDesiredPoint(double time, iDynTree::Vector2 &yDesired, iDynTree::Vector2 &yDotDesired)
+bool UnicyleController::getDesiredPoint(double time,
+                                        iDynTree::Vector2 &yDesired, iDynTree::Vector2 &yDotDesired)
 {
     if (time < 0){
         std::cerr << "The time is expected to be non-negative" <<std::endl;
@@ -273,7 +300,7 @@ bool UnicyleController::getDesiredPoint(double time, iDynTree::Vector2 &yDesired
         return false;
     }
 
-    double initTime;
+    double initTime = time - 1.0;
     getDesiredTrajectoryInitialTime(initTime);
 
     if (time < initTime){
@@ -295,7 +322,67 @@ bool UnicyleController::getDesiredPoint(double time, iDynTree::Vector2 &yDesired
     } else
         interpolateReferences(time, pointIterator, yDesired, yDotDesired);
 
-    yDesired = m_freeSpace.projectPointInsideEllipse(yDesired);
+    return true;
+
+}
+
+bool UnicyleController::getDesiredPointInFreeSpaceEllipse(double time, const iDynTree::Vector2 &unicyclePosition, double unicycleAngle, iDynTree::Vector2 &yDesired, iDynTree::Vector2 &yDotDesired)
+{
+    if (!getDesiredPoint(time, yDesired, yDotDesired))
+    {
+        return false;
+    }
+
+    if (m_outerEllipse.isSet())
+    {
+        Eigen::Vector2d desiredFromOuter, desiredFromInner, saturatedInput;
+        desiredFromOuter = iDynTree::toEigen(m_outerEllipse.projectPointInsideEllipse(yDesired));
+        saturatedInput = desiredFromOuter;
+
+        if (m_innerEllipse.isSet())
+        {
+            desiredFromInner = iDynTree::toEigen(m_innerEllipse.projectPointInsideEllipse(yDesired));
+
+            iDynTree::Vector2 intersection1, intersection2;
+
+            //Compute the intersections between inner ellipse and the line passing between the center of the unicycle and the person
+            iDynTree::Vector2 personPosition = getPersonPosition(unicyclePosition, unicycleAngle);
+            if (m_innerEllipse.getIntersectionsWithLine(unicyclePosition, personPosition, intersection1, intersection2))
+            {
+                //If we are here there is at least one intersection point. We get the closest
+                iDynTree::Vector2 closestIntersection;
+                if ((iDynTree::toEigen(personPosition) - iDynTree::toEigen(intersection1)).norm() <
+                     (iDynTree::toEigen(personPosition) - iDynTree::toEigen(intersection2)).norm())
+                {
+                    closestIntersection = intersection1;
+                }
+                else
+                {
+                    closestIntersection = intersection2;
+                }
+
+                Eigen::Vector2d unicycleVector = iDynTree::toEigen(personPosition) - iDynTree::toEigen(unicyclePosition);
+                Eigen::Matrix2d R_pi_2; //The rotation matrix of 90 deg, to get the perpendicular to a vector;
+                R_pi_2(0, 0) =  0.0;
+                R_pi_2(0, 1) = -1.0;
+                R_pi_2(1, 0) =  1.0;
+                R_pi_2(0, 0) =  0.0;
+
+                Eigen::Vector2d tangentVectorInEllipseSpace = R_pi_2 *
+                        iDynTree::toEigen(m_innerEllipse.computeGenerators(closestIntersection)); //The generators are the coordinates of the intersection in the ellipse space, i.e. the vector going from the center to the point.
+
+                //The vector parallel to the tangent is the perpendicular to the radius connecting the center to the tangent point
+                Eigen::Vector2d ellipseTangentVector = iDynTree::toEigen(m_innerEllipse.imageMatrix()) * tangentVectorInEllipseSpace;
+
+                double blendingFactor = std::abs(unicycleVector.transpose() * ellipseTangentVector) / (unicycleVector.norm() * ellipseTangentVector.norm()); //1 if the unicycle is parallel to the tangent, 0 if perpendicular
+
+                saturatedInput = blendingFactor * desiredFromInner + (1.0 - blendingFactor) * desiredFromOuter; //If the unicycle is perpendicular to the ellipse, we use the large one
+            }
+        }
+
+        iDynTree::toEigen(yDesired) = saturatedInput;
+
+    }
 
     return true;
 }
