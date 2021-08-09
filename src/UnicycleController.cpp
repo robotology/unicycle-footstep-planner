@@ -51,6 +51,7 @@ UnicyleController::UnicyleController()
     ,m_slowWhenTurnGain(0.0)
     ,m_slowWhenBackwardFactor(1.0)
     ,m_nominalWidth(0.14)
+    ,m_conservativeFactor(2.0)
 {
     m_personDistance(0) = 0.2;
     m_personDistance(1) = 0.0;
@@ -290,6 +291,18 @@ bool UnicyleController::setFreeSpaceEllipse(const FreeSpaceEllipse &freeSpaceEll
     return true;
 }
 
+bool UnicyleController::setFreeSpaceEllipseConservativeFactor(double conservativeFactor)
+{
+    if (conservativeFactor < 0)
+    {
+        std::cerr << "The free space ellipse conservative factor is expected to be non-negative" <<std::endl;
+        return false;
+    }
+
+    m_conservativeFactor = conservativeFactor;
+    return true;
+}
+
 bool UnicyleController::getDesiredPoint(double time,
                                         iDynTree::Vector2 &yDesired, iDynTree::Vector2 &yDotDesired)
 {
@@ -369,7 +382,7 @@ bool UnicyleController::getDesiredPointInFreeSpaceEllipse(double time, const iDy
                 Eigen::Vector2d ellipseTangentVector = iDynTree::toEigen(m_innerEllipse.getTangentVector(closestIntersection));
 
                 double blendingFactor = std::abs(unicycleVector.transpose() * ellipseTangentVector) / m_personDistanceNorm; //1 if the unicycle is parallel to the tangent, 0 if perpendicular
-                blendingFactor = std::tanh(blendingFactor);
+                blendingFactor = std::tanh(m_conservativeFactor * blendingFactor);
 
                 saturatedInput = blendingFactor * desiredFromInner + (1.0 - blendingFactor) * desiredFromOuter; //If the unicycle is perpendicular to the ellipse, we use the large one
             }

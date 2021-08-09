@@ -34,6 +34,7 @@ class UnicyleController : public iDynTree::optimalcontrol::Controller{
     double m_slowWhenBackwardFactor;
     double m_nominalWidth;
     FreeSpaceEllipse m_outerEllipse, m_innerEllipse;
+    double m_conservativeFactor;
 
     double saturate(double input, double saturation);
 
@@ -82,6 +83,8 @@ public:
     bool clearDesiredTrajectoryUpTo(double time);
 
     bool setFreeSpaceEllipse(const FreeSpaceEllipse& freeSpaceEllipse);
+
+    bool setFreeSpaceEllipseConservativeFactor(double conservativeFactor);
 };
 
 #endif // UNICYCLECONTROLLER_H
