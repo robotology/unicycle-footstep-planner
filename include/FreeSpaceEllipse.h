@@ -17,17 +17,17 @@ class FreeSpaceEllipse
     // The ellipse is encoded as the image of a unit circle y = C * x + d, where ||x|| = 1.
     iDynTree::MatrixFixSize<2,2> m_C;
     iDynTree::MatrixFixSize<2,2> m_C_inverse;
-    iDynTree::VectorFixSize<2> m_d;
+    iDynTree::Vector2 m_d;
     double m_semiMajorAxis;
     double m_semiMinorAxis;
     double m_angle;
     bool m_isSet;
 
-    double generatorsModule(const iDynTree::VectorFixSize<2>& generators) const;
+    double generatorsModule(const iDynTree::Vector2& generators) const;
 
 public:
 
-    FreeSpaceEllipse(const iDynTree::MatrixFixSize<2,2>& imageMatrix, const iDynTree::VectorFixSize<2>& centerOffset);
+    FreeSpaceEllipse(const iDynTree::MatrixFixSize<2,2>& imageMatrix, const iDynTree::Vector2& centerOffset);
 
     // Define the ellipse given the principal axis half-length, the rotation wrt the inertial frame, and the center position
     FreeSpaceEllipse(double a, double b, double theta, double centerOffsetX, double centerOffsetY);
@@ -44,13 +44,13 @@ public:
 
     FreeSpaceEllipse& operator=(FreeSpaceEllipse&& other) = default;
 
-    bool setEllipse(const iDynTree::MatrixFixSize<2,2>& imageMatrix, const iDynTree::VectorFixSize<2>& centerOffset);
+    bool setEllipse(const iDynTree::MatrixFixSize<2,2>& imageMatrix, const iDynTree::Vector2& centerOffset);
 
     bool setEllipse(double a, double b, double theta, double centerOffsetX, double centerOffsetY);
 
     bool isSet();
 
-    const iDynTree::VectorFixSize<2>& centerOffset() const;
+    const iDynTree::Vector2& centerOffset() const;
 
     const iDynTree::MatrixFixSize<2,2>& imageMatrix() const;
 
@@ -62,12 +62,12 @@ public:
 
     //Returns true if the point is inside the ellipse, boundary included.
     // If the ellipsoid has never been set, it returns true by default
-    bool isPointInside(const iDynTree::VectorFixSize<2>& testPoint) const;
+    bool isPointInside(const iDynTree::Vector2& testPoint) const;
 
-    iDynTree::Vector2 projectPointInsideEllipse(const iDynTree::VectorFixSize<2>& testPoint) const;
+    iDynTree::Vector2 projectPointInsideEllipse(const iDynTree::Vector2& testPoint) const;
 
-    bool getIntersectionsWithLine(const iDynTree::VectorFixSize<2>& linePoint1, const iDynTree::VectorFixSize<2>& linePoint2,
-                                  iDynTree::VectorFixSize<2>& intersection1, iDynTree::VectorFixSize<2>& intersection2) const;
+    bool getIntersectionsWithLine(const iDynTree::Vector2& linePoint1, const iDynTree::Vector2& linePoint2,
+                                  iDynTree::Vector2& intersection1, iDynTree::Vector2& intersection2) const;
 
     iDynTree::Vector2 computeGenerators(const iDynTree::VectorFixSize<2>& inputPoint) const;
 

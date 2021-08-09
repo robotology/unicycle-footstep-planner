@@ -13,7 +13,7 @@
 #include <sstream>
 #include <cmath>
 
-FreeSpaceEllipse::FreeSpaceEllipse(const iDynTree::MatrixFixSize<2, 2> &imageMatrix, const iDynTree::VectorFixSize<2> &centerOffset)
+FreeSpaceEllipse::FreeSpaceEllipse(const iDynTree::MatrixFixSize<2, 2> &imageMatrix, const iDynTree::Vector2 &centerOffset)
 {
     bool ok = setEllipse(imageMatrix, centerOffset);
     assert(ok);
@@ -35,7 +35,7 @@ FreeSpaceEllipse::FreeSpaceEllipse(double a, double b, double theta, double cent
     }
 }
 
-bool FreeSpaceEllipse::isPointInside(const iDynTree::VectorFixSize<2> &testPoint) const
+bool FreeSpaceEllipse::isPointInside(const iDynTree::Vector2 &testPoint) const
 {
     if (!m_isSet)
     {
@@ -83,7 +83,7 @@ bool FreeSpaceEllipse::isSet()
     return m_isSet;
 }
 
-const iDynTree::VectorFixSize<2> &FreeSpaceEllipse::centerOffset() const
+const iDynTree::Vector2 &FreeSpaceEllipse::centerOffset() const
 {
     return m_d;
 }
@@ -108,7 +108,7 @@ double FreeSpaceEllipse::angle() const
     return m_angle;
 }
 
-bool FreeSpaceEllipse::setEllipse(const iDynTree::MatrixFixSize<2, 2> &imageMatrix, const iDynTree::VectorFixSize<2> &centerOffset)
+bool FreeSpaceEllipse::setEllipse(const iDynTree::MatrixFixSize<2, 2> &imageMatrix, const iDynTree::Vector2 &centerOffset)
 {
     double determinant = iDynTree::toEigen(imageMatrix).determinant();
 
@@ -165,7 +165,7 @@ iDynTree::Vector2 FreeSpaceEllipse::computeGenerators(const iDynTree::VectorFixS
     return output;
 }
 
-double FreeSpaceEllipse::generatorsModule(const iDynTree::VectorFixSize<2> &generators) const
+double FreeSpaceEllipse::generatorsModule(const iDynTree::Vector2 &generators) const
 {
     return (iDynTree::toEigen(generators)).norm();
 }
@@ -175,7 +175,7 @@ FreeSpaceEllipse::FreeSpaceEllipse()
     clear();
 }
 
-iDynTree::Vector2 FreeSpaceEllipse::projectPointInsideEllipse(const iDynTree::VectorFixSize<2> &testPoint) const
+iDynTree::Vector2 FreeSpaceEllipse::projectPointInsideEllipse(const iDynTree::Vector2 &testPoint) const
 {
     if (!m_isSet)
     {
@@ -189,26 +189,26 @@ iDynTree::Vector2 FreeSpaceEllipse::projectPointInsideEllipse(const iDynTree::Ve
         return testPoint;
     }
 
-    iDynTree::VectorFixSize<2> normalizedGenerators;
+    iDynTree::Vector2 normalizedGenerators;
 
     iDynTree::toEigen(normalizedGenerators) = iDynTree::toEigen(generators) / module;
 
-    iDynTree::VectorFixSize<2> output;
+    iDynTree::Vector2 output;
 
     iDynTree::toEigen(output) = iDynTree::toEigen(m_C) * iDynTree::toEigen(normalizedGenerators) + iDynTree::toEigen(m_d);
 
     return output;
 }
 
-bool FreeSpaceEllipse::getIntersectionsWithLine(const iDynTree::VectorFixSize<2> &linePoint1, const iDynTree::VectorFixSize<2> &linePoint2,
-                                                iDynTree::VectorFixSize<2> &intersection1, iDynTree::VectorFixSize<2> &intersection2) const
+bool FreeSpaceEllipse::getIntersectionsWithLine(const iDynTree::Vector2 &linePoint1, const iDynTree::Vector2 &linePoint2,
+                                                iDynTree::Vector2 &intersection1, iDynTree::Vector2 &intersection2) const
 {
     if (!m_isSet)
     {
         return false; //No intersections
     }
 
-    iDynTree::VectorFixSize<2> linePoint1InCircle, linePoint2InCircle;
+    iDynTree::Vector2 linePoint1InCircle, linePoint2InCircle;
     linePoint1InCircle.zero();
     linePoint2InCircle.zero();
 
@@ -227,7 +227,7 @@ bool FreeSpaceEllipse::getIntersectionsWithLine(const iDynTree::VectorFixSize<2>
         return false;
     }
 
-    iDynTree::VectorFixSize<2> intersection1InCircle, intersection2InCircle;
+    iDynTree::Vector2 intersection1InCircle, intersection2InCircle;
     intersection1InCircle.zero();
     intersection2InCircle.zero();
 
