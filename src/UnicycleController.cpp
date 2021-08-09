@@ -54,6 +54,7 @@ UnicyleController::UnicyleController()
 {
     m_personDistance(0) = 0.2;
     m_personDistance(1) = 0.0;
+    m_personDistanceNorm = iDynTree::toEigen(m_personDistance).norm();
     m_personPosition.zero();
 
     m_y.zero();
@@ -129,6 +130,8 @@ bool UnicyleController::setPersonDistance(double xPosition, double yPosition)
     }
     m_personDistance(0) = xPosition;
     m_personDistance(1) = yPosition;
+
+    m_personDistanceNorm = iDynTree::toEigen(m_personDistance).norm();
     return true;
 }
 
@@ -269,8 +272,8 @@ bool UnicyleController::setFreeSpaceEllipse(const FreeSpaceEllipse &freeSpaceEll
     m_innerEllipse = freeSpaceEllipse;
     if (m_outerEllipse.isSet())
     {
-        double innerEllipseSemiMajorAxis = m_outerEllipse.semiMajorAxis() - 1.5 * m_nominalWidth; //Using 1.5 as a safety measure
-        double innerEllipseSemiMinorAxis = m_outerEllipse.semiMajorAxis() - 1.5 * m_nominalWidth;
+        double innerEllipseSemiMajorAxis = m_outerEllipse.semiMajorAxis() - m_nominalWidth; //Actually, it should be 0.5 * m_nominalWidth, but in this way we consider some more safety margin
+        double innerEllipseSemiMinorAxis = m_outerEllipse.semiMajorAxis() - m_nominalWidth;
 
         if ((innerEllipseSemiMajorAxis <= 0.0) || (innerEllipseSemiMinorAxis <= 0.0))
         {
@@ -362,19 +365,11 @@ bool UnicyleController::getDesiredPointInFreeSpaceEllipse(double time, const iDy
                 }
 
                 Eigen::Vector2d unicycleVector = iDynTree::toEigen(personPosition) - iDynTree::toEigen(unicyclePosition);
-                Eigen::Matrix2d R_pi_2; //The rotation matrix of 90 deg, to get the perpendicular to a vector;
-                R_pi_2(0, 0) =  0.0;
-                R_pi_2(0, 1) = -1.0;
-                R_pi_2(1, 0) =  1.0;
-                R_pi_2(0, 0) =  0.0;
 
-                Eigen::Vector2d tangentVectorInEllipseSpace = R_pi_2 *
-                        iDynTree::toEigen(m_innerEllipse.computeGenerators(closestIntersection)); //The generators are the coordinates of the intersection in the ellipse space, i.e. the vector going from the center to the point.
+                Eigen::Vector2d ellipseTangentVector = iDynTree::toEigen(m_innerEllipse.getTangentVector(closestIntersection));
 
-                //The vector parallel to the tangent is the perpendicular to the radius connecting the center to the tangent point
-                Eigen::Vector2d ellipseTangentVector = iDynTree::toEigen(m_innerEllipse.imageMatrix()) * tangentVectorInEllipseSpace;
-
-                double blendingFactor = std::abs(unicycleVector.transpose() * ellipseTangentVector) / (unicycleVector.norm() * ellipseTangentVector.norm()); //1 if the unicycle is parallel to the tangent, 0 if perpendicular
+                double blendingFactor = std::abs(unicycleVector.transpose() * ellipseTangentVector) / m_personDistanceNorm; //1 if the unicycle is parallel to the tangent, 0 if perpendicular
+                blendingFactor = std::tanh(blendingFactor);
 
                 saturatedInput = blendingFactor * desiredFromInner + (1.0 - blendingFactor) * desiredFromOuter; //If the unicycle is perpendicular to the ellipse, we use the large one
             }

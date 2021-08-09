@@ -158,7 +158,7 @@ bool FreeSpaceEllipse::setEllipse(const iDynTree::MatrixFixSize<2, 2> &imageMatr
     return true;
 }
 
-iDynTree::Vector2 FreeSpaceEllipse::computeGenerators(const iDynTree::VectorFixSize<2> &inputPoint) const
+iDynTree::Vector2 FreeSpaceEllipse::computeGenerators(const iDynTree::Vector2 &inputPoint) const
 {
     iDynTree::Vector2 output;
     iDynTree::toEigen(output) = iDynTree::toEigen(m_C_inverse) * (iDynTree::toEigen(inputPoint) - iDynTree::toEigen(m_d));
@@ -294,6 +294,33 @@ bool FreeSpaceEllipse::getIntersectionsWithLine(const iDynTree::Vector2 &linePoi
     iDynTree::toEigen(intersection1) = iDynTree::toEigen(m_C) * iDynTree::toEigen(intersection1InCircle) + iDynTree::toEigen(m_d);
     iDynTree::toEigen(intersection2) = iDynTree::toEigen(m_C) * iDynTree::toEigen(intersection2InCircle) + iDynTree::toEigen(m_d);
     return true;
+}
+
+iDynTree::Vector2 FreeSpaceEllipse::getTangentVector(const iDynTree::Vector2 &intersectionPoint) const
+{
+    Eigen::Matrix2d R_pi_2; //The rotation matrix of 90 deg, to get the perpendicular to a vector;
+    R_pi_2(0, 0) =  0.0;
+    R_pi_2(0, 1) = -1.0;
+    R_pi_2(1, 0) =  1.0;
+    R_pi_2(0, 0) =  0.0;
+
+    Eigen::Vector2d tangentVectorInEllipseSpace = R_pi_2 *
+            iDynTree::toEigen(computeGenerators(intersectionPoint)); //The generators are the coordinates of the intersection in the ellipse space, i.e. the vector going from the center to the point.
+
+    //The vector parallel to the tangent is the perpendicular to the radius connecting the center to the tangent point
+    Eigen::Vector2d ellipseTangentVector = iDynTree::toEigen(m_C) * tangentVectorInEllipseSpace;
+
+    iDynTree::Vector2 output;
+    output.zero();
+
+    double norm = ellipseTangentVector.norm();
+
+    if (norm > 1e-15)
+    {
+        iDynTree::toEigen(output) = ellipseTangentVector / norm;
+    }
+
+    return output;
 }
 
 std::string FreeSpaceEllipse::printInfo() const

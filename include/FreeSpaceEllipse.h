@@ -25,6 +25,8 @@ class FreeSpaceEllipse
 
     double generatorsModule(const iDynTree::Vector2& generators) const;
 
+    iDynTree::Vector2 computeGenerators(const iDynTree::Vector2& inputPoint) const;
+
 public:
 
     FreeSpaceEllipse(const iDynTree::MatrixFixSize<2,2>& imageMatrix, const iDynTree::Vector2& centerOffset);
@@ -69,7 +71,7 @@ public:
     bool getIntersectionsWithLine(const iDynTree::Vector2& linePoint1, const iDynTree::Vector2& linePoint2,
                                   iDynTree::Vector2& intersection1, iDynTree::Vector2& intersection2) const;
 
-    iDynTree::Vector2 computeGenerators(const iDynTree::VectorFixSize<2>& inputPoint) const;
+    iDynTree::Vector2 getTangentVector(const iDynTree::Vector2& intersectionPoint) const;
 
     std::string printInfo() const;
 
