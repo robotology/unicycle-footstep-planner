@@ -50,7 +50,7 @@ UnicyleController::UnicyleController()
     ,m_time(0)
     ,m_slowWhenTurnGain(0.0)
     ,m_slowWhenBackwardFactor(1.0)
-    ,m_nominalWidth(0.14)
+    ,m_innerEllipseOffset(0.0)
     ,m_conservativeFactor(2.0)
 {
     m_personDistance(0) = 0.2;
@@ -154,12 +154,6 @@ const iDynTree::Vector2 &UnicyleController::getPersonPosition(const iDynTree::Ve
     iDynTree::toEigen(m_personPosition) = iDynTree::toEigen(unicyclePosition) + iDynTree::toEigen(m_R)*iDynTree::toEigen(m_personDistance);
 
     return m_personPosition;
-}
-
-bool UnicyleController::setNominalWidth(double nominalWidth)
-{
-    m_nominalWidth = nominalWidth;
-    return setFreeSpaceEllipse(m_outerEllipse);
 }
 
 bool UnicyleController::setGain(double controllerGain)
@@ -273,12 +267,12 @@ bool UnicyleController::setFreeSpaceEllipse(const FreeSpaceEllipse &freeSpaceEll
     m_innerEllipse = freeSpaceEllipse;
     if (m_outerEllipse.isSet())
     {
-        double innerEllipseSemiMajorAxis = m_outerEllipse.semiMajorAxis() - m_nominalWidth; //Actually, it should be 0.5 * m_nominalWidth, but in this way we consider some more safety margin
-        double innerEllipseSemiMinorAxis = m_outerEllipse.semiMajorAxis() - m_nominalWidth;
+        double innerEllipseSemiMajorAxis = m_outerEllipse.semiMajorAxis() - m_innerEllipseOffset;
+        double innerEllipseSemiMinorAxis = m_outerEllipse.semiMajorAxis() - m_innerEllipseOffset;
 
         if ((innerEllipseSemiMajorAxis <= 0.0) || (innerEllipseSemiMinorAxis <= 0.0))
         {
-            std::cerr << "[ERROR][UnicyleController::setFreeSpaceEllipse] The specified free space ellipse is too small for the given nominal width." << std::endl;
+            std::cerr << "[ERROR][UnicyleController::setFreeSpaceEllipse] The specified free space ellipse is too small for the given inner ellipse offset." << std::endl;
             return false;
         }
         if (!m_innerEllipse.setEllipse(innerEllipseSemiMajorAxis, innerEllipseSemiMinorAxis, m_outerEllipse.angle(),
@@ -301,6 +295,18 @@ bool UnicyleController::setFreeSpaceEllipseConservativeFactor(double conservativ
 
     m_conservativeFactor = conservativeFactor;
     return true;
+}
+
+bool UnicyleController::setInnerFreeSpaceEllipseOffset(double offset)
+{
+    if (offset < 0)
+    {
+        std::cerr << "The inner free space ellipse offset is expected to be non-negative" << std::endl;
+        return false;
+    }
+
+    m_innerEllipseOffset = offset;
+    return setFreeSpaceEllipse(m_outerEllipse);
 }
 
 bool UnicyleController::getDesiredPoint(double time,

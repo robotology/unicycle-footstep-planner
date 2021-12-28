@@ -133,6 +133,8 @@ public:
     bool setFreeSpaceEllipse(const FreeSpaceEllipse& freeSpaceEllipse);
 
     bool setFreeSpaceEllipseConservativeFactor(double conservativeFactor); //Used only to saturate the references
+
+    bool setInnerFreeSpaceEllipseOffset(double offset);
 };
 
 #endif // UNICYCLEPLANNER_H

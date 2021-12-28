@@ -32,7 +32,7 @@ class UnicyleController : public iDynTree::optimalcontrol::Controller{
     double m_gain, m_maxVelocity, m_maxAngularVelocity, m_time;
     double m_slowWhenTurnGain;
     double m_slowWhenBackwardFactor;
-    double m_nominalWidth;
+    double m_innerEllipseOffset;
     FreeSpaceEllipse m_outerEllipse, m_innerEllipse;
     double m_conservativeFactor;
 
@@ -60,8 +60,6 @@ public:
 
     const iDynTree::Vector2& getPersonPosition(const iDynTree::Vector2& unicyclePosition, double unicycleAngle);
 
-    bool setNominalWidth(double nominalWidth);
-
     bool setGain(double controllerGain);
 
     bool setSaturations(double maxVelocity, double maxAngularVelocity);
@@ -85,6 +83,8 @@ public:
     bool setFreeSpaceEllipse(const FreeSpaceEllipse& freeSpaceEllipse);
 
     bool setFreeSpaceEllipseConservativeFactor(double conservativeFactor);
+
+    bool setInnerFreeSpaceEllipseOffset(double offset);
 };
 
 #endif // UNICYCLECONTROLLER_H
