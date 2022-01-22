@@ -859,4 +859,18 @@ bool UnicyclePlanner::setFreeSpaceEllipse(const FreeSpaceEllipse &freeSpaceEllip
     return true;
 }
 
+bool UnicyclePlanner::setFreeSpaceEllipseConservativeFactor(double conservativeFactor)
+{
+    std::lock_guard<std::mutex> guard(m_mutex);
+
+    return m_controller->setFreeSpaceEllipseConservativeFactor(conservativeFactor);
+}
+
+bool UnicyclePlanner::setInnerFreeSpaceEllipseOffset(double offset)
+{
+    std::lock_guard<std::mutex> guard(m_mutex);
+
+    return m_controller->setInnerFreeSpaceEllipseOffset(offset);
+}
+
 
