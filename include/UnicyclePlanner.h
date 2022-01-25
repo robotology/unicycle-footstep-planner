@@ -72,16 +72,10 @@ public:
     bool clearDesiredTrajectoryUpTo(double time);
 
     //Integrator inputs
-    [[deprecated("set the endTime when computing new steps.")]]
-    bool setEndTime(double endTime);
-
     bool setMaximumIntegratorStepSize(double dT);
 
     //Constraints
     bool setMaxStepLength(double maxLength);
-
-    [[deprecated("use the method setWidthSettings instead.")]]
-    bool setMinStepWidth(double minWidth);
 
     bool setMaxAngleVariation(double maxAngleInRad); //in radians!
 
@@ -97,30 +91,17 @@ public:
 
     bool setMinimumStepLength(double minLength);
 
-    [[deprecated("use the method setWidthSettings instead.")]]
-    bool setNominalWidth(double nominalWidth);
-
     bool setWidthSetting(double minWidth, double nominalWidth);
 
     void addTerminalStep(bool addStep);
 
     void startWithLeft(bool startLeft);
 
-    [[deprecated("timings will always be resetted. User can chose whether resetting also the foot or not. Use the method resetStartingFootIfStill")]]
-    void resetTimingsIfStill(bool resetTimings) {
-        resetStartingFootIfStill(resetTimings);
-    }
-
     void resetStartingFootIfStill(bool resetStartingFoot);
 
     void setLeftFootYawOffsetInRadians(double leftYawOffsetInRadians);
 
     void setRightFootYawOffsetInRadians(double rightYawOffsetInRadians);
-
-    [[deprecated("the setEndTime method has been deprecated. Use the computeNewSteps method which sets also the endTime.")]]
-    bool computeNewSteps(std::shared_ptr<FootPrint> leftFoot, std::shared_ptr<FootPrint> rightFoot, double initTime) {
-        return computeNewSteps(leftFoot, rightFoot, initTime, m_endTime);
-    }
 
     bool computeNewSteps(std::shared_ptr<FootPrint> leftFoot, std::shared_ptr<FootPrint> rightFoot, double initTime, double endTime); //if the inputs are empty, the initTime is obtained from the first trajectory point, otherwise the initTime is the latest impactTime
 
