@@ -32,7 +32,7 @@ include(CMakePackageConfigHelpers)
 
 project(UnicyclePlanner
         LANGUAGES CXX
-        VERSION 0.3.102)
+        VERSION 0.4.0)
 
 option(ENABLE_RPATH "Enable RPATH for this library" ON)
 mark_as_advanced(ENABLE_RPATH)
@@ -50,10 +50,8 @@ if(NOT CMAKE_CONFIGURATION_TYPES)
   endif()
 endif()
 
-find_package(iDynTree 0.11.103 REQUIRED)
+find_package(iDynTree 4.3.0 REQUIRED)
 find_package(Eigen3 REQUIRED)
-
-include_directories(SYSTEM ${EIGEN3_INCLUDE_DIR})
 
 set(UCPLANNER_SOURCES src/ControlledUnicycle.cpp
                       src/UnicyclePlanner.cpp
@@ -61,8 +59,6 @@ set(UCPLANNER_SOURCES src/ControlledUnicycle.cpp
                       src/UnicycleOptimization.cpp
                       src/UnicycleFoot.cpp
                       src/FootPrint.cpp
-                      src/FootPrintsInterpolator.cpp
-                      src/UnicycleTrajectoryGenerator.cpp
                       src/FeetGenerator.cpp
                       src/FeetCubicSplineGenerator.cpp
                       src/UnicycleGenerator.cpp
@@ -79,8 +75,6 @@ set(UCPLANNER_HEADERS include/ControlledUnicycle.h
                       include/UnicycleFoot.h
                       include/FootPrint.h
                       include/UnicyclePlanner.h
-                      include/FootPrintsInterpolator.h
-                      include/UnicycleTrajectoryGenerator.h
                       include/FeetGenerator.h
                       include/FeetCubicSplineGenerator.h
                       include/UnicycleGenerator.h
@@ -95,7 +89,7 @@ set(UCPLANNER_HEADERS include/ControlledUnicycle.h
 add_library(UnicyclePlanner ${UCPLANNER_HEADERS} ${UCPLANNER_SOURCES})
 target_include_directories(UnicyclePlanner PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>)
 target_include_directories(UnicyclePlanner PUBLIC $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
-target_link_libraries(UnicyclePlanner ${iDynTree_LIBRARIES})
+target_link_libraries(UnicyclePlanner Eigen3::Eigen ${iDynTree_LIBRARIES})
 
 set_property(TARGET UnicyclePlanner PROPERTY PUBLIC_HEADER ${UCPLANNER_HEADERS})
 target_compile_features(UnicyclePlanner PUBLIC cxx_attribute_deprecated)

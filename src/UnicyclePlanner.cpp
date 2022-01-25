@@ -398,18 +398,6 @@ bool UnicyclePlanner::clearDesiredTrajectoryUpTo(double time)
     return m_controller->clearDesiredTrajectoryUpTo(time);
 }
 
-bool UnicyclePlanner::setEndTime(double endTime)
-{
-    std::lock_guard<std::mutex> guard(m_mutex);
-
-    if (endTime < 0){
-        std::cerr << "The endTime is supposed to be non-negative." <<std::endl;
-        return false;
-    }
-    m_endTime = endTime;
-    return true;
-}
-
 bool UnicyclePlanner::setMaximumIntegratorStepSize(double dT)
 {
     std::lock_guard<std::mutex> guard(m_mutex);
@@ -426,13 +414,6 @@ bool UnicyclePlanner::setMaxStepLength(double maxLength)
         return true;
     }
     return false;
-}
-
-bool UnicyclePlanner::setMinStepWidth(double minWidth)
-{
-    std::lock_guard<std::mutex> guard(m_mutex);
-
-    return m_unicycleProblem.setMinWidth(minWidth);
 }
 
 bool UnicyclePlanner::setMaxAngleVariation(double maxAngleInRad)
@@ -516,20 +497,6 @@ bool UnicyclePlanner::setMinimumStepLength(double minLength)
         return false;
     }
     m_minLength = minLength;
-    return true;
-}
-
-bool UnicyclePlanner::setNominalWidth(double nominalWidth)
-{
-    std::lock_guard<std::mutex> guard(m_mutex);
-
-    if (nominalWidth < 0){
-        std::cerr << "The nominal width is supposed to be non-negative." << std::endl;
-        return false;
-    }
-
-    m_nominalWidth = nominalWidth;
-
     return true;
 }
 
