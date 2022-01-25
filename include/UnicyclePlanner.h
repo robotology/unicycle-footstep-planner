@@ -29,9 +29,10 @@ class UnicyclePlanner {
     std::shared_ptr<ControlledUnicycle> m_unicycle;
     iDynTree::optimalcontrol::integrators::RK4 m_integrator;
     UnicycleOptimization m_unicycleProblem;
-    double m_endTime, m_minTime, m_maxTime, m_nominalTime, m_dT, m_minAngle, m_nominalWidth, m_maxLength, m_minLength, m_maxAngle;
+    double m_initTime, m_endTime, m_minTime, m_maxTime, m_nominalTime, m_dT, m_minAngle, m_nominalWidth, m_maxLength, m_minLength, m_maxAngle;
     bool m_addTerminalStep, m_startLeft, m_resetStartingFoot, m_firstStep;
     FreeSpaceEllipseMethod m_freeSpaceMethod;
+    double m_leftYawOffset, m_rightYawOffset;
     std::mutex m_mutex;
 
     std::shared_ptr<UnicycleFoot> m_left, m_right;
@@ -43,11 +44,11 @@ class UnicyclePlanner {
 
     bool initializePlanner(double initTime);
 
-    bool get_rPl(const iDynTree::Vector2 &unicyclePosition, double unicycleAngle, iDynTree::Vector2 &rPl); //depending on left and right foot and on swing_left
+    bool get_rPl(const UnicycleState &unicycleState, iDynTree::Vector2 &rPl); //depending on left and right foot and on swing_left
 
-    bool getIntegratorSolution(double time, iDynTree::Vector2& unicyclePosition, double &unicycleAngle) const;
+    bool getIntegratorSolution(double time, UnicycleState &unicycleState) const;
 
-    bool addTerminalStep(const iDynTree::Vector2 &lastUnicyclePosition, double lastUnicycleAngle);
+    bool addTerminalStep(const UnicycleState &lastUnicycleState);
 
 public:
 
@@ -60,6 +61,8 @@ public:
 
     bool setSlowWhenTurnGain(double slowWhenTurnGain); //if >0 the unicycle progress more slowly when also turning.
 
+    bool setSlowWhenBackwardFactor(double slowWhenBackwardFactor); //if >0 the unicycle progress more slowly when going backward. It is a multiplicative gain
+
     bool addDesiredTrajectoryPoint(double initTime, const iDynTree::Vector2& yDesired, const iDynTree::Vector2& yDotDesired); //If two points have the same initTime it is an undefined behavior. It keeps the desired values constant from initTime to the initTime of the next desired point (they are automatically ordered)
 
     bool addDesiredTrajectoryPoint(double initTime, const iDynTree::Vector2& yDesired);// like the above but assumes zero velocity
@@ -69,16 +72,10 @@ public:
     bool clearDesiredTrajectoryUpTo(double time);
 
     //Integrator inputs
-    [[deprecated("set the endTime when computing new steps.")]]
-    bool setEndTime(double endTime);
-
     bool setMaximumIntegratorStepSize(double dT);
 
     //Constraints
     bool setMaxStepLength(double maxLength);
-
-    [[deprecated("use the method setWidthSettings instead.")]]
-    bool setMinStepWidth(double minWidth);
 
     bool setMaxAngleVariation(double maxAngleInRad); //in radians!
 
@@ -94,26 +91,17 @@ public:
 
     bool setMinimumStepLength(double minLength);
 
-    [[deprecated("use the method setWidthSettings instead.")]]
-    bool setNominalWidth(double nominalWidth);
-
     bool setWidthSetting(double minWidth, double nominalWidth);
 
     void addTerminalStep(bool addStep);
 
     void startWithLeft(bool startLeft);
 
-    [[deprecated("timings will always be resetted. User can chose whether resetting also the foot or not. Use the method resetStartingFootIfStill")]]
-    void resetTimingsIfStill(bool resetTimings) {
-        resetStartingFootIfStill(resetTimings);
-    }
-
     void resetStartingFootIfStill(bool resetStartingFoot);
 
-    [[deprecated("the setEndTime method has been deprecated. Use the computeNewSteps method which sets also the endTime.")]]
-    bool computeNewSteps(std::shared_ptr<FootPrint> leftFoot, std::shared_ptr<FootPrint> rightFoot, double initTime) {
-        return computeNewSteps(leftFoot, rightFoot, initTime, m_endTime);
-    }
+    void setLeftFootYawOffsetInRadians(double leftYawOffsetInRadians);
+
+    void setRightFootYawOffsetInRadians(double rightYawOffsetInRadians);
 
     bool computeNewSteps(std::shared_ptr<FootPrint> leftFoot, std::shared_ptr<FootPrint> rightFoot, double initTime, double endTime); //if the inputs are empty, the initTime is obtained from the first trajectory point, otherwise the initTime is the latest impactTime
 
@@ -124,6 +112,10 @@ public:
     void setFreeSpaceEllipseMethod(FreeSpaceEllipseMethod method);
 
     bool setFreeSpaceEllipse(const FreeSpaceEllipse& freeSpaceEllipse);
+
+    bool setFreeSpaceEllipseConservativeFactor(double conservativeFactor); //Used only to saturate the references
+
+    bool setInnerFreeSpaceEllipseOffset(double offset);
 };
 
 #endif // UNICYCLEPLANNER_H

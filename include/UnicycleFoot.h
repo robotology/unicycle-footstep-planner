@@ -14,12 +14,19 @@
 #include "iDynTree/Core/VectorFixSize.h"
 #include "iDynTree/Core/MatrixDynSize.h"
 
+struct UnicycleState
+{
+    iDynTree::Vector2 position;
+    double angle;
+};
 
 class UnicycleFoot {
     std::shared_ptr<FootPrint> m_steps_ptr;
     iDynTree::Vector2 m_distance;
     bool m_distanceSet;
     double m_minimumStep;
+    double m_minimumAngle;
+    double m_yawOffset;
     iDynTree::MatrixDynSize m_bufferR;
 
     bool computeRotationMatrix(double theta, iDynTree::MatrixDynSize& R);
@@ -32,7 +39,11 @@ public:
 
     const iDynTree::Vector2& distanceFromUnicycle() const;
 
-    bool addStepFromUnicycle(const iDynTree::Vector2& position, double theta, double impactTime);
+    bool setYawOffsetInRadians(double yawOffsetInRadians);
+
+    double yawOffsetInRadians() const;
+
+    bool addStepFromUnicycle(const UnicycleState &unicycleState, double impactTime);
 
     bool addParallelStep(const UnicycleFoot& otherFoot, double impactTime);
 
@@ -40,13 +51,17 @@ public:
 
     bool setTinyStepLength(double length);
 
-    bool isTinyStep(const iDynTree::Vector2& unicyclePosition, double unicycleAngle); //given the position of the unicycle return true if the step would be tiny
+    bool setTinyStepAngle(double angle);
+
+    bool isTinyStep(const UnicycleState &unicycleState); //given the position of the unicycle return true if the step would be tiny
 
     size_t numberOfSteps() const;
 
-    bool getUnicyclePositionFromFoot(const iDynTree::Vector2& footPosition, double theta, iDynTree::Vector2 &unicyclePosition);
+    bool getUnicycleStateFromStep(const Step &inputStep, UnicycleState &unicycleState);
 
-    bool getFootPositionFromUnicycle(const iDynTree::Vector2& unicyclePosition, double theta, iDynTree::Vector2 &footPosition);
+    double getUnicycleAngleFromStep(const Step &inputStep) const;
+
+    bool getFootPositionFromUnicycle(const UnicycleState &unicycleState, iDynTree::Vector2 &footPosition);
 
 };
 
