@@ -5,8 +5,6 @@ on:
   pull_request:
   
 env:
-  # commit from vcpkg's master branch on 2022/1/26
-  vcpkg_TAG: 2e34a79a814551424d9b1a981b3b110e0a8fbdfd
   iDynTree_TAG: v4.3.0
   
 
@@ -17,7 +15,7 @@ jobs:
     strategy:
       matrix:
         build_type: [Release, Debug]
-        os: [ubuntu-latest, windows-latest, macOS-latest]
+        os: [ubuntu-latest, macOS-latest]
       fail-fast: false
 
     steps:
@@ -39,16 +37,6 @@ jobs:
       run: |
         for apt_file in `grep -lr microsoft /etc/apt/sources.list.d/`; do sudo rm $apt_file; done
 
- 
-    # Restore from cache the previously built ports. If "cache miss"
-    # then provision vcpkg, install desired ports, finally cache everything for the next run.
-    - name: Dependencies [Windows]
-      if: matrix.os == 'windows-latest'
-      uses: lukka/run-vcpkg@v6
-      with:
-        vcpkgArguments: '--triplet x64-windows eigen3'
-        vcpkgGitCommitId: ${{ env.vcpkg_TAG }}
-
     - name: Dependencies [macOS]
       if: matrix.os == 'macOS-latest'
       run: |
@@ -67,25 +55,7 @@ jobs:
       with:
         path: ${{ github.workspace }}/install/deps
         # Including ${{ runner.temp }} is a workaround taken from https://github.com/robotology/whole-body-estimators/pull/62 to fix macos configuration failure on https://github.com/dic-iit/bipedal-locomotion-framework/pull/45
-        key: source-deps-${{ runner.os }}-${{runner.temp}}-build-type-${{ matrix.build_type }}-vcpkg-${{ env.vcpkg_TAG }}-iDynTree-${{ env.iDynTree_TAG }}
-        
-    - name: Source-based Dependencies [Windows]
-      if: steps.cache-source-deps.outputs.cache-hit != 'true' && matrix.os == 'windows-latest'
-      shell: bash
-      run: |
-        # iDynTree
-        cd ${GITHUB_WORKSPACE}
-        git clone https://github.com/robotology/iDynTree
-        cd iDynTree
-        git checkout ${iDynTree_TAG}
-        mkdir -p build
-        cd build
-        cmake -A x64 -DCMAKE_TOOLCHAIN_FILE=${VCPKG_INSTALLATION_ROOT}/scripts/buildsystems/vcpkg.cmake \
-                     -DCMAKE_PREFIX_PATH=${GITHUB_WORKSPACE}/install/deps \
-                     -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
-                     -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/install/deps ..
-        cmake --build . --config ${{ matrix.build_type }} --target install
-        
+        key: source-deps-${{ runner.os }}-${{runner.temp}}-build-type-${{ matrix.build_type }}-iDynTree-${{ env.iDynTree_TAG }}
         
     - name: Source-based Dependencies [Ubuntu/macOS]
       if: steps.cache-source-deps.outputs.cache-hit != 'true' && (startsWith(matrix.os, 'ubuntu') || matrix.os == 'macos-latest')
@@ -106,18 +76,6 @@ jobs:
     # ===================
     # CMAKE-BASED PROJECT
     # ===================
-
-    - name: Configure [Windows]
-      # Use bash also on Windows (otherwise cd, mkdir, ... do not work)
-      if: matrix.os == 'windows-latest'
-      shell: bash
-      run: |
-        mkdir -p build
-        cd build
-        cmake -A x64 -DCMAKE_TOOLCHAIN_FILE=${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake \
-              -DCMAKE_PREFIX_PATH=${GITHUB_WORKSPACE}/install/deps \
-              -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/install \
-              -DBUILD_TESTING:BOOL=ON ..
 
     - name: Configure [Ubuntu]
       if: matrix.os == 'ubuntu-latest'

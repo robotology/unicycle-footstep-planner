@@ -1,4 +1,7 @@
 cmake_minimum_required(VERSION 3.1)
+project(UnicyclePlanner
+        LANGUAGES CXX
+        VERSION 0.4.1)
 
 # Defines the CMAKE_INSTALL_LIBDIR, CMAKE_INSTALL_BINDIR and many other useful macros
 # See https://cmake.org/cmake/help/latest/module/GNUInstallDirs.html
@@ -29,10 +32,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 include(AddWarningsConfigurationToTargets)
 
 include(CMakePackageConfigHelpers)
-
-project(UnicyclePlanner
-        LANGUAGES CXX
-        VERSION 0.4.1)
 
 option(ENABLE_RPATH "Enable RPATH for this library" ON)
 mark_as_advanced(ENABLE_RPATH)
