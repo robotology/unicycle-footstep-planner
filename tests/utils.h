@@ -9,10 +9,10 @@
 #ifndef TEST_UTILS_H
 #define TEST_UTILS_H
 
-#include <ostream>
+#include <iostream>
 #include <fstream>
 
-#include "UnicycleTrajectoryGenerator.h"
+#include <FootPrint.h>
 
 /**
  * Color namespace
