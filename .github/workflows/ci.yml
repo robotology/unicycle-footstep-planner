@@ -1,0 +1,111 @@
+name: C++ CI Workflow
+
+on:
+  push:
+  pull_request:
+  
+env:
+  iDynTree_TAG: v4.3.0
+  
+
+jobs:
+  build:
+    name: '[${{ matrix.os }}@${{ matrix.build_type }}]'
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        build_type: [Release, Debug]
+        os: [ubuntu-latest, macOS-latest]
+      fail-fast: false
+
+    steps:
+    - uses: actions/checkout@master
+
+    # Print environment variables to simplify development and debugging
+    - name: Environment Variables
+      shell: bash
+      run: env
+
+    # ============
+    # DEPENDENCIES
+    # ============
+
+    # Remove apt repos that are known to break from time to time
+    # See https://github.com/actions/virtual-environments/issues/323
+    - name: Remove broken apt repos [Ubuntu]
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        for apt_file in `grep -lr microsoft /etc/apt/sources.list.d/`; do sudo rm $apt_file; done
+
+    - name: Dependencies [macOS]
+      if: matrix.os == 'macOS-latest'
+      run: |
+        brew update
+        brew install eigen
+
+    - name: Dependencies [Ubuntu]
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        sudo apt-get update
+        sudo apt-get install libeigen3-dev
+        
+    - name: Cache Source-based Dependencies
+      id: cache-source-deps
+      uses: actions/cache@v1
+      with:
+        path: ${{ github.workspace }}/install/deps
+        # Including ${{ runner.temp }} is a workaround taken from https://github.com/robotology/whole-body-estimators/pull/62 to fix macos configuration failure on https://github.com/dic-iit/bipedal-locomotion-framework/pull/45
+        key: source-deps-${{ runner.os }}-${{runner.temp}}-build-type-${{ matrix.build_type }}-iDynTree-${{ env.iDynTree_TAG }}
+        
+    - name: Source-based Dependencies [Ubuntu/macOS]
+      if: steps.cache-source-deps.outputs.cache-hit != 'true' && (startsWith(matrix.os, 'ubuntu') || matrix.os == 'macos-latest')
+      shell: bash
+      run: |
+        # iDynTree
+        cd ${GITHUB_WORKSPACE}
+        git clone https://github.com/robotology/iDynTree
+        cd iDynTree
+        git checkout ${iDynTree_TAG}
+        mkdir -p build
+        cd build
+        cmake -DCMAKE_PREFIX_PATH=${GITHUB_WORKSPACE}/install/deps -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+              -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/install/deps ..
+        cmake --build . --config ${{ matrix.build_type }} --target install
+
+
+    # ===================
+    # CMAKE-BASED PROJECT
+    # ===================
+
+    - name: Configure [Ubuntu]
+      if: matrix.os == 'ubuntu-latest'
+      shell: bash
+      run: |
+        mkdir -p build
+        cd build
+        cmake -DCMAKE_PREFIX_PATH=${GITHUB_WORKSPACE}/install/deps \
+              -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/install \
+              -DBUILD_TESTING:BOOL=ON ..
+
+    - name: Configure [macOS]
+      if: matrix.os == 'macOS-latest'
+      shell: bash
+      run: |
+        mkdir -p build
+        cd build
+        cmake -DCMAKE_PREFIX_PATH=${GITHUB_WORKSPACE}/install/deps \
+              -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/install \
+              -DBUILD_TESTING:BOOL=ON ..
+
+    - name: Build
+      shell: bash
+      run: |
+        cd build
+        cmake --build . --config ${{ matrix.build_type }}
+
+    - name: Test
+      shell: bash
+      run: |
+        cd build
+        ctest --output-on-failure -C ${{ matrix.build_type }} .
+        
