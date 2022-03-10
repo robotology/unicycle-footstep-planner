@@ -358,31 +358,19 @@ bool UnicyleController::getDesiredPointInFreeSpaceEllipse(double time, const iDy
     if (m_outerEllipse.isSet())
     {
         Eigen::Vector2d desiredFromOuter, desiredFromInner, saturatedInput;
-        desiredFromOuter = iDynTree::toEigen(m_outerEllipse.projectPointInsideEllipse(yDesired));
+        desiredFromOuter = iDynTree::toEigen(m_outerEllipse.projectPointInsideEllipse(yDesired, unicyclePosition));
         saturatedInput = desiredFromOuter;
 
         if (m_innerEllipse.isSet())
         {
-            desiredFromInner = iDynTree::toEigen(m_innerEllipse.projectPointInsideEllipse(yDesired));
+            desiredFromInner = iDynTree::toEigen(m_innerEllipse.projectPointInsideEllipse(yDesired, unicyclePosition));
 
-            iDynTree::Vector2 intersection1, intersection2;
+            iDynTree::Vector2 closestIntersection;
 
             //Compute the intersections between inner ellipse and the line passing between the center of the unicycle and the person
             iDynTree::Vector2 personPosition = getPersonPosition(unicyclePosition, unicycleAngle);
-            if (m_innerEllipse.getIntersectionsWithLine(unicyclePosition, personPosition, intersection1, intersection2))
+            if (m_innerEllipse.getClosestIntersectionsWithLine(unicyclePosition, personPosition, closestIntersection))
             {
-                //If we are here there is at least one intersection point. We get the closest
-                iDynTree::Vector2 closestIntersection;
-                if ((iDynTree::toEigen(personPosition) - iDynTree::toEigen(intersection1)).norm() <
-                     (iDynTree::toEigen(personPosition) - iDynTree::toEigen(intersection2)).norm())
-                {
-                    closestIntersection = intersection1;
-                }
-                else
-                {
-                    closestIntersection = intersection2;
-                }
-
                 Eigen::Vector2d unicycleVector = iDynTree::toEigen(personPosition) - iDynTree::toEigen(unicyclePosition);
 
                 Eigen::Vector2d ellipseTangentVector = iDynTree::toEigen(m_innerEllipse.getTangentVector(closestIntersection));

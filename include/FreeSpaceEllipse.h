@@ -66,10 +66,12 @@ public:
     // If the ellipsoid has never been set, it returns true by default
     bool isPointInside(const iDynTree::Vector2& testPoint) const;
 
-    iDynTree::Vector2 projectPointInsideEllipse(const iDynTree::Vector2& testPoint) const;
+    iDynTree::Vector2 projectPointInsideEllipse(const iDynTree::Vector2& testPoint, const iDynTree::Vector2 &projectionPoint) const;
 
     bool getIntersectionsWithLine(const iDynTree::Vector2& linePoint1, const iDynTree::Vector2& linePoint2,
                                   iDynTree::Vector2& intersection1, iDynTree::Vector2& intersection2) const;
+
+    bool getClosestIntersectionsWithLine(const iDynTree::Vector2& linePoint1, const iDynTree::Vector2& linePoint2, iDynTree::Vector2& intersection) const;
 
     iDynTree::Vector2 getTangentVector(const iDynTree::Vector2& intersectionPoint) const;
 

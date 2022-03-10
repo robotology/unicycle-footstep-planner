@@ -175,7 +175,7 @@ FreeSpaceEllipse::FreeSpaceEllipse()
     clear();
 }
 
-iDynTree::Vector2 FreeSpaceEllipse::projectPointInsideEllipse(const iDynTree::Vector2 &testPoint) const
+iDynTree::Vector2 FreeSpaceEllipse::projectPointInsideEllipse(const iDynTree::Vector2 &testPoint, const iDynTree::Vector2& projectionPoint) const
 {
     if (!m_isSet)
     {
@@ -189,15 +189,22 @@ iDynTree::Vector2 FreeSpaceEllipse::projectPointInsideEllipse(const iDynTree::Ve
         return testPoint;
     }
 
-    iDynTree::Vector2 normalizedGenerators;
+    iDynTree::Vector2 projectionPointGenerators = computeGenerators(projectionPoint);
+    double projectionPointGeneratorsModule = generatorsModule(projectionPointGenerators);
+    iDynTree::Vector2 intersection;
+    if (projectionPointGeneratorsModule >= (1.0 - 1e-5) || !getClosestIntersectionsWithLine(projectionPoint, testPoint, intersection)) //if the projection point is almost out, we simply forget about it
+    {
+        iDynTree::Vector2 normalizedGenerators;
 
-    iDynTree::toEigen(normalizedGenerators) = iDynTree::toEigen(generators) / module;
+        iDynTree::toEigen(normalizedGenerators) = iDynTree::toEigen(generators) / module;
 
-    iDynTree::Vector2 output;
+        iDynTree::Vector2 output;
 
-    iDynTree::toEigen(output) = iDynTree::toEigen(m_C) * iDynTree::toEigen(normalizedGenerators) + iDynTree::toEigen(m_d);
+        iDynTree::toEigen(output) = iDynTree::toEigen(m_C) * iDynTree::toEigen(normalizedGenerators) + iDynTree::toEigen(m_d);
+        return output;
+    }
 
-    return output;
+    return intersection;
 }
 
 bool FreeSpaceEllipse::getIntersectionsWithLine(const iDynTree::Vector2 &linePoint1, const iDynTree::Vector2 &linePoint2,
@@ -231,7 +238,7 @@ bool FreeSpaceEllipse::getIntersectionsWithLine(const iDynTree::Vector2 &linePoi
     intersection1InCircle.zero();
     intersection2InCircle.zero();
 
-    if (std::abs(alpha) < 1e-15) // The line is horizontal, y = -gamma / beta. There is an intersection is y <= 1
+    if (std::abs(alpha) < 1e-15) // The line is horizontal, y = -gamma / beta. There is an intersection if |y| <= 1
     {
 
         intersection1InCircle(1) = -gamma / beta;
@@ -248,7 +255,7 @@ bool FreeSpaceEllipse::getIntersectionsWithLine(const iDynTree::Vector2 &linePoi
         }
     }
 
-    else if (std::abs(beta) < 1e-15) // The line is vertical, x = -gamma / alpha. There is an intersection is x <= 1
+    else if (std::abs(beta) < 1e-15) // The line is vertical, x = -gamma / alpha. There is an intersection if |x| <= 1
     {
 
         intersection1InCircle(0) = -gamma / alpha;
@@ -293,6 +300,28 @@ bool FreeSpaceEllipse::getIntersectionsWithLine(const iDynTree::Vector2 &linePoi
     //Port the points back to the initial space
     iDynTree::toEigen(intersection1) = iDynTree::toEigen(m_C) * iDynTree::toEigen(intersection1InCircle) + iDynTree::toEigen(m_d);
     iDynTree::toEigen(intersection2) = iDynTree::toEigen(m_C) * iDynTree::toEigen(intersection2InCircle) + iDynTree::toEigen(m_d);
+    return true;
+}
+
+bool FreeSpaceEllipse::getClosestIntersectionsWithLine(const iDynTree::Vector2 &linePoint1, const iDynTree::Vector2 &linePoint2, iDynTree::Vector2 &intersection) const
+{
+    iDynTree::Vector2 intersection1, intersection2;
+
+    if (!getIntersectionsWithLine(linePoint1, linePoint2, intersection1, intersection2))
+    {
+        return false;
+    }
+
+    if ((iDynTree::toEigen(linePoint2) - iDynTree::toEigen(intersection1)).norm() <
+            (iDynTree::toEigen(linePoint2) - iDynTree::toEigen(intersection2)).norm())
+    {
+        intersection = intersection1;
+    }
+    else
+    {
+        intersection = intersection2;
+    }
+
     return true;
 }
 
