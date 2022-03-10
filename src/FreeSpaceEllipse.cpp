@@ -194,6 +194,7 @@ iDynTree::Vector2 FreeSpaceEllipse::projectPointInsideEllipse(const iDynTree::Ve
     iDynTree::Vector2 intersection;
     if (projectionPointGeneratorsModule >= (1.0 - 1e-5) || !getClosestIntersectionsWithLine(projectionPoint, testPoint, intersection)) //if the projection point is almost out, we simply forget about it
     {
+        std::cerr << "[WARNING][FreeSpaceEllipse::projectPointInsideEllipse] The projection point is outside the ellipse, or there is no intersection. Using the center of the ellipse as projection point." << std::endl;
         iDynTree::Vector2 normalizedGenerators;
 
         iDynTree::toEigen(normalizedGenerators) = iDynTree::toEigen(generators) / module;
