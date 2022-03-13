@@ -25,6 +25,7 @@ typedef struct{
 
 class UnicyleController : public iDynTree::optimalcontrol::Controller{
     iDynTree::Vector2 m_personDistance, m_y, m_personPosition, m_unicyclePosition;
+    double m_personDistanceNorm;
     double m_theta;
     iDynTree::MatrixDynSize m_inverseB, m_R;
     std::deque<TrajectoryPoint> m_desiredTrajectory;
