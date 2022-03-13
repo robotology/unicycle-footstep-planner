@@ -360,36 +360,38 @@ bool UnicyleController::getDesiredPointInFreeSpaceEllipse(double time, const iDy
         return true; //premature exit if the point is already inside the inner ellipse
     }
 
+    Eigen::Vector2d desiredFromOuter, desiredFromInner;
+    desiredFromInner = desiredFromOuter  = iDynTree::toEigen(yDesired);
+    double blendingFactor = 0.0;
+
     if (m_outerEllipse.isSet())
     {
-        Eigen::Vector2d desiredFromOuter, desiredFromInner, saturatedInput;
         desiredFromOuter = iDynTree::toEigen(m_outerEllipse.projectPointInsideEllipse(yDesired, unicyclePosition));
-        saturatedInput = desiredFromOuter;
+        desiredFromInner = desiredFromOuter;
+    }
 
-        if (m_innerEllipse.isSet())
+    if (m_innerEllipse.isSet())
+    {
+        desiredFromInner = iDynTree::toEigen(m_innerEllipse.projectPointInsideEllipse(yDesired, unicyclePosition));
+
+        iDynTree::Vector2 closestIntersection;
+        iDynTree::Vector2 personPosition = getPersonPosition(unicyclePosition, unicycleAngle);
+
+        //Compute the intersections between inner ellipse and the line passing between the center of the unicycle and the person
+        if (m_innerEllipse.getClosestIntersectionsWithLine(unicyclePosition, personPosition, closestIntersection))
         {
-            desiredFromInner = iDynTree::toEigen(m_innerEllipse.projectPointInsideEllipse(yDesired, unicyclePosition));
-
-            iDynTree::Vector2 closestIntersection;
-
-            //Compute the intersections between inner ellipse and the line passing between the center of the unicycle and the person
-            iDynTree::Vector2 personPosition = getPersonPosition(unicyclePosition, unicycleAngle);
-            if (m_innerEllipse.getClosestIntersectionsWithLine(unicyclePosition, personPosition, closestIntersection))
+            Eigen::Vector2d ellipseTangentVector = iDynTree::toEigen(m_innerEllipse.getTangentVector(closestIntersection));
+            Eigen::Vector2d desiredMotionVector = iDynTree::toEigen(yDesired) - iDynTree::toEigen(personPosition);
+            double desiredMotionVectorModule = desiredMotionVector.norm();
+            if (desiredMotionVectorModule > 1e-10)
             {
-                Eigen::Vector2d unicycleVector = iDynTree::toEigen(personPosition) - iDynTree::toEigen(unicyclePosition);
-
-                Eigen::Vector2d ellipseTangentVector = iDynTree::toEigen(m_innerEllipse.getTangentVector(closestIntersection));
-
-                double blendingFactor = std::abs(unicycleVector.transpose() * ellipseTangentVector) / m_personDistanceNorm; //1 if the unicycle is parallel to the tangent, 0 if perpendicular
-                blendingFactor = std::tanh(m_conservativeFactor * blendingFactor);
-
-                saturatedInput = blendingFactor * desiredFromInner + (1.0 - blendingFactor) * desiredFromOuter; //If the unicycle is perpendicular to the ellipse, we use the large one
+                blendingFactor = std::abs(desiredMotionVector.transpose() * ellipseTangentVector) / desiredMotionVectorModule; //1 if the desired motion vector is parallel to the tangent, 0 if perpendicular
             }
         }
-
-        iDynTree::toEigen(yDesired) = saturatedInput;
-
     }
+
+    blendingFactor = std::tanh(m_conservativeFactor * blendingFactor);
+    iDynTree::toEigen(yDesired) = blendingFactor * desiredFromInner + (1.0 - blendingFactor) * desiredFromOuter;
 
     return true;
 }
