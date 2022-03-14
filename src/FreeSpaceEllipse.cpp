@@ -189,10 +189,8 @@ iDynTree::Vector2 FreeSpaceEllipse::projectPointInsideEllipse(const iDynTree::Ve
         return testPoint;
     }
 
-    iDynTree::Vector2 projectionPointGenerators = computeGenerators(projectionPoint);
-    double projectionPointGeneratorsModule = generatorsModule(projectionPointGenerators);
     iDynTree::Vector2 intersection;
-    if (projectionPointGeneratorsModule >= (1.0 - 1e-5) || !getClosestIntersectionsWithLine(projectionPoint, testPoint, intersection)) //if the projection point is almost out, we simply forget about it
+    if (!getClosestIntersectionsWithLine(projectionPoint, testPoint, intersection))
     {
         iDynTree::Vector2 normalizedGenerators;
 
