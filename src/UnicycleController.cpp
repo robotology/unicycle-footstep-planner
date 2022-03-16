@@ -383,7 +383,7 @@ bool UnicyleController::getDesiredPointInFreeSpaceEllipse(double time, const iDy
             Eigen::Vector2d ellipseTangentVector = iDynTree::toEigen(m_innerEllipse.getTangentVector(closestIntersection));
             Eigen::Vector2d desiredMotionVector = iDynTree::toEigen(yDesired) - iDynTree::toEigen(personPosition);
             double desiredMotionVectorModule = desiredMotionVector.norm();
-            if (desiredMotionVectorModule > 1e-10)
+            if (desiredMotionVectorModule > 1e-4)
             {
                 blendingFactor = std::abs(desiredMotionVector.transpose() * ellipseTangentVector) / desiredMotionVectorModule; //1 if the desired motion vector is parallel to the tangent, 0 if perpendicular
             }
