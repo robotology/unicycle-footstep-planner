@@ -378,9 +378,9 @@ bool UnicyleController::getDesiredPointInFreeSpaceEllipse(double time, const iDy
         iDynTree::Vector2 personPosition = getPersonPosition(unicyclePosition, unicycleAngle);
 
         //Compute the intersections between inner ellipse and the line passing between the center of the unicycle and the person
-        if (m_innerEllipse.getClosestIntersectionsWithLine(unicyclePosition, personPosition, closestIntersection))
+        if (m_outerEllipse.getClosestIntersectionsWithLine(unicyclePosition, personPosition, closestIntersection))
         {
-            Eigen::Vector2d ellipseTangentVector = iDynTree::toEigen(m_innerEllipse.getTangentVector(closestIntersection));
+            Eigen::Vector2d ellipseTangentVector = iDynTree::toEigen(m_outerEllipse.getTangentVector(closestIntersection));
             Eigen::Vector2d desiredMotionVector = iDynTree::toEigen(yDesired) - iDynTree::toEigen(personPosition);
             double desiredMotionVectorModule = desiredMotionVector.norm();
             if (desiredMotionVectorModule > 1e-4)
