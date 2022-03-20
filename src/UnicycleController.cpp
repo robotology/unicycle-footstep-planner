@@ -268,7 +268,7 @@ bool UnicyleController::setFreeSpaceEllipse(const FreeSpaceEllipse &freeSpaceEll
     if (m_outerEllipse.isSet())
     {
         double innerEllipseSemiMajorAxis = m_outerEllipse.semiMajorAxis() - m_innerEllipseOffset;
-        double innerEllipseSemiMinorAxis = m_outerEllipse.semiMajorAxis() - m_innerEllipseOffset;
+        double innerEllipseSemiMinorAxis = m_outerEllipse.semiMinorAxis() - m_innerEllipseOffset * 2.0;
 
         if ((innerEllipseSemiMajorAxis <= 0.0) || (innerEllipseSemiMinorAxis <= 0.0))
         {
