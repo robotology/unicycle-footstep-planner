@@ -840,4 +840,11 @@ bool UnicyclePlanner::setInnerFreeSpaceEllipseOffset(double offset)
     return m_controller->setInnerFreeSpaceEllipseOffset(offset);
 }
 
+bool UnicyclePlanner::setInnerFreeSpaceEllipseOffsets(double semiMajorAxisOffset, double semiMinorAxisOffset)
+{
+    std::lock_guard<std::mutex> guard(m_mutex);
+
+    return m_controller->setInnerFreeSpaceEllipseOffsets(semiMajorAxisOffset, semiMinorAxisOffset);
+}
+
 

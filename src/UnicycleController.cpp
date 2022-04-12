@@ -50,7 +50,8 @@ UnicyleController::UnicyleController()
     ,m_time(0)
     ,m_slowWhenTurnGain(0.0)
     ,m_slowWhenBackwardFactor(1.0)
-    ,m_innerEllipseOffset(0.0)
+    ,m_semiMajorInnerEllipseOffset(0.0)
+    ,m_semiMinorInnerEllipseOffset(0.0)
     ,m_conservativeFactor(2.0)
 {
     m_personDistance(0) = 0.2;
@@ -267,8 +268,8 @@ bool UnicyleController::setFreeSpaceEllipse(const FreeSpaceEllipse &freeSpaceEll
     m_innerEllipse = freeSpaceEllipse;
     if (m_outerEllipse.isSet())
     {
-        double innerEllipseSemiMajorAxis = m_outerEllipse.semiMajorAxis() - m_innerEllipseOffset;
-        double innerEllipseSemiMinorAxis = m_outerEllipse.semiMinorAxis() - m_innerEllipseOffset * 2.0;
+        double innerEllipseSemiMajorAxis = m_outerEllipse.semiMajorAxis() - m_semiMajorInnerEllipseOffset;
+        double innerEllipseSemiMinorAxis = m_outerEllipse.semiMinorAxis() - m_semiMinorInnerEllipseOffset;
 
         if ((innerEllipseSemiMajorAxis <= 0.0) || (innerEllipseSemiMinorAxis <= 0.0))
         {
@@ -299,13 +300,25 @@ bool UnicyleController::setFreeSpaceEllipseConservativeFactor(double conservativ
 
 bool UnicyleController::setInnerFreeSpaceEllipseOffset(double offset)
 {
-    if (offset < 0)
+    return setInnerFreeSpaceEllipseOffsets(offset, offset);
+}
+
+bool UnicyleController::setInnerFreeSpaceEllipseOffsets(double semiMajorAxisOffset, double semiMinorAxisOffset)
+{
+    if (semiMajorAxisOffset < 0)
     {
-        std::cerr << "The inner free space ellipse offset is expected to be non-negative" << std::endl;
+        std::cerr << "The inner free space ellipse semi major axis offset is expected to be non-negative" << std::endl;
         return false;
     }
 
-    m_innerEllipseOffset = offset;
+    if (semiMinorAxisOffset < 0)
+    {
+        std::cerr << "The inner free space ellipse semi minor axis offset is expected to be non-negative" << std::endl;
+        return false;
+    }
+
+    m_semiMajorInnerEllipseOffset = semiMajorAxisOffset;
+    m_semiMinorInnerEllipseOffset = semiMinorAxisOffset;
     return setFreeSpaceEllipse(m_outerEllipse);
 }
 
