@@ -32,7 +32,8 @@ class UnicyleController : public iDynTree::optimalcontrol::Controller{
     double m_gain, m_maxVelocity, m_maxAngularVelocity, m_time;
     double m_slowWhenTurnGain;
     double m_slowWhenBackwardFactor;
-    double m_innerEllipseOffset;
+    double m_semiMajorInnerEllipseOffset;
+    double m_semiMinorInnerEllipseOffset;
     FreeSpaceEllipse m_outerEllipse, m_innerEllipse;
     double m_conservativeFactor;
 
@@ -85,6 +86,8 @@ public:
     bool setFreeSpaceEllipseConservativeFactor(double conservativeFactor);
 
     bool setInnerFreeSpaceEllipseOffset(double offset);
+
+    bool setInnerFreeSpaceEllipseOffsets(double semiMajorAxisOffset, double semiMinorAxisOffset);
 };
 
 #endif // UNICYCLECONTROLLER_H

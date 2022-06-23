@@ -50,7 +50,8 @@ UnicyleController::UnicyleController()
     ,m_time(0)
     ,m_slowWhenTurnGain(0.0)
     ,m_slowWhenBackwardFactor(1.0)
-    ,m_innerEllipseOffset(0.0)
+    ,m_semiMajorInnerEllipseOffset(0.0)
+    ,m_semiMinorInnerEllipseOffset(0.0)
     ,m_conservativeFactor(2.0)
 {
     m_personDistance(0) = 0.2;
@@ -267,8 +268,8 @@ bool UnicyleController::setFreeSpaceEllipse(const FreeSpaceEllipse &freeSpaceEll
     m_innerEllipse = freeSpaceEllipse;
     if (m_outerEllipse.isSet())
     {
-        double innerEllipseSemiMajorAxis = m_outerEllipse.semiMajorAxis() - m_innerEllipseOffset;
-        double innerEllipseSemiMinorAxis = m_outerEllipse.semiMajorAxis() - m_innerEllipseOffset;
+        double innerEllipseSemiMajorAxis = m_outerEllipse.semiMajorAxis() - m_semiMajorInnerEllipseOffset;
+        double innerEllipseSemiMinorAxis = m_outerEllipse.semiMinorAxis() - m_semiMinorInnerEllipseOffset;
 
         if ((innerEllipseSemiMajorAxis <= 0.0) || (innerEllipseSemiMinorAxis <= 0.0))
         {
@@ -299,13 +300,25 @@ bool UnicyleController::setFreeSpaceEllipseConservativeFactor(double conservativ
 
 bool UnicyleController::setInnerFreeSpaceEllipseOffset(double offset)
 {
-    if (offset < 0)
+    return setInnerFreeSpaceEllipseOffsets(offset, offset);
+}
+
+bool UnicyleController::setInnerFreeSpaceEllipseOffsets(double semiMajorAxisOffset, double semiMinorAxisOffset)
+{
+    if (semiMajorAxisOffset < 0)
     {
-        std::cerr << "The inner free space ellipse offset is expected to be non-negative" << std::endl;
+        std::cerr << "The inner free space ellipse semi major axis offset is expected to be non-negative" << std::endl;
         return false;
     }
 
-    m_innerEllipseOffset = offset;
+    if (semiMinorAxisOffset < 0)
+    {
+        std::cerr << "The inner free space ellipse semi minor axis offset is expected to be non-negative" << std::endl;
+        return false;
+    }
+
+    m_semiMajorInnerEllipseOffset = semiMajorAxisOffset;
+    m_semiMinorInnerEllipseOffset = semiMinorAxisOffset;
     return setFreeSpaceEllipse(m_outerEllipse);
 }
 
@@ -355,48 +368,43 @@ bool UnicyleController::getDesiredPointInFreeSpaceEllipse(double time, const iDy
         return false;
     }
 
+    if (m_innerEllipse.isSet() && m_innerEllipse.isPointInside(yDesired))
+    {
+        return true; //premature exit if the point is already inside the inner ellipse
+    }
+
+    Eigen::Vector2d desiredFromOuter, desiredFromInner;
+    desiredFromInner = desiredFromOuter  = iDynTree::toEigen(yDesired);
+    double blendingFactor = 0.0;
+
     if (m_outerEllipse.isSet())
     {
-        Eigen::Vector2d desiredFromOuter, desiredFromInner, saturatedInput;
-        desiredFromOuter = iDynTree::toEigen(m_outerEllipse.projectPointInsideEllipse(yDesired));
-        saturatedInput = desiredFromOuter;
+        desiredFromOuter = iDynTree::toEigen(m_outerEllipse.projectPointInsideEllipse(yDesired, unicyclePosition));
+        desiredFromInner = desiredFromOuter;
+    }
 
-        if (m_innerEllipse.isSet())
+    if (m_innerEllipse.isSet())
+    {
+        desiredFromInner = iDynTree::toEigen(m_innerEllipse.projectPointInsideEllipse(yDesired, unicyclePosition));
+
+        iDynTree::Vector2 closestIntersection;
+        iDynTree::Vector2 personPosition = getPersonPosition(unicyclePosition, unicycleAngle);
+
+        //Compute the intersections between inner ellipse and the line passing between the center of the unicycle and the person
+        if (m_outerEllipse.getClosestIntersectionsWithLine(unicyclePosition, personPosition, closestIntersection))
         {
-            desiredFromInner = iDynTree::toEigen(m_innerEllipse.projectPointInsideEllipse(yDesired));
-
-            iDynTree::Vector2 intersection1, intersection2;
-
-            //Compute the intersections between inner ellipse and the line passing between the center of the unicycle and the person
-            iDynTree::Vector2 personPosition = getPersonPosition(unicyclePosition, unicycleAngle);
-            if (m_innerEllipse.getIntersectionsWithLine(unicyclePosition, personPosition, intersection1, intersection2))
+            Eigen::Vector2d ellipseTangentVector = iDynTree::toEigen(m_outerEllipse.getTangentVector(closestIntersection));
+            Eigen::Vector2d desiredMotionVector = iDynTree::toEigen(yDesired) - iDynTree::toEigen(personPosition);
+            double desiredMotionVectorModule = desiredMotionVector.norm();
+            if (desiredMotionVectorModule > 1e-4)
             {
-                //If we are here there is at least one intersection point. We get the closest
-                iDynTree::Vector2 closestIntersection;
-                if ((iDynTree::toEigen(personPosition) - iDynTree::toEigen(intersection1)).norm() <
-                     (iDynTree::toEigen(personPosition) - iDynTree::toEigen(intersection2)).norm())
-                {
-                    closestIntersection = intersection1;
-                }
-                else
-                {
-                    closestIntersection = intersection2;
-                }
-
-                Eigen::Vector2d unicycleVector = iDynTree::toEigen(personPosition) - iDynTree::toEigen(unicyclePosition);
-
-                Eigen::Vector2d ellipseTangentVector = iDynTree::toEigen(m_innerEllipse.getTangentVector(closestIntersection));
-
-                double blendingFactor = std::abs(unicycleVector.transpose() * ellipseTangentVector) / m_personDistanceNorm; //1 if the unicycle is parallel to the tangent, 0 if perpendicular
-                blendingFactor = std::tanh(m_conservativeFactor * blendingFactor);
-
-                saturatedInput = blendingFactor * desiredFromInner + (1.0 - blendingFactor) * desiredFromOuter; //If the unicycle is perpendicular to the ellipse, we use the large one
+                blendingFactor = std::abs(desiredMotionVector.transpose() * ellipseTangentVector) / desiredMotionVectorModule; //1 if the desired motion vector is parallel to the tangent, 0 if perpendicular
             }
         }
-
-        iDynTree::toEigen(yDesired) = saturatedInput;
-
     }
+
+    blendingFactor = std::tanh(m_conservativeFactor * blendingFactor);
+    iDynTree::toEigen(yDesired) = blendingFactor * desiredFromInner + (1.0 - blendingFactor) * desiredFromOuter;
 
     return true;
 }

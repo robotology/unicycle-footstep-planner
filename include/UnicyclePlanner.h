@@ -116,6 +116,8 @@ public:
     bool setFreeSpaceEllipseConservativeFactor(double conservativeFactor); //Used only to saturate the references
 
     bool setInnerFreeSpaceEllipseOffset(double offset);
+
+    bool setInnerFreeSpaceEllipseOffsets(double semiMajorAxisOffset, double semiMinorAxisOffset);
 };
 
 #endif // UNICYCLEPLANNER_H
