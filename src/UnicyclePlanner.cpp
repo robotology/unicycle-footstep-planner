@@ -224,14 +224,21 @@ bool UnicyclePlanner::get_rPl(const UnicycleState &unicycleState, iDynTree::Vect
 
 bool UnicyclePlanner::getIntegratorSolution(double time, UnicycleState &unicycleState) const
 {
-    static iDynTree::VectorDynSize stateBuffer(3);
-    if(!m_integrator.getSolution(time,stateBuffer)){
-        std::cerr << "Error while retrieving the integrator solution." << std::endl;
-        return false;
-    }
-    unicycleState.position(0) = stateBuffer(0);
-    unicycleState.position(1) = stateBuffer(1);
-    unicycleState.angle = stateBuffer(2);
+    auto& fullSolution = m_integrator.getFullSolution();
+
+    assert(fullSolution.size() != 0 && "Error while retrieving the integrator solution. No solution available.");
+
+    double initialTime = fullSolution.front().time;
+
+    assert(time > initialTime && time < fullSolution.back().time && "Error while retrieving the integrator solution. Time out of bounds.");
+
+    size_t index = static_cast<size_t>(std::round((time - initialTime)/m_integrator.maximumStepSize()));
+    index = std::min(index, fullSolution.size() - 1);
+    auto& state = fullSolution[index].stateAtT;
+
+    unicycleState.position(0) = state(0);
+    unicycleState.position(1) = state(1);
+    unicycleState.angle = state(2);
     return true;
 }
 
