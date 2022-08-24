@@ -230,7 +230,7 @@ bool UnicyclePlanner::getIntegratorSolution(double time, UnicycleState &unicycle
 
     double initialTime = fullSolution.front().time;
 
-    assert(time > initialTime && time < fullSolution.back().time && "Error while retrieving the integrator solution. Time out of bounds.");
+    assert(time >= initialTime && time <= fullSolution.back().time && "Error while retrieving the integrator solution. Time out of bounds.");
 
     size_t index = static_cast<size_t>(std::round((time - initialTime)/m_integrator.maximumStepSize()));
     index = std::min(index, fullSolution.size() - 1);
