@@ -13,7 +13,7 @@
 #include "UnicycleOptimization.h"
 #include "UnicycleFoot.h"
 #include "FreeSpaceEllipse.h"
-#include <iDynTree/Integrators/RK4.h>
+#include <iDynTree/Integrators/ForwardEuler.h>
 #include <memory>
 #include <mutex>
 
@@ -27,7 +27,7 @@ enum class FreeSpaceEllipseMethod
 class UnicyclePlanner {
     std::shared_ptr<UnicyleController> m_controller;
     std::shared_ptr<ControlledUnicycle> m_unicycle;
-    iDynTree::optimalcontrol::integrators::RK4 m_integrator;
+    iDynTree::optimalcontrol::integrators::ForwardEuler m_integrator;
     UnicycleOptimization m_unicycleProblem;
     double m_initTime, m_endTime, m_minTime, m_maxTime, m_nominalTime, m_dT, m_minAngle, m_nominalWidth, m_maxLength, m_minLength, m_maxAngle;
     bool m_addTerminalStep, m_startLeft, m_resetStartingFoot, m_firstStep;
