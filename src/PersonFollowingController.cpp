@@ -5,19 +5,19 @@
  *
  */
 
-#include "UnicycleController.h"
+#include "PersonFollowingController.h"
 #include "iDynTree/Core/EigenHelpers.h"
 #include "Eigen/Core"
 #include <iostream>
 #include <cmath>
 #include <algorithm>
 
-double UnicyleController::saturate(double input, double saturation)
+double PersonFollowingController::saturate(double input, double saturation)
 {
     return saturate(input, saturation, -saturation);
 }
 
-double UnicyleController::saturate(double input, double positiveSaturation, double negativeSaturation)
+double PersonFollowingController::saturate(double input, double positiveSaturation, double negativeSaturation)
 {
     if ((positiveSaturation < 0) || (negativeSaturation > positiveSaturation))
         return input;
@@ -29,7 +29,7 @@ double UnicyleController::saturate(double input, double positiveSaturation, doub
     else return input;
 }
 
-void UnicyleController::interpolateReferences(double time,
+void PersonFollowingController::interpolateReferences(double time,
                                               const std::deque<TrajectoryPoint>::reverse_iterator &point,
                                               iDynTree::Vector2 &yOutput, iDynTree::Vector2 &yDotOutput)
 {
@@ -41,7 +41,7 @@ void UnicyleController::interpolateReferences(double time,
 
 }
 
-UnicyleController::UnicyleController()
+PersonFollowingController::PersonFollowingController()
     :iDynTree::optimalcontrol::Controller(2)
     ,m_theta(0)
     ,m_gain(10)
@@ -77,7 +77,7 @@ UnicyleController::UnicyleController()
 
 }
 
-bool UnicyleController::doControl(iDynTree::VectorDynSize &controllerOutput)
+bool PersonFollowingController::doControl(iDynTree::VectorDynSize &controllerOutput)
 {
     if(controllerOutput.size() != this->controlSpaceSize())
         controllerOutput.resize(this->controlSpaceSize());
@@ -109,7 +109,7 @@ bool UnicyleController::doControl(iDynTree::VectorDynSize &controllerOutput)
     return true;
 }
 
-bool UnicyleController::setStateFeedback(const double t, const iDynTree::VectorDynSize &stateFeedback){
+bool PersonFollowingController::setStateFeedback(const double t, const iDynTree::VectorDynSize &stateFeedback){
     if (stateFeedback.size() != 3)
         return false;
     m_time = t;
@@ -124,7 +124,7 @@ bool UnicyleController::setStateFeedback(const double t, const iDynTree::VectorD
     return true;
 }
 
-bool UnicyleController::setPersonDistance(double xPosition, double yPosition)
+bool PersonFollowingController::setPersonDistance(double xPosition, double yPosition)
 {
     if(xPosition == 0){
         std::cerr << "The xPosition need to be greater than 0." << std::endl;
@@ -137,12 +137,12 @@ bool UnicyleController::setPersonDistance(double xPosition, double yPosition)
     return true;
 }
 
-const iDynTree::Vector2 &UnicyleController::getPersonDistance() const
+const iDynTree::Vector2 &PersonFollowingController::getPersonDistance() const
 {
     return m_personDistance;
 }
 
-const iDynTree::Vector2 &UnicyleController::getPersonPosition(const iDynTree::Vector2 &unicyclePosition, double unicycleAngle)
+const iDynTree::Vector2 &PersonFollowingController::getPersonPosition(const iDynTree::Vector2 &unicyclePosition, double unicycleAngle)
 {
     double c_theta = std::cos(unicycleAngle);
     double s_theta = std::sin(unicycleAngle);
@@ -157,7 +157,7 @@ const iDynTree::Vector2 &UnicyleController::getPersonPosition(const iDynTree::Ve
     return m_personPosition;
 }
 
-bool UnicyleController::setGain(double controllerGain)
+bool PersonFollowingController::setGain(double controllerGain)
 {
     if (controllerGain <= 0){
         std::cerr << "The controller gain is supposed to be positive." << std::endl;
@@ -167,7 +167,7 @@ bool UnicyleController::setGain(double controllerGain)
     return true;
 }
 
-bool UnicyleController::setSaturations(double maxVelocity, double maxAngularVelocity)
+bool PersonFollowingController::setSaturations(double maxVelocity, double maxAngularVelocity)
 {
     if ((maxVelocity < 0)||(maxAngularVelocity < 0)){
         std::cerr << "The saturations are on the absolute value, thus they need to be non-negative." << std::endl;
@@ -180,7 +180,7 @@ bool UnicyleController::setSaturations(double maxVelocity, double maxAngularVelo
     return true;
 }
 
-bool UnicyleController::setSlowWhenTurnGain(double slowWhenTurnGain)
+bool PersonFollowingController::setSlowWhenTurnGain(double slowWhenTurnGain)
 {
     if (slowWhenTurnGain < 0){
         std::cerr << "The slowWhenTurn gain is supposed to be non-negative." << std::endl;
@@ -191,7 +191,7 @@ bool UnicyleController::setSlowWhenTurnGain(double slowWhenTurnGain)
     return true;
 }
 
-bool UnicyleController::setSlowWhenBackwardFactor(double slowWhenBackwardFactor)
+bool PersonFollowingController::setSlowWhenBackwardFactor(double slowWhenBackwardFactor)
 {
     if (slowWhenBackwardFactor < 0){
         std::cerr << "The slowWhenBackwardFactor multiplier is supposed to be non-negative." << std::endl;
@@ -202,7 +202,7 @@ bool UnicyleController::setSlowWhenBackwardFactor(double slowWhenBackwardFactor)
     return true;
 }
 
-bool UnicyleController::setDesiredPoint(const TrajectoryPoint &desiredPoint)
+bool PersonFollowingController::setDesiredPoint(const TrajectoryPoint &desiredPoint)
 {
     if (desiredPoint.initTime < 0){
         std::cerr << "The initTime parameter is supposed to be non-negative." << std::endl;
@@ -216,7 +216,7 @@ bool UnicyleController::setDesiredPoint(const TrajectoryPoint &desiredPoint)
     return true;
 }
 
-bool UnicyleController::getDesiredTrajectoryInitialTime(double &firstTime)
+bool PersonFollowingController::getDesiredTrajectoryInitialTime(double &firstTime)
 {
     if (m_desiredTrajectory.empty()){
         std::cerr << "No trajectory loaded yet." << std::endl;
@@ -227,12 +227,12 @@ bool UnicyleController::getDesiredTrajectoryInitialTime(double &firstTime)
     return true;
 }
 
-void UnicyleController::clearDesiredTrajectory()
+void PersonFollowingController::clearDesiredTrajectory()
 {
     m_desiredTrajectory.clear();
 }
 
-bool UnicyleController::clearDesiredTrajectoryUpTo(double time)
+bool PersonFollowingController::clearDesiredTrajectoryUpTo(double time)
 {
     if (time < 0){
         std::cerr << "The time is expected to be non-negative" <<std::endl;
@@ -262,7 +262,7 @@ bool UnicyleController::clearDesiredTrajectoryUpTo(double time)
     return true;
 }
 
-bool UnicyleController::setFreeSpaceEllipse(const FreeSpaceEllipse &freeSpaceEllipse)
+bool PersonFollowingController::setFreeSpaceEllipse(const FreeSpaceEllipse &freeSpaceEllipse)
 {
     m_outerEllipse = freeSpaceEllipse;
     m_innerEllipse = freeSpaceEllipse;
@@ -286,7 +286,7 @@ bool UnicyleController::setFreeSpaceEllipse(const FreeSpaceEllipse &freeSpaceEll
     return true;
 }
 
-bool UnicyleController::setFreeSpaceEllipseConservativeFactor(double conservativeFactor)
+bool PersonFollowingController::setFreeSpaceEllipseConservativeFactor(double conservativeFactor)
 {
     if (conservativeFactor < 0)
     {
@@ -298,12 +298,12 @@ bool UnicyleController::setFreeSpaceEllipseConservativeFactor(double conservativ
     return true;
 }
 
-bool UnicyleController::setInnerFreeSpaceEllipseOffset(double offset)
+bool PersonFollowingController::setInnerFreeSpaceEllipseOffset(double offset)
 {
     return setInnerFreeSpaceEllipseOffsets(offset, offset);
 }
 
-bool UnicyleController::setInnerFreeSpaceEllipseOffsets(double semiMajorAxisOffset, double semiMinorAxisOffset)
+bool PersonFollowingController::setInnerFreeSpaceEllipseOffsets(double semiMajorAxisOffset, double semiMinorAxisOffset)
 {
     if (semiMajorAxisOffset < 0)
     {
@@ -322,7 +322,7 @@ bool UnicyleController::setInnerFreeSpaceEllipseOffsets(double semiMajorAxisOffs
     return setFreeSpaceEllipse(m_outerEllipse);
 }
 
-bool UnicyleController::getDesiredPoint(double time,
+bool PersonFollowingController::getDesiredPoint(double time,
                                         iDynTree::Vector2 &yDesired, iDynTree::Vector2 &yDotDesired)
 {
     if (time < 0){
@@ -361,7 +361,7 @@ bool UnicyleController::getDesiredPoint(double time,
 
 }
 
-bool UnicyleController::getDesiredPointInFreeSpaceEllipse(double time, const iDynTree::Vector2 &unicyclePosition, double unicycleAngle, iDynTree::Vector2 &yDesired, iDynTree::Vector2 &yDotDesired)
+bool PersonFollowingController::getDesiredPointInFreeSpaceEllipse(double time, const iDynTree::Vector2 &unicyclePosition, double unicycleAngle, iDynTree::Vector2 &yDesired, iDynTree::Vector2 &yDotDesired)
 {
     if (!getDesiredPoint(time, yDesired, yDotDesired))
     {

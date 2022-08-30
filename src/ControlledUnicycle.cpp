@@ -6,7 +6,6 @@
  */
 
 #include "ControlledUnicycle.h"
-#include "UnicycleController.h"
 #include <cmath>
 #include <memory>
 #include <iostream>
@@ -75,7 +74,7 @@ const iDynTree::VectorDynSize &ControlledUnicycle::initialState() const
     return m_initialState;
 }
 
-bool ControlledUnicycle::setController(std::shared_ptr<UnicyleController> controller)
+bool ControlledUnicycle::setController(std::shared_ptr<iDynTree::optimalcontrol::Controller> controller)
 {
     if (controller->controlSpaceSize() != controlSpaceSize()){
         std::cerr << "The controller dimension is not coherent with the controlSpaceSize." << std::endl;

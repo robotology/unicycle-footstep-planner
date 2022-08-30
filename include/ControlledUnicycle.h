@@ -9,13 +9,14 @@
 #define CONTROLLEDUNICYCLE_H
 
 #include <iDynTree/DynamicalSystem.h>
-#include <UnicycleController.h>
+#include <iDynTree/Controller.h>
 #include <iDynTree/Core/VectorDynSize.h>
+#include <iDynTree/Core/VectorFixSize.h>
 #include <memory>
 
 class ControlledUnicycle : public iDynTree::optimalcontrol::DynamicalSystem{
     iDynTree::VectorDynSize m_controllerOutput, m_initialState;
-    std::shared_ptr<UnicyleController> m_controller_ptr;
+    std::shared_ptr<iDynTree::optimalcontrol::Controller> m_controller_ptr;
 
 public:
 
@@ -30,7 +31,7 @@ public:
 
     const iDynTree::VectorDynSize& initialState() const override;
 
-    bool setController(std::shared_ptr<UnicyleController> controller);
+    bool setController(std::shared_ptr<iDynTree::optimalcontrol::Controller> controller);
 };
 
 

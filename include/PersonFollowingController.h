@@ -23,7 +23,7 @@ typedef struct{
     iDynTree::Vector2 yDotDesired;
 } TrajectoryPoint;
 
-class UnicyleController : public iDynTree::optimalcontrol::Controller{
+class PersonFollowingController : public iDynTree::optimalcontrol::Controller{
     iDynTree::Vector2 m_personDistance, m_y, m_personPosition, m_unicyclePosition;
     double m_personDistanceNorm;
     double m_theta;
@@ -46,7 +46,7 @@ class UnicyleController : public iDynTree::optimalcontrol::Controller{
                                iDynTree::Vector2& yOutput, iDynTree::Vector2 &yDotOutput);
 
 public:
-    UnicyleController();
+    PersonFollowingController();
 
     //the state is [y, x, theta], i.e. the 2D position of the point to be followed, the 2D position of the cart and the angle wrt Z axis;
     //the controller is [u;w]

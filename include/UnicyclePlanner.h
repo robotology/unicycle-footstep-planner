@@ -9,7 +9,7 @@
 #define UNICYCLEPLANNER_H
 
 #include "ControlledUnicycle.h"
-#include "UnicycleController.h"
+#include "PersonFollowingController.h"
 #include "UnicycleOptimization.h"
 #include "UnicycleFoot.h"
 #include "FreeSpaceEllipse.h"
@@ -25,7 +25,7 @@ enum class FreeSpaceEllipseMethod
 };
 
 class UnicyclePlanner {
-    std::shared_ptr<UnicyleController> m_controller;
+    std::shared_ptr<PersonFollowingController> m_controller;
     std::shared_ptr<ControlledUnicycle> m_unicycle;
     iDynTree::optimalcontrol::integrators::ForwardEuler m_integrator;
     UnicycleOptimization m_unicycleProblem;

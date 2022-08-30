@@ -308,7 +308,7 @@ bool UnicyclePlanner::addTerminalStep(const UnicycleState &lastUnicycleState)
 }
 
 UnicyclePlanner::UnicyclePlanner()
-    :m_controller(std::make_shared<UnicyleController>())
+    :m_controller(std::make_shared<PersonFollowingController>())
     ,m_unicycle(std::make_shared<ControlledUnicycle>())
     ,m_integrator(m_unicycle)
     ,m_initTime(0.0)
