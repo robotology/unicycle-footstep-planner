@@ -259,6 +259,102 @@ public:
 
 };
 
+//--------Double Support Trajectory declaration
+
+/**
+ * DoubleSupportTrajectory class represents the trajectory of the Divergent Component
+ * of Motion during a double support phase.
+ */
+class DoubleSupportTrajectoryMinJerk : public GeneralSupportTrajectory
+{
+ private:
+
+    friend class DCMTrajectoryGeneratorHelper;
+
+    iDynTree::Vector6 m_coefficentsX; /**< 5-th order x-trajectory parameters [a5, a4, a3, a2, a1, a0] */
+    iDynTree::Vector6 m_coefficentsY; /**< 5-th order y-trajectory parameters [a5, a4, a3, a2, a1, a0] */
+
+    /**
+     * Given desired boundary conditions (position and velocity) evaluate the cofficents of a
+     * 5-th order polynomial.
+     * @param positionBoundaryConds contains the desired values of the polinomial at the beginning
+     * and at the end of the Double Support phase;
+     * @param velocityBoundaryConds contains the desired value of the polinomial derivative at the beginning
+     * and at the end of the Double Support phase;
+     * @param dsDuration duration of the Double Support phase.
+     * @return the vector containing the coefficents of the 3-th order polynomial.
+     */
+    iDynTree::Vector6 polinominalInterpolation(const iDynTree::Vector2 &positionBoundaryConds,
+                                               const iDynTree::Vector2 &velocityBoundaryConds,
+                                               const double &initialAcceleration,
+                                               const double &initialJerk,
+                                               const double &dsDuration);
+
+
+
+public:
+
+    /**
+     * Constructor.
+     * @param initBoundaryCondition desired init position and velocity of the
+     * double support trajectory
+     * @param finalBoundaryCondition desired final position and velocity of the
+     * double support trajectory
+     * @param omega time constant of the 3D-LIPM
+     * @note the  desired initial acceleration and jerk are set to zero.
+     */
+    DoubleSupportTrajectoryMinJerk(const DCMTrajectoryPoint &initBoundaryCondition,
+                                   const DCMTrajectoryPoint &finalBoundaryCondition,
+                                   const double& omega);
+
+    /**
+     * Constructor.
+     * @param initBoundaryCondition desired init position and velocity of the
+     * double support trajectory
+     * @param finalBoundaryCondition desired final position and velocity of the
+     * double support trajectory
+     * @param initialAcceleration desired initial acceleration
+     * @param initialJerk desired initial jerk
+     * @param omega time constant of the 3D-LIPM
+     */
+    DoubleSupportTrajectoryMinJerk(const DCMTrajectoryPoint &initBoundaryCondition,
+                                   const DCMTrajectoryPoint &finalBoundaryCondition,
+                                   const iDynTree::Vector2 &initialAcceleration,
+                                   const iDynTree::Vector2 &initialJerk,
+                                   const double& omega);
+
+    /**
+     * Implementation of the getDCMPosition method of the
+     * GeneralSupportTrajectory class.
+     * @param t is the trajectory evaluation time;
+     * @param DCMPosition is the cartesian position of the Diverget Component of Motion;
+     * @param checkDomainCondition flag used to check if the time belongs to the trajectory domain (default value true).
+     * @return true / false in case of success / failure.
+     */
+    bool getDCMPosition(const double &t, iDynTree::Vector2& DCMPosition, const bool &checkDomainCondition = true) override;
+
+    /**
+     * Implementation of the getDCMVelocity method of the
+     * GeneralSupportTrajectory class.
+     * @param t is the trajectory evaluation time;
+     * @param DCMVelocity is the cartesian velocity of the Diverget Component of Motion;
+     * @param checkDomainCondition flag used to check if the time belongs to the trajectory domain (default value true).
+     * @return true / false in case of success / failure.
+     */
+    bool getDCMVelocity(const double &t, iDynTree::Vector2& DCMVelocity, const bool &checkDomainCondition = true) override;
+
+    /**
+     * Implementation of the getZMPPosition method of the
+     * GeneralSupportTrajectory class.
+     * @param t is the trajectory evaluation time;
+     * @param ZMPPosition cartesian position of the Zero Moment Point;
+     * @param checkDomainCondition flag used to check if the time belongs to the trajectory domain (default value true).
+     * @return true / false in case of success / failure.
+     */
+    virtual bool getZMPPosition(const double &t, iDynTree::Vector2& ZMPVelocity, const bool &checkDomainCondition = true) override;
+
+};
+
 //--------Double Support Trajectory definition
 
 DoubleSupportTrajectory::DoubleSupportTrajectory(const DCMTrajectoryPoint &initBoundaryCondition,
@@ -387,6 +483,167 @@ bool DoubleSupportTrajectory::getDCMVelocity(const double &t, iDynTree::Vector2 
 
 bool DoubleSupportTrajectory::getZMPPosition(const double &t, iDynTree::Vector2 &ZMPPosition,
                                              const bool &checkDomainCondition)
+{
+    // Evaluate the position of the ZMP at time t
+    if (checkDomainCondition)
+        if (!timeBelongsToDomain(t)){
+            std::cerr << "[DOUBLE SUPPORT TRAJECTORY] the time t: " << t
+                      << " does not belong to the trajectory domain." << std::endl;
+            return false;
+        }
+
+    // We can avoid to check the Domain condition since it was already evaluated above
+    iDynTree::Vector2 DCMPosition, DCMVelocity;
+    getDCMPosition(t, DCMPosition);
+    getDCMVelocity(t, DCMVelocity);
+
+    iDynTree::toEigen(ZMPPosition) = iDynTree::toEigen(DCMPosition) - iDynTree::toEigen(DCMVelocity) / m_omega;
+
+    return true;
+}
+
+
+DoubleSupportTrajectoryMinJerk::DoubleSupportTrajectoryMinJerk(const DCMTrajectoryPoint &initBoundaryCondition,
+                                                               const DCMTrajectoryPoint &finalBoundaryCondition,
+                                                               const iDynTree::Vector2 &initialAcceleration,
+                                                               const iDynTree::Vector2 &initialJerk,
+                                                               const double &omega):
+    GeneralSupportTrajectory(initBoundaryCondition.time, finalBoundaryCondition.time, omega)
+{
+
+    double dsDuration = finalBoundaryCondition.time - initBoundaryCondition.time;
+
+    // get the boundary conditions
+    iDynTree::Vector2 positionBoundaryCondsX;
+    iDynTree::Vector2 positionBoundaryCondsY;
+    iDynTree::Vector2 velocityBoundaryCondsX;
+    iDynTree::Vector2 velocityBoundaryCondsY;
+
+    iDynTree::Vector2 initPosition = initBoundaryCondition.DCMPosition;
+    iDynTree::Vector2 initVelocity = initBoundaryCondition.DCMVelocity;
+
+    iDynTree::Vector2 endPosition = finalBoundaryCondition.DCMPosition;
+    iDynTree::Vector2 endVelocity = finalBoundaryCondition.DCMVelocity;
+
+    // set X boundary conditions
+    positionBoundaryCondsX(0) = initPosition(0);
+    positionBoundaryCondsX(1) = endPosition(0);
+    velocityBoundaryCondsX(0) = initVelocity(0);
+    velocityBoundaryCondsX(1) = endVelocity(0);
+
+    // set Y boundary conditions
+    positionBoundaryCondsY(0) = initPosition(1);
+    positionBoundaryCondsY(1) = endPosition(1);
+    velocityBoundaryCondsY(0) = initVelocity(1);
+    velocityBoundaryCondsY(1) = endVelocity(1);
+
+    // evaluate the coefficents of the X and Y polinomials
+    m_coefficentsX = polinominalInterpolation(positionBoundaryCondsX,
+                                              velocityBoundaryCondsX,
+                                              initialAcceleration(0),
+                                              initialJerk(0),
+                                              dsDuration);
+
+    m_coefficentsY = polinominalInterpolation(positionBoundaryCondsY,
+                                              velocityBoundaryCondsY,
+                                              initialAcceleration(1),
+                                              initialJerk(1),
+                                              dsDuration);
+}
+
+iDynTree::Vector6 DoubleSupportTrajectoryMinJerk::polinominalInterpolation(const iDynTree::Vector2 &positionBoundaryConds,
+                                                                           const iDynTree::Vector2 &velocityBoundaryConds,
+                                                                           const double &initialAcceleration,
+                                                                           const double &initialJerk,
+                                                                           const double &dsDuration)
+{
+    // evaluate the coefficent of a 3-th order polinomial
+    // p(t) = a3 * t^3 + a2 * t^2 + a1 * t + a0
+    iDynTree::Vector6 coefficents;
+    Eigen::Matrix<double, 6, 1> boundaryCond;
+    Eigen::Matrix<double, 6, 6> estimationMatrix;
+
+    // set boundary conditions
+    boundaryCond << positionBoundaryConds(0),
+            velocityBoundaryConds(0),
+            initialAcceleration,
+            initialJerk,
+            positionBoundaryConds(1),
+            velocityBoundaryConds(1);
+
+    // set the estimation matrix
+
+
+    estimationMatrix <<  4/(pow(dsDuration,5)),  3/(pow(dsDuration,4)),      1/(pow(dsDuration,3)), 1/(6*pow(dsDuration,2)), -4/(pow(dsDuration,5)),  1/(pow(dsDuration,4)),
+                        -5/(pow(dsDuration,4)),  -4/(pow(dsDuration,3)), -3/(2*pow(dsDuration,2)),  -1/(3*dsDuration),  5/(pow(dsDuration,4)), -1/(pow(dsDuration,3)),
+                           0,               0,                   0,                1/6,               0,               0,
+                           0,               0,                 1/2,                  0,               0,               0,
+                           0,               1,                   0,                  0,               0,               0,
+                           1,               0,                   0,                  0,               0,               0;
+
+    // evaluate the trajectory parameters
+    iDynTree::toEigen(coefficents).noalias() = estimationMatrix * boundaryCond;
+    return coefficents;
+}
+
+bool DoubleSupportTrajectoryMinJerk::getDCMPosition(const double &t, iDynTree::Vector2 &DCMPosition,
+                                                    const bool &checkDomainCondition)
+{
+    if(checkDomainCondition)
+        if (!timeBelongsToDomain(t)){
+            std::cerr << "[DOUBLE SUPPORT TRAJECTORY] the time t: " << t
+                      << " does not belong to the trajectory domain." << std::endl;
+            return false;
+        }
+
+    // Evaluate the position of the desired DCM at time t
+    double startTime = std::get<0>(m_trajectoryDomain);
+    double time = t - startTime;
+    Eigen::Matrix<double, 6, 1> tVector;
+    tVector<< pow(time,5),
+              pow(time,4),
+              pow(time,3),
+              pow(time,2),
+              time,
+              1;
+
+    // evaluate booth x and y coordinates
+    DCMPosition(0) = tVector.dot(iDynTree::toEigen(m_coefficentsX));
+    DCMPosition(1) = tVector.dot(iDynTree::toEigen(m_coefficentsY));
+
+    return true;
+}
+
+bool DoubleSupportTrajectoryMinJerk::getDCMVelocity(const double &t, iDynTree::Vector2 &DCMVelocity,
+                                                    const bool &checkDomainCondition)
+{
+    if(checkDomainCondition)
+        if (!timeBelongsToDomain(t)){
+            std::cerr << "[DOUBLE SUPPORT TRAJECTORY] the time t: " << t
+                      << "does not belong to the trajectory domain." << std::endl;
+            return false;
+        }
+
+    // Evaluate the position of the desired DCM at time t
+    double startTime = std::get<0>(m_trajectoryDomain);
+    double time = t - startTime;
+    Eigen::Matrix<double, 6, 1> tVector;
+    tVector<< 5 * pow(time,4),
+              4 * pow(time,3),
+              3 * pow(time,2),
+              2 * time,
+              1,
+              0;
+
+    // evaluate booth x and y coordinates
+    DCMVelocity(0) = tVector.dot(iDynTree::toEigen(m_coefficentsX));
+    DCMVelocity(1) = tVector.dot(iDynTree::toEigen(m_coefficentsY));
+
+    return true;
+}
+
+bool DoubleSupportTrajectoryMinJerk::getZMPPosition(const double &t, iDynTree::Vector2 &ZMPPosition,
+                                                    const bool &checkDomainCondition)
 {
     // Evaluate the position of the ZMP at time t
     if (checkDomainCondition)
@@ -798,15 +1055,24 @@ bool DCMTrajectoryGeneratorHelper::addFirstDoubleSupportPhase(const DCMTrajector
         m_trajectory.push_back(newDoubleSupport);
 
         // add 1-th part of the Double Support phase
-        newDoubleSupport = std::make_shared<DoubleSupportTrajectory>(doubleSupportInitBoundaryCondition,
-                                                                     doubleSupportStanceInitBoundaryCondition,
-                                                                     m_omega);
+        iDynTree::Vector2 dummy;
+        dummy.zero();
+        newDoubleSupport = std::make_shared<DoubleSupportTrajectoryMinJerk>(doubleSupportInitBoundaryCondition,
+                                                                            doubleSupportStanceInitBoundaryCondition,
+                                                                            dummy,
+                                                                            dummy,
+                                                                            m_omega);
         m_trajectory.push_back(newDoubleSupport);
     }else{
+        iDynTree::Vector2 dummy;
+        dummy.zero();
+
         // add the new Double Support phase
-        newDoubleSupport = std::make_shared<DoubleSupportTrajectory>(doubleSupportInitBoundaryCondition,
-                                                                     doubleSupportFinalBoundaryCondition,
-                                                                     m_omega);
+        newDoubleSupport = std::make_shared<DoubleSupportTrajectoryMinJerk>(doubleSupportInitBoundaryCondition,
+                                                                            doubleSupportFinalBoundaryCondition,
+                                                                            dummy,
+                                                                            dummy,
+                                                                            m_omega);
         // add the new Double Support phase
         m_trajectory.push_back(newDoubleSupport);
     }
