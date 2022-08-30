@@ -23,7 +23,7 @@ public:
     ControlledUnicycle();
 
     //the state is [x, theta], i.e. the 2D position of the cart and the angle wrt Z axis;
-    //the controller is [u;w]
+    //the controller is [u;w;v], i.e. forward speed, angular velocity, lateral speed.
 
     bool dynamics(const iDynTree::VectorDynSize &state, double time, iDynTree::VectorDynSize &stateDynamics) override;
 

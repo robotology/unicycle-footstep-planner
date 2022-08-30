@@ -11,17 +11,17 @@
 #include <iostream>
 
 ControlledUnicycle::ControlledUnicycle()
-:iDynTree::optimalcontrol::DynamicalSystem(3, 2)
+:iDynTree::optimalcontrol::DynamicalSystem(3, 3)
 , m_controller_ptr(nullptr)
 {
     m_initialState.resize(3);
     m_initialState.zero();
-    m_controllerOutput.resize(2);
+    m_controllerOutput.resize(3);
     m_controllerOutput.zero();
 }
 
 //the state is [x, theta], i.e. the 2D position of the point to be followed, the 2D position of the cart and the angle wrt Z axis;
-//the controller is [u;w]
+//the controller is [u;w;v]
 
 bool ControlledUnicycle::dynamics(const iDynTree::VectorDynSize &state, double time, iDynTree::VectorDynSize &stateDynamics)
 {
@@ -52,8 +52,8 @@ bool ControlledUnicycle::dynamics(const iDynTree::VectorDynSize &state, double t
     double c_theta = std::cos(theta);
     double s_theta = std::sin(theta);
 
-    stateDynamics(0) = c_theta * m_controllerOutput(0);
-    stateDynamics(1) = s_theta * m_controllerOutput(0);
+    stateDynamics(0) = c_theta * m_controllerOutput(0) - s_theta * m_controllerOutput(2);
+    stateDynamics(1) = s_theta * m_controllerOutput(0) + c_theta * m_controllerOutput(2);
     stateDynamics(2) = m_controllerOutput(1);
 
     return true;

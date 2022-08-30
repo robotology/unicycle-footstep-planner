@@ -12,23 +12,6 @@
 #include <cmath>
 #include <algorithm>
 
-double PersonFollowingController::saturate(double input, double saturation)
-{
-    return saturate(input, saturation, -saturation);
-}
-
-double PersonFollowingController::saturate(double input, double positiveSaturation, double negativeSaturation)
-{
-    if ((positiveSaturation < 0) || (negativeSaturation > positiveSaturation))
-        return input;
-
-    if (input > positiveSaturation)
-        return positiveSaturation;
-    else if (input < negativeSaturation)
-        return negativeSaturation;
-    else return input;
-}
-
 void PersonFollowingController::interpolateReferences(double time,
                                               const std::deque<TrajectoryPoint>::reverse_iterator &point,
                                               iDynTree::Vector2 &yOutput, iDynTree::Vector2 &yDotOutput)
@@ -42,14 +25,9 @@ void PersonFollowingController::interpolateReferences(double time,
 }
 
 PersonFollowingController::PersonFollowingController()
-    :iDynTree::optimalcontrol::Controller(2)
-    ,m_theta(0)
+    :m_theta(0)
     ,m_gain(10)
-    ,m_maxVelocity(-1) //negative value -> don't saturate
-    ,m_maxAngularVelocity(-1) //negative value -> don't saturate
     ,m_time(0)
-    ,m_slowWhenTurnGain(0.0)
-    ,m_slowWhenBackwardFactor(1.0)
     ,m_semiMajorInnerEllipseOffset(0.0)
     ,m_semiMinorInnerEllipseOffset(0.0)
     ,m_conservativeFactor(2.0)
@@ -77,11 +55,8 @@ PersonFollowingController::PersonFollowingController()
 
 }
 
-bool PersonFollowingController::doControl(iDynTree::VectorDynSize &controllerOutput)
+bool PersonFollowingController::doUnicycleControl(double &forwardSpeed, double &angularVelocity, double &lateralVelocity)
 {
-    if(controllerOutput.size() != this->controlSpaceSize())
-        controllerOutput.resize(this->controlSpaceSize());
-
     double s_theta = std::sin(m_theta);
     double c_theta =std::cos(m_theta);
     double dx = m_personDistance(0);
@@ -99,25 +74,23 @@ bool PersonFollowingController::doControl(iDynTree::VectorDynSize &controllerOut
         return false;
     }
 
-    iDynTree::toEigen(controllerOutput) = iDynTree::toEigen(m_inverseB) * (iDynTree::toEigen(yDotDesired) -
-                                          m_gain * (iDynTree::toEigen(m_y) - iDynTree::toEigen(yDesired)));
+    Eigen::Vector2d controlOutput = iDynTree::toEigen(m_inverseB) * (iDynTree::toEigen(yDotDesired) -
+                                    m_gain * (iDynTree::toEigen(m_y) - iDynTree::toEigen(yDesired)));
 
-    controllerOutput(1) = saturate(controllerOutput(1), m_maxAngularVelocity);
-    double velocitySaturation = m_maxVelocity / (1.0 + m_slowWhenTurnGain * (std::sqrt(controllerOutput(1) * controllerOutput(1))));
-    controllerOutput(0) = saturate(controllerOutput(0), velocitySaturation, -m_slowWhenBackwardFactor * velocitySaturation);
+    forwardSpeed = controlOutput(0);
+    angularVelocity = controlOutput(1);
+    lateralVelocity = 0.0;
 
     return true;
 }
 
-bool PersonFollowingController::setStateFeedback(const double t, const iDynTree::VectorDynSize &stateFeedback){
-    if (stateFeedback.size() != 3)
-        return false;
+bool PersonFollowingController::setUnicycleStateFeedback(const double t, const iDynTree::Vector2 &unicyclePosition, double unicycleOrientation)
+{
     m_time = t;
 
-    m_theta = stateFeedback(2);
+    m_theta = unicycleOrientation;
 
-    m_unicyclePosition(0) = stateFeedback(0);
-    m_unicyclePosition(1) = stateFeedback(1);
+    m_unicyclePosition = unicyclePosition;
 
     m_y = getPersonPosition(m_unicyclePosition, m_theta);
 
@@ -169,37 +142,7 @@ bool PersonFollowingController::setGain(double controllerGain)
 
 bool PersonFollowingController::setSaturations(double maxVelocity, double maxAngularVelocity)
 {
-    if ((maxVelocity < 0)||(maxAngularVelocity < 0)){
-        std::cerr << "The saturations are on the absolute value, thus they need to be non-negative." << std::endl;
-        return false;
-    }
-
-    m_maxVelocity = maxVelocity;
-    m_maxAngularVelocity = maxAngularVelocity;
-
-    return true;
-}
-
-bool PersonFollowingController::setSlowWhenTurnGain(double slowWhenTurnGain)
-{
-    if (slowWhenTurnGain < 0){
-        std::cerr << "The slowWhenTurn gain is supposed to be non-negative." << std::endl;
-        return false;
-    }
-
-    m_slowWhenTurnGain = slowWhenTurnGain;
-    return true;
-}
-
-bool PersonFollowingController::setSlowWhenBackwardFactor(double slowWhenBackwardFactor)
-{
-    if (slowWhenBackwardFactor < 0){
-        std::cerr << "The slowWhenBackwardFactor multiplier is supposed to be non-negative." << std::endl;
-        return false;
-    }
-
-    m_slowWhenBackwardFactor = slowWhenBackwardFactor;
-    return true;
+    return UnicycleBaseController::setSaturations(maxVelocity, maxAngularVelocity, 0.0);
 }
 
 bool PersonFollowingController::setDesiredPoint(const TrajectoryPoint &desiredPoint)

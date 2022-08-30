@@ -54,6 +54,7 @@ find_package(Eigen3 REQUIRED)
 
 set(UCPLANNER_SOURCES src/ControlledUnicycle.cpp
                       src/UnicyclePlanner.cpp
+                      src/UnicycleBaseController.cpp
                       src/PersonFollowingController.cpp
                       src/UnicycleOptimization.cpp
                       src/UnicycleFoot.cpp
@@ -69,6 +70,7 @@ set(UCPLANNER_SOURCES src/ControlledUnicycle.cpp
                       src/FreeSpaceEllipse.cpp)
 
 set(UCPLANNER_HEADERS include/ControlledUnicycle.h
+                      include/UnicycleBaseController.h
                       include/PersonFollowingController.h
                       include/UnicycleOptimization.h
                       include/UnicycleFoot.h
