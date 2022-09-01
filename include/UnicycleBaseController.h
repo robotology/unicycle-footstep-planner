@@ -14,9 +14,10 @@
 
 class UnicycleBaseController : public iDynTree::optimalcontrol::Controller{
 
-    double m_maxVelocity, m_maxAngularVelocity, m_maxLateralVelocity;
+    double m_maxLinearVelocity, m_maxAngularVelocity;
     double m_slowWhenTurnGain;
     double m_slowWhenBackwardFactor;
+    double m_slowWhenSidewaysFactor;
 
     double saturate(double input, double saturation);
 
@@ -34,14 +35,14 @@ public:
 
     bool setStateFeedback(const double t, const iDynTree::VectorDynSize &stateFeedback) final;
 
-    bool setSaturations(double maxVelocity, double maxAngularVelocity, double maxLateralVelocity);
+    bool setSaturations(double maxLinearVelocity, double maxAngularVelocity);
 
     bool setSlowWhenTurnGain(double slowWhenTurnGain); //if >0 the unicycle progress more slowly when also turning.
 
     bool setSlowWhenBackwardFactor(double slowWhenBackwardFactor); //if >0 the unicycle progress more slowly when going backward. It is a multiplicative gain
 
+    bool setSlowWhenSidewaysFactor(double slowWhenSidewaysFactor); //if >0 the unicycle progress more slowly when going backward. It is a multiplicative gain
+
 };
-
-
 
 #endif // UNICYCLEBASECONTROLLER_H

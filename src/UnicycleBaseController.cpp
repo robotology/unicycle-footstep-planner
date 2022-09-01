@@ -28,11 +28,11 @@ double UnicycleBaseController::saturate(double input, double positiveSaturation,
 
 UnicycleBaseController::UnicycleBaseController()
     : iDynTree::optimalcontrol::Controller(3)
-    ,m_maxVelocity(-1) //negative value -> don't saturate
+    ,m_maxLinearVelocity(-1) //negative value -> don't saturate
     ,m_maxAngularVelocity(-1) //negative value -> don't saturate
-    ,m_maxLateralVelocity(-1) //negative value -> don't saturate
     ,m_slowWhenTurnGain(0.0)
     ,m_slowWhenBackwardFactor(1.0)
+    ,m_slowWhenSidewaysFactor(1.0)
 { }
 
 bool UnicycleBaseController::doControl(iDynTree::VectorDynSize &controllerOutput)
@@ -47,9 +47,9 @@ bool UnicycleBaseController::doControl(iDynTree::VectorDynSize &controllerOutput
     }
 
     controllerOutput(1) = saturate(controllerOutput(1), m_maxAngularVelocity);
-    double velocitySaturation = m_maxVelocity / (1.0 + m_slowWhenTurnGain * (std::sqrt(controllerOutput(1) * controllerOutput(1))));
+    double velocitySaturation = m_maxLinearVelocity / (1.0 + m_slowWhenTurnGain * (std::sqrt(controllerOutput(1) * controllerOutput(1))));
     controllerOutput(0) = saturate(controllerOutput(0), velocitySaturation, -m_slowWhenBackwardFactor * velocitySaturation);
-    controllerOutput(2) = saturate(controllerOutput(2), m_maxLateralVelocity);
+    controllerOutput(2) = saturate(controllerOutput(2), m_slowWhenSidewaysFactor * m_maxLinearVelocity);
 
     return true;
 }
@@ -71,14 +71,14 @@ bool UnicycleBaseController::setStateFeedback(const double t, const iDynTree::Ve
 
 }
 
-bool UnicycleBaseController::setSaturations(double maxVelocity, double maxAngularVelocity, double maxLateralVelocity)
+bool UnicycleBaseController::setSaturations(double maxLinearVelocity, double maxAngularVelocity)
 {
-    if ((maxVelocity < 0)||(maxAngularVelocity < 0) || (maxLateralVelocity < 0)){
+    if ((maxLinearVelocity < 0)||(maxAngularVelocity < 0)){
         std::cerr << "The saturations are on the absolute value, thus they need to be non-negative." << std::endl;
         return false;
     }
 
-    m_maxVelocity = maxVelocity;
+    m_maxLinearVelocity = maxLinearVelocity;
     m_maxAngularVelocity = maxAngularVelocity;
 
     return true;
@@ -103,5 +103,16 @@ bool UnicycleBaseController::setSlowWhenBackwardFactor(double slowWhenBackwardFa
     }
 
     m_slowWhenBackwardFactor = slowWhenBackwardFactor;
+    return true;
+}
+
+bool UnicycleBaseController::setSlowWhenSidewaysFactor(double slowWhenSidewaysFactor)
+{
+    if (slowWhenSidewaysFactor < 0){
+        std::cerr << "The slowWhenSidewaysFactor multiplier is supposed to be non-negative." << std::endl;
+        return false;
+    }
+
+    m_slowWhenSidewaysFactor = slowWhenSidewaysFactor;
     return true;
 }

@@ -10,6 +10,7 @@
 
 #include "ControlledUnicycle.h"
 #include "PersonFollowingController.h"
+#include "UnicycleDirectController.h"
 #include "UnicycleOptimization.h"
 #include "UnicycleFoot.h"
 #include "FreeSpaceEllipse.h"
@@ -24,8 +25,16 @@ enum class FreeSpaceEllipseMethod
     REFERENCE_AND_FOOTSTEPS
 };
 
+enum class UnicycleController
+{
+    PERSON_FOLLOWING,
+    DIRECT
+};
+
 class UnicyclePlanner {
-    std::shared_ptr<PersonFollowingController> m_controller;
+    std::shared_ptr<PersonFollowingController> m_personFollowingController;
+    std::shared_ptr<UnicycleDirectController> m_directController;
+    UnicycleController m_currentController;
     std::shared_ptr<ControlledUnicycle> m_unicycle;
     iDynTree::optimalcontrol::integrators::ForwardEuler m_integrator;
     UnicycleOptimization m_unicycleProblem;
@@ -57,19 +66,38 @@ public:
     //Controller inputs
     bool setDesiredPersonDistance(double xPosition, double yPosition);
 
+    [[deprecated("Use setPersonFollowingControllerGain instead.")]]
     bool setControllerGain(double controllerGain); //optional
+
+    bool setPersonFollowingControllerGain(double controllerGain); //optional
 
     bool setSlowWhenTurnGain(double slowWhenTurnGain); //if >0 the unicycle progress more slowly when also turning.
 
     bool setSlowWhenBackwardFactor(double slowWhenBackwardFactor); //if >0 the unicycle progress more slowly when going backward. It is a multiplicative gain
 
-    bool addDesiredTrajectoryPoint(double initTime, const iDynTree::Vector2& yDesired, const iDynTree::Vector2& yDotDesired); //If two points have the same initTime it is an undefined behavior. It keeps the desired values constant from initTime to the initTime of the next desired point (they are automatically ordered)
+    bool setSlowWhenSidewaysFactor(double slowWhenSidewaysFactor); //if >0 the unicycle progress more slowly when going sideways. It is a multiplicative gain
 
+    [[deprecated("Use addPersonFollowingDesiredTrajectoryPoint instead.")]]
+    bool addDesiredTrajectoryPoint(double initTime, const iDynTree::Vector2& yDesired, const iDynTree::Vector2& yDotDesired);
+
+    bool addPersonFollowingDesiredTrajectoryPoint(double initTime, const iDynTree::Vector2& yDesired, const iDynTree::Vector2& yDotDesired); //If two points have the same initTime it is an undefined behavior. It keeps the desired values constant from initTime to the initTime of the next desired point (they are automatically ordered)
+
+    [[deprecated("Use addPersonFollowingDesiredTrajectoryPoint instead.")]]
     bool addDesiredTrajectoryPoint(double initTime, const iDynTree::Vector2& yDesired);// like the above but assumes zero velocity
 
+    bool addPersonFollowingDesiredTrajectoryPoint(double initTime, const iDynTree::Vector2& yDesired);// like the above but assumes zero velocity
+
+    [[deprecated("Use clearPersonFollowingDesiredTrajectory instead.")]]
     void clearDesiredTrajectory();
 
+    void clearPersonFollowingDesiredTrajectory();
+
+    [[deprecated("Use clearPersonFollowingDesiredTrajectoryUpTo instead.")]]
     bool clearDesiredTrajectoryUpTo(double time);
+
+    bool clearPersonFollowingDesiredTrajectoryUpTo(double time);
+
+    void setDesiredDirectControl(double forwardVelocity, double angularVelocity, double lateralVelocity);
 
     //Integrator inputs
     bool setMaximumIntegratorStepSize(double dT);
@@ -118,6 +146,8 @@ public:
     bool setInnerFreeSpaceEllipseOffset(double offset);
 
     bool setInnerFreeSpaceEllipseOffsets(double semiMajorAxisOffset, double semiMinorAxisOffset);
+
+    bool setUnicycleController(UnicycleController controller);
 };
 
 #endif // UNICYCLEPLANNER_H

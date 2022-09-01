@@ -56,8 +56,6 @@ public:
 
     bool setGain(double controllerGain);
 
-    bool setSaturations(double maxVelocity, double maxAngularVelocity);
-
     bool setDesiredPoint(const TrajectoryPoint &desiredPoint);
 
     bool getDesiredPoint(double time, iDynTree::Vector2& yDesired, iDynTree::Vector2& yDotDesired);

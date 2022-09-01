@@ -16,7 +16,7 @@
 #include <ctime>
 
 
-typedef struct {
+struct Configuration{
     double initTime = 0.0, endTime = 10.0, dT = 0.01, K = 10, dX = 0.05, dY = 0.0;
     double maxL = 0.05, minL = 0.005, minW = 0.03, maxAngle = iDynTree::deg2rad(45), minAngle = iDynTree::deg2rad(5);
     double nominalW = 0.05, maxT = 8, minT = 2.9, nominalT = 4, timeWeight = 2.5, positionWeight = 1;
@@ -27,12 +27,12 @@ typedef struct {
     double comHeightDelta = 0.002;
     double switchOverSwing = 0.6;
     bool swingLeft = true;
-} Configuration;
+};
 
 bool configurePlanner(std::shared_ptr<UnicyclePlanner> planner,const Configuration &conf){
     bool ok = true;
     ok = ok && planner->setDesiredPersonDistance(conf.dX, conf.dY);
-    ok = ok && planner->setControllerGain(conf.K);
+    ok = ok && planner->setPersonFollowingControllerGain(conf.K);
     ok = ok && planner->setMaximumIntegratorStepSize(conf.dT);
     ok = ok && planner->setMaxStepLength(conf.maxL);
     ok = ok && planner->setWidthSetting(conf.minW, conf.nominalW);
@@ -77,7 +77,7 @@ bool configureGenerator(UnicycleGenerator& generator, const Configuration &conf)
 
 void printSteps(const std::deque<Step>& leftSteps, const std::deque<Step>& rightSteps){
     std::cerr << "Left foot "<< leftSteps.size() << " steps:"<< std::endl;
-    for (auto step : leftSteps){
+    for (auto& step : leftSteps){
         std::cerr << "Position "<< step.position.toString() << std::endl;
         std::cerr << "Angle "<< iDynTree::rad2deg(step.angle) << std::endl;
         std::cerr << "Time  "<< step.impactTime << std::endl;
@@ -85,7 +85,7 @@ void printSteps(const std::deque<Step>& leftSteps, const std::deque<Step>& right
 
 
     std::cerr << std::endl << "Right foot "<< rightSteps.size() << " steps:" << std::endl;
-    for (auto step : rightSteps){
+    for (auto& step : rightSteps){
         std::cerr << "Position "<< step.position.toString() << std::endl;
         std::cerr << "Angle "<< iDynTree::rad2deg(step.angle) << std::endl;
         std::cerr << "Time  "<< step.impactTime << std::endl;
@@ -171,7 +171,7 @@ void printTrajectories(UnicycleGenerator& interpolator, size_t& newMergePoint, I
 
     std::cerr << "--------------------------------------------->Left Trajectory." << std::endl;
     //print_iDynTree(lFootTrajectory);
-    for (auto pose : lFootTrajectory){
+    for (auto& pose : lFootTrajectory){
         posLeft << pose.getPosition()(0) << "    " << pose.getPosition()(1) << "    " <<
             "    " << pose.getPosition()(2)<<"    "<< std::endl;
     }
@@ -188,7 +188,7 @@ void printTrajectories(UnicycleGenerator& interpolator, size_t& newMergePoint, I
 
     std::cerr << "--------------------------------------------->Right Trajectory." << std::endl;
     //print_iDynTree(rFootTrajectory);
-    for (auto pose : rFootTrajectory){
+    for (auto& pose : rFootTrajectory){
         posRight << pose.getPosition()(0) << " " << pose.getPosition()(1) << " " <<
                     " " << pose.getPosition()(2)<<"    "<< std::endl;
     }
@@ -344,8 +344,8 @@ bool interpolationTest(){
 
     finalVelocity.zero();
 
-    iDynTree::assertTrue(unicycle.unicyclePlanner()->addDesiredTrajectoryPoint(conf.initTime, initPosition, initVelocity));
-    iDynTree::assertTrue(unicycle.unicyclePlanner()->addDesiredTrajectoryPoint(conf.endTime, finalPosition, finalVelocity));
+    iDynTree::assertTrue(unicycle.unicyclePlanner()->addPersonFollowingDesiredTrajectoryPoint(conf.initTime, initPosition, initVelocity));
+    iDynTree::assertTrue(unicycle.unicyclePlanner()->addPersonFollowingDesiredTrajectoryPoint(conf.endTime, finalPosition, finalVelocity));
 
     clock_t total = clock();
     //iDynTree::assertTrue(unicycle.computeNewSteps(leftFoot, rightFoot));
@@ -368,8 +368,8 @@ bool interpolationTest(){
     newInitTime = newMergePoint*conf.dT + conf.initTime;
     std::cerr << "New run at " << newInitTime << std::endl;
     iDynTree::assertTrue(unicycle.unicyclePlanner()->getPersonPosition(newInitTime, finalPosition));
-    unicycle.unicyclePlanner()->clearDesiredTrajectory();
-    iDynTree::assertTrue(unicycle.unicyclePlanner()->addDesiredTrajectoryPoint(conf.endTime + 10, finalPosition));
+    unicycle.unicyclePlanner()->clearPersonFollowingDesiredTrajectory();
+    iDynTree::assertTrue(unicycle.unicyclePlanner()->addPersonFollowingDesiredTrajectoryPoint(conf.endTime + 10, finalPosition));
 
     iDynTree::assertTrue(leftFoot->keepOnlyPresentStep(newInitTime));
 

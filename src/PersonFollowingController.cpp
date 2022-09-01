@@ -140,11 +140,6 @@ bool PersonFollowingController::setGain(double controllerGain)
     return true;
 }
 
-bool PersonFollowingController::setSaturations(double maxVelocity, double maxAngularVelocity)
-{
-    return UnicycleBaseController::setSaturations(maxVelocity, maxAngularVelocity, 0.0);
-}
-
 bool PersonFollowingController::setDesiredPoint(const TrajectoryPoint &desiredPoint)
 {
     if (desiredPoint.initTime < 0){

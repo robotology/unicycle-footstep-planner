@@ -16,13 +16,13 @@
 #include <iostream>
 #include <ctime>
 
-typedef struct {
+struct Configuration {
     double initTime = 0.0, endTime = 50.0, dT = 0.01, K = 10, dX = 0.2, dY = 0.0;
     double maxL = 0.2, minL = 0.05, minW = 0.08, maxAngle = iDynTree::deg2rad(45), minAngle = iDynTree::deg2rad(5);
     double nominalW = 0.14, maxT = 10, minT = 3, nominalT = 4, timeWeight = 2.5, positionWeight = 1;
     bool swingLeft = true;
     double slowWhenTurnGain = 0.5;
-} Configuration;
+};
 
 bool printSteps(std::deque<Step> leftSteps, std::deque<Step> rightSteps){
     std::cerr << "Left foot "<< leftSteps.size() << " steps:"<< std::endl;
@@ -117,7 +117,7 @@ bool populateDesiredTrajectory(UnicyclePlanner& planner, double initTime, double
         yDotDes(0) = 0.01;
         yDes(1) = 0.5*std::sin(0.1*t);
         yDotDes(1) = 0.5*0.1*std::cos(0.1*t);
-        if(!planner.addDesiredTrajectoryPoint(t,yDes, yDotDes))
+        if(!planner.addPersonFollowingDesiredTrajectoryPoint(t,yDes, yDotDes))
             return false;
         t += dT;
     }
@@ -151,7 +151,7 @@ bool plannerTest(){
 
     //Initialization (some of these calls may be avoided)
     iDynTree::assertTrue(planner.setDesiredPersonDistance(conf.dX, conf.dY));
-    iDynTree::assertTrue(planner.setControllerGain(conf.K));
+    iDynTree::assertTrue(planner.setPersonFollowingControllerGain(conf.K));
     iDynTree::assertTrue(planner.setMaximumIntegratorStepSize(conf.dT));
     iDynTree::assertTrue(planner.setMaxStepLength(conf.maxL));
     iDynTree::assertTrue(planner.setWidthSetting(conf.minW, conf.nominalW));
@@ -200,12 +200,12 @@ bool plannerTest(){
     iDynTree::assertTrue(right->numberOfSteps() == 1);
     Step lastStep;
     iDynTree::assertTrue(right->getLastStep(lastStep));
-    planner.clearDesiredTrajectory();
+    planner.clearPersonFollowingDesiredTrajectory();
     iDynTree::Vector2 dummyVector, newDesired;
     dummyVector.zero();
     newDesired(0) = lastStep.position(0) + 0.5;
     newDesired(1) = lastStep.position(1) + 0.5;
-    iDynTree::assertTrue(planner.addDesiredTrajectoryPoint(lastStep.impactTime+10, newDesired, dummyVector));
+    iDynTree::assertTrue(planner.addPersonFollowingDesiredTrajectoryPoint(lastStep.impactTime+10, newDesired, dummyVector));
 
     iDynTree::assertTrue(planner.computeNewSteps(left, right, lastStep.impactTime, lastStep.impactTime+10));
 
