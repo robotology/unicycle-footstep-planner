@@ -9,6 +9,7 @@
 
 // std
 #include <math.h>
+#include <cassert>
 #include <vector>
 #include <iostream>
 #include <algorithm>
@@ -707,6 +708,12 @@ bool DCMTrajectoryGeneratorHelper::setdT(const double &dT)
     return true;
 }
 
+void DCMTrajectoryGeneratorHelper::setFirstDCMTrajectoryMode(const FirstDCMTrajectoryMode& mode)
+{
+    m_firstDCMTrajectoryMode = mode;
+}
+
+
 void DCMTrajectoryGeneratorHelper::setZMPDelta(const iDynTree::Vector2 &leftZMPDelta,
                                                const iDynTree::Vector2 &rightZMPDelta)
 {
@@ -1057,22 +1064,39 @@ bool DCMTrajectoryGeneratorHelper::addFirstDoubleSupportPhase(const DCMTrajector
         // add 1-th part of the Double Support phase
         iDynTree::Vector2 dummy;
         dummy.zero();
-        newDoubleSupport = std::make_shared<DoubleSupportTrajectoryMinJerk>(doubleSupportInitBoundaryCondition,
-                                                                            doubleSupportStanceInitBoundaryCondition,
-                                                                            dummy,
-                                                                            dummy,
-                                                                            m_omega);
+        if (m_firstDCMTrajectoryMode == FirstDCMTrajectoryMode::FifthOrderPoly)
+        {
+            newDoubleSupport = std::make_shared<DoubleSupportTrajectoryMinJerk>(doubleSupportInitBoundaryCondition,
+                                                                                doubleSupportStanceInitBoundaryCondition,
+                                                                                dummy,
+                                                                                dummy,
+                                                                                m_omega);
+        } else {
+            assert(m_firstDCMTrajectoryMode == FirstDCMTrajectoryMode::ThirdOrderPoly);
+            newDoubleSupport = std::make_shared<DoubleSupportTrajectory>(doubleSupportInitBoundaryCondition,
+                                                                         doubleSupportStanceInitBoundaryCondition,
+                                                                         m_omega);
+        }
         m_trajectory.push_back(newDoubleSupport);
     }else{
         iDynTree::Vector2 dummy;
         dummy.zero();
 
         // add the new Double Support phase
-        newDoubleSupport = std::make_shared<DoubleSupportTrajectoryMinJerk>(doubleSupportInitBoundaryCondition,
-                                                                            doubleSupportFinalBoundaryCondition,
-                                                                            dummy,
-                                                                            dummy,
-                                                                            m_omega);
+        if (m_firstDCMTrajectoryMode == FirstDCMTrajectoryMode::FifthOrderPoly)
+        {
+            newDoubleSupport = std::make_shared<DoubleSupportTrajectoryMinJerk>(doubleSupportInitBoundaryCondition,
+                                                                                doubleSupportFinalBoundaryCondition,
+                                                                                dummy,
+                                                                                dummy,
+                                                                                m_omega);
+        } else {
+            assert(m_firstDCMTrajectoryMode == FirstDCMTrajectoryMode::ThirdOrderPoly);
+            newDoubleSupport = std::make_shared<DoubleSupportTrajectory>(doubleSupportInitBoundaryCondition,
+                                                                         doubleSupportFinalBoundaryCondition,
+                                                                         m_omega);
+        }
+
         // add the new Double Support phase
         m_trajectory.push_back(newDoubleSupport);
     }
