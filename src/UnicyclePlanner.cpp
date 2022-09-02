@@ -643,12 +643,13 @@ bool UnicyclePlanner::computeNewSteps(std::shared_ptr< FootPrint > leftFoot, std
     m_left.reset(new UnicycleFoot(leftFoot));
     m_right.reset(new UnicycleFoot(rightFoot));
 
-    double maxVelocity = std::sqrt(std::pow(m_maxLength,2) - std::pow(m_nominalWidth,2))/m_minTime * 0.90;
-    double maxAngVelocity = m_maxAngle/m_minTime*0.70;
-    if (!m_personFollowingController->setSaturations(maxVelocity, maxAngVelocity))
+    double maxVelocity = std::sqrt(std::pow(m_maxLength,2) - std::pow(m_nominalWidth,2))/m_minTime;
+    double maxAngVelocity = m_maxAngle/m_minTime;
+
+    if (!m_personFollowingController->setSaturations(maxVelocity * 0.9, maxAngVelocity * 0.7))
         return false;
 
-    if (!m_personFollowingController->setSaturations(maxVelocity, maxAngVelocity))
+    if (!m_directController->setSaturations(maxVelocity * 0.7, maxAngVelocity * 0.7))
         return false;
 
     if (!initializePlanner(m_initTime)){
