@@ -140,6 +140,14 @@ bool UnicyclePlanner::getInitialStateFromFeet(double initTime)
         return false;
     }
 
+    //Change first stepping foot according to the desired lateral velocity
+    if (m_firstStep && m_currentController == UnicycleController::DIRECT &&
+            std::abs(m_directController->desiredLateralVelocity()) > 0)
+    {
+        //If we want to move right, use the right as first stepping foot
+        m_swingLeft = m_directController->desiredLateralVelocity() > 0;
+    }
+
     return true;
 }
 

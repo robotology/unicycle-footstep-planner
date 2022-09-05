@@ -54,3 +54,8 @@ void UnicycleDirectController::setInactiveUntil(double endTime)
 {
     m_deactivationEndTime = endTime;
 }
+
+double UnicycleDirectController::desiredLateralVelocity() const
+{
+    return m_desiredLateralVelocity;
+}

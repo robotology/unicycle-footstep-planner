@@ -29,6 +29,8 @@ public:
 
     void setInactiveUntil(double endTime);
 
+    double desiredLateralVelocity() const;
+
 };
 
 #endif // UNICYCLEDIRECTCONTROLLER_H
