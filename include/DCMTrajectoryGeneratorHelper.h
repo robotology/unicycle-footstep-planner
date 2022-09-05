@@ -22,6 +22,12 @@
 #include <FootPrint.h>
 #include <StepPhase.h>
 
+enum class FirstDCMTrajectoryMode
+{
+    ThirdOrderPoly,
+    FifthOrderPoly
+};
+
 typedef struct {
     double time;
     iDynTree::Vector2 DCMPosition;
@@ -109,6 +115,7 @@ class DCMTrajectoryGeneratorHelper
     double m_alpha; /**< alpha is the parameter between zero and one for distributing the DS duration to SS phase. */
     iDynTree::Vector2 m_leftZMPDelta; /**< Vector containing the desired left ZMP delta. */
     iDynTree::Vector2 m_rightZMPDelta; /**< Vector containing the desired left ZMP delta. */
+    FirstDCMTrajectoryMode m_firstDCMTrajectoryMode{FirstDCMTrajectoryMode::ThirdOrderPoly}; /**< Mode of the first DS DCM trajectory */
 
     /**
      * Number from 0 to 1 used to indicate the position of the DCM w.r.t. the last zmp position.
@@ -243,6 +250,11 @@ class DCMTrajectoryGeneratorHelper
     void setZMPDelta(const iDynTree::Vector2 &leftZMPDelta,
                      const iDynTree::Vector2 &rightZMPDelta);
 
+    /**
+     * Set the mode of the first DS trajectory.
+     * @param mode the specif mode
+     */
+    void setFirstDCMTrajectoryMode(const FirstDCMTrajectoryMode& mode);
 
     /**
      * Set the pause condition.

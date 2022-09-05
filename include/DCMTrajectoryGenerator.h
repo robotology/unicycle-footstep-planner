@@ -65,6 +65,12 @@ public:
     bool setOmega(const double &omega);
 
     /**
+     * Set the mode of the first DS trajectory.
+     * @param mode the specif mode
+     */
+    void setFirstDCMTrajectoryMode(const FirstDCMTrajectoryMode& mode);
+
+    /**
      * Set the alpha parameter of DCM planner.
      * @param alpha is the parameter between zero and one for distributing the DS duration to SS phase.
      * @return true / false in case of success / failure.
