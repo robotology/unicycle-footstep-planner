@@ -195,18 +195,18 @@ class DoubleSupportTrajectory : public GeneralSupportTrajectory
 
     friend class DCMTrajectoryGeneratorHelper;
 
-    iDynTree::Vector4 m_coefficentsX; /**< 3-th order x-trajectory parameters [a3, a2, a1, a0] */
-	iDynTree::Vector4 m_coefficentsY; /**< 3-th order y-trajectory parameters [a3, a2, a1, a0] */
+    iDynTree::Vector4 m_coefficientsX; /**< 3-th order x-trajectory parameters [a3, a2, a1, a0] */
+	iDynTree::Vector4 m_coefficientsY; /**< 3-th order y-trajectory parameters [a3, a2, a1, a0] */
 
     /**
-     * Given desired boundary conditions (position and velocity) evaluate the cofficents of a
+     * Given desired boundary conditions (position and velocity) evaluate the coefficients of a
      * 3-th order polynomial.
-     * @param positionBoundaryConds contains the desired values of the polinomial at the beginning
+     * @param positionBoundaryConds contains the desired values of the polynomial at the beginning
      * and at the end of the Double Support phase;
-     * @param velocityBoundaryConds contains the desired value of the polinomial derivative at the beginning
+     * @param velocityBoundaryConds contains the desired value of the polynomial derivative at the beginning
      * and at the end of the Double Support phase;
      * @param dsDuration duration of the Double Support phase.
-     * @return the vector containing the coefficents of the 3-th order polynomial.
+     * @return the vector containing the coefficients of the 3-th order polynomial.
      */
     iDynTree::Vector4 polinominalInterpolation(const iDynTree::Vector2 &positionBoundaryConds,
                                                const iDynTree::Vector2 &velocityBoundaryConds,
@@ -272,18 +272,18 @@ class DoubleSupportTrajectoryMinJerk : public GeneralSupportTrajectory
 
     friend class DCMTrajectoryGeneratorHelper;
 
-    iDynTree::Vector6 m_coefficentsX; /**< 5-th order x-trajectory parameters [a5, a4, a3, a2, a1, a0] */
-    iDynTree::Vector6 m_coefficentsY; /**< 5-th order y-trajectory parameters [a5, a4, a3, a2, a1, a0] */
+    iDynTree::Vector6 m_coefficientsX; /**< 5-th order x-trajectory parameters [a5, a4, a3, a2, a1, a0] */
+    iDynTree::Vector6 m_coefficientsY; /**< 5-th order y-trajectory parameters [a5, a4, a3, a2, a1, a0] */
 
     /**
-     * Given desired boundary conditions (position and velocity) evaluate the cofficents of a
+     * Given desired boundary conditions (position and velocity) evaluate the coefficients of a
      * 5-th order polynomial.
-     * @param positionBoundaryConds contains the desired values of the polinomial at the beginning
+     * @param positionBoundaryConds contains the desired values of the polynomial at the beginning
      * and at the end of the Double Support phase;
-     * @param velocityBoundaryConds contains the desired value of the polinomial derivative at the beginning
+     * @param velocityBoundaryConds contains the desired value of the polynomial derivative at the beginning
      * and at the end of the Double Support phase;
      * @param dsDuration duration of the Double Support phase.
-     * @return the vector containing the coefficents of the 3-th order polynomial.
+     * @return the vector containing the coefficients of the 3-th order polynomial.
      */
     iDynTree::Vector6 polinominalInterpolation(const iDynTree::Vector2 &positionBoundaryConds,
                                                const iDynTree::Vector2 &velocityBoundaryConds,
@@ -390,11 +390,11 @@ DoubleSupportTrajectory::DoubleSupportTrajectory(const DCMTrajectoryPoint &initB
     velocityBoundaryCondsY(0) = initVelocity(1);
     velocityBoundaryCondsY(1) = endVelocity(1);
 
-    // evaluate the coefficents of the X and Y polinomials
-    m_coefficentsX = polinominalInterpolation(positionBoundaryCondsX, velocityBoundaryCondsX,
+    // evaluate the coefficients of the X and Y polynomials
+    m_coefficientsX = polinominalInterpolation(positionBoundaryCondsX, velocityBoundaryCondsX,
                                               dsDuration);
 
-    m_coefficentsY = polinominalInterpolation(positionBoundaryCondsY, velocityBoundaryCondsY,
+    m_coefficientsY = polinominalInterpolation(positionBoundaryCondsY, velocityBoundaryCondsY,
                                               dsDuration);
 }
 
@@ -402,9 +402,9 @@ iDynTree::Vector4 DoubleSupportTrajectory::polinominalInterpolation(const iDynTr
                                                                   const iDynTree::Vector2 &velocityBoundaryConds,
                                                                   const double &dsDuration)
 {
-    // evaluate the coefficent of a 3-th order polinomial
+    // evaluate the coefficent of a 3-th order polynomial
     // p(t) = a3 * t^3 + a2 * t^2 + a1 * t + a0
-    Eigen::Vector4d coefficents;
+    Eigen::Vector4d coefficients;
     Eigen::Vector4d boundaryCond;
     Eigen::Matrix4d estimationMatrix;
 
@@ -421,11 +421,11 @@ iDynTree::Vector4 DoubleSupportTrajectory::polinominalInterpolation(const iDynTr
             1, 0, 0, 0;
 
     // evaluate the trajectory parameters
-    coefficents = estimationMatrix * boundaryCond;
+    coefficients = estimationMatrix * boundaryCond;
 
 	iDynTree::Vector4 output;
 
-	iDynTree::toEigen(output) = coefficents;
+	iDynTree::toEigen(output) = coefficients;
 
     return output;
 }
@@ -450,8 +450,8 @@ bool DoubleSupportTrajectory::getDCMPosition(const double &t, iDynTree::Vector2 
             1;
 
     // evaluate booth x and y coordinates
-    DCMPosition(0) = tVector.dot(iDynTree::toEigen(m_coefficentsX));
-    DCMPosition(1) = tVector.dot(iDynTree::toEigen(m_coefficentsY));
+    DCMPosition(0) = tVector.dot(iDynTree::toEigen(m_coefficientsX));
+    DCMPosition(1) = tVector.dot(iDynTree::toEigen(m_coefficientsY));
 
     return true;
 }
@@ -476,8 +476,8 @@ bool DoubleSupportTrajectory::getDCMVelocity(const double &t, iDynTree::Vector2 
             0;
 
     // evaluate booth x and y coordinates
-    DCMVelocity(0) = tVector.dot(iDynTree::toEigen(m_coefficentsX));
-    DCMVelocity(1) = tVector.dot(iDynTree::toEigen(m_coefficentsY));
+    DCMVelocity(0) = tVector.dot(iDynTree::toEigen(m_coefficientsX));
+    DCMVelocity(1) = tVector.dot(iDynTree::toEigen(m_coefficientsY));
 
     return true;
 }
@@ -538,14 +538,14 @@ DoubleSupportTrajectoryMinJerk::DoubleSupportTrajectoryMinJerk(const DCMTrajecto
     velocityBoundaryCondsY(0) = initVelocity(1);
     velocityBoundaryCondsY(1) = endVelocity(1);
 
-    // evaluate the coefficents of the X and Y polinomials
-    m_coefficentsX = polinominalInterpolation(positionBoundaryCondsX,
+    // evaluate the coefficients of the X and Y polynomials
+    m_coefficientsX = polinominalInterpolation(positionBoundaryCondsX,
                                               velocityBoundaryCondsX,
                                               initialAcceleration(0),
                                               initialJerk(0),
                                               dsDuration);
 
-    m_coefficentsY = polinominalInterpolation(positionBoundaryCondsY,
+    m_coefficientsY = polinominalInterpolation(positionBoundaryCondsY,
                                               velocityBoundaryCondsY,
                                               initialAcceleration(1),
                                               initialJerk(1),
@@ -558,9 +558,9 @@ iDynTree::Vector6 DoubleSupportTrajectoryMinJerk::polinominalInterpolation(const
                                                                            const double &initialJerk,
                                                                            const double &dsDuration)
 {
-    // evaluate the coefficent of a 3-th order polinomial
+    // evaluate the coefficent of a 3-th order polynomial
     // p(t) = a3 * t^3 + a2 * t^2 + a1 * t + a0
-    iDynTree::Vector6 coefficents;
+    iDynTree::Vector6 coefficients;
     Eigen::Matrix<double, 6, 1> boundaryCond;
     Eigen::Matrix<double, 6, 6> estimationMatrix;
 
@@ -583,8 +583,8 @@ iDynTree::Vector6 DoubleSupportTrajectoryMinJerk::polinominalInterpolation(const
                            1,               0,                   0,                  0,               0,               0;
 
     // evaluate the trajectory parameters
-    iDynTree::toEigen(coefficents).noalias() = estimationMatrix * boundaryCond;
-    return coefficents;
+    iDynTree::toEigen(coefficients).noalias() = estimationMatrix * boundaryCond;
+    return coefficients;
 }
 
 bool DoubleSupportTrajectoryMinJerk::getDCMPosition(const double &t, iDynTree::Vector2 &DCMPosition,
@@ -609,8 +609,8 @@ bool DoubleSupportTrajectoryMinJerk::getDCMPosition(const double &t, iDynTree::V
               1;
 
     // evaluate booth x and y coordinates
-    DCMPosition(0) = tVector.dot(iDynTree::toEigen(m_coefficentsX));
-    DCMPosition(1) = tVector.dot(iDynTree::toEigen(m_coefficentsY));
+    DCMPosition(0) = tVector.dot(iDynTree::toEigen(m_coefficientsX));
+    DCMPosition(1) = tVector.dot(iDynTree::toEigen(m_coefficientsY));
 
     return true;
 }
@@ -637,8 +637,8 @@ bool DoubleSupportTrajectoryMinJerk::getDCMVelocity(const double &t, iDynTree::V
               0;
 
     // evaluate booth x and y coordinates
-    DCMVelocity(0) = tVector.dot(iDynTree::toEigen(m_coefficentsX));
-    DCMVelocity(1) = tVector.dot(iDynTree::toEigen(m_coefficentsY));
+    DCMVelocity(0) = tVector.dot(iDynTree::toEigen(m_coefficientsX));
+    DCMVelocity(1) = tVector.dot(iDynTree::toEigen(m_coefficientsY));
 
     return true;
 }
