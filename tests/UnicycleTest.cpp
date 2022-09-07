@@ -256,7 +256,8 @@ bool directControlTest(){
     iDynTree::assertTrue(planner.setMinimumAngleForNewSteps(conf.minAngle));
     iDynTree::assertTrue(planner.setMinimumStepLength(conf.minL));
     iDynTree::assertTrue(planner.setSlowWhenTurnGain(conf.slowWhenTurnGain));
-    iDynTree::assertTrue(planner.setSlowWhenSidewaysFactor(0.5));
+    iDynTree::assertTrue(planner.setSlowWhenSidewaysFactor(0.2));
+    iDynTree::assertTrue(planner.setSaturationsConservativeFactors(0.7, 0.7));
 
     planner.addTerminalStep(true);
     planner.startWithLeft(conf.swingLeft);

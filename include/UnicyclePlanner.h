@@ -42,6 +42,7 @@ class UnicyclePlanner {
     bool m_addTerminalStep, m_startLeft, m_resetStartingFoot, m_firstStep;
     FreeSpaceEllipseMethod m_freeSpaceMethod;
     double m_leftYawOffset, m_rightYawOffset;
+    double m_linearVelocityConservativeFactor, m_angularVelocityConservativeFactor;
     std::mutex m_mutex;
 
     std::shared_ptr<UnicycleFoot> m_left, m_right;
@@ -98,6 +99,8 @@ public:
     bool clearPersonFollowingDesiredTrajectoryUpTo(double time);
 
     void setDesiredDirectControl(double forwardVelocity, double angularVelocity, double lateralVelocity);
+
+    bool setSaturationsConservativeFactors(double linearVelocityConservativeFactor, double angularVelocityConservativeFactor);
 
     //Integrator inputs
     bool setMaximumIntegratorStepSize(double dT);

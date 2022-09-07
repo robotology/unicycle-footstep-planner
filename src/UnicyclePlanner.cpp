@@ -352,6 +352,8 @@ UnicyclePlanner::UnicyclePlanner()
     ,m_left(nullptr)
     ,m_right(nullptr)
     ,m_swingLeft(true)
+    , m_linearVelocityConservativeFactor(0.9)
+    , m_angularVelocityConservativeFactor(0.7)
 {
     m_unicycle->setController(m_personFollowingController);
     m_integrator.setMaximumStepSize(0.01);
@@ -464,6 +466,28 @@ void UnicyclePlanner::setDesiredDirectControl(double forwardVelocity, double ang
     std::lock_guard<std::mutex> guard(m_mutex);
 
     m_directController->setConstantControl(forwardVelocity, angularVelocity, lateralVelocity);
+}
+
+bool UnicyclePlanner::setSaturationsConservativeFactors(double linearVelocityConservativeFactor, double angularVelocityConservativeFactor)
+{
+    std::lock_guard<std::mutex> guard(m_mutex);
+
+    if (linearVelocityConservativeFactor < 0.0 || linearVelocityConservativeFactor > 1.0)
+    {
+        std::cerr << " The parameter linearVelocityConservativeFactor is supposed to be between 0 and 1" << std::endl;
+        return false;
+    }
+
+    if (angularVelocityConservativeFactor < 0.0 || angularVelocityConservativeFactor > 1.0)
+    {
+        std::cerr << " The parameter angularVelocityConservativeFactor is supposed to be between 0 and 1" << std::endl;
+        return false;
+    }
+
+    m_linearVelocityConservativeFactor = linearVelocityConservativeFactor;
+    m_angularVelocityConservativeFactor = angularVelocityConservativeFactor;
+
+    return true;
 }
 
 bool UnicyclePlanner::setMaximumIntegratorStepSize(double dT)
@@ -651,13 +675,13 @@ bool UnicyclePlanner::computeNewSteps(std::shared_ptr< FootPrint > leftFoot, std
     m_left.reset(new UnicycleFoot(leftFoot));
     m_right.reset(new UnicycleFoot(rightFoot));
 
-    double maxVelocity = std::sqrt(std::pow(m_maxLength,2) - std::pow(m_nominalWidth,2))/m_minTime;
-    double maxAngVelocity = m_maxAngle/m_minTime;
+    double maxVelocity = std::sqrt(std::pow(m_maxLength,2) - std::pow(m_nominalWidth,2))/m_minTime * m_linearVelocityConservativeFactor;
+    double maxAngVelocity = m_maxAngle/m_minTime * m_angularVelocityConservativeFactor;
 
-    if (!m_personFollowingController->setSaturations(maxVelocity * 0.9, maxAngVelocity * 0.7))
+    if (!m_personFollowingController->setSaturations(maxVelocity, maxAngVelocity))
         return false;
 
-    if (!m_directController->setSaturations(maxVelocity * 0.7, maxAngVelocity * 0.7))
+    if (!m_directController->setSaturations(maxVelocity, maxAngVelocity))
         return false;
 
     if (!initializePlanner(m_initTime)){
