@@ -5,16 +5,15 @@
  *
  */
 
-#ifndef UNICYCLECONTROLLER_H
-#define UNICYCLECONTROLLER_H
+#ifndef PERSONFOLLOWINGCONTROLLER_H
+#define PERSONFOLLOWINGCONTROLLER_H
 
 #include "FreeSpaceEllipse.h"
-#include <iDynTree/Controller.h>
+#include "UnicycleBaseController.h"
 #include <iDynTree/TimeRange.h>
 #include <iDynTree/Core/VectorFixSize.h>
 #include <iDynTree/Core/VectorDynSize.h>
 #include <iDynTree/Core/MatrixDynSize.h>
-#include <memory>
 #include <deque>
 
 typedef struct{
@@ -23,37 +22,31 @@ typedef struct{
     iDynTree::Vector2 yDotDesired;
 } TrajectoryPoint;
 
-class UnicyleController : public iDynTree::optimalcontrol::Controller{
+class PersonFollowingController : public UnicycleBaseController{
     iDynTree::Vector2 m_personDistance, m_y, m_personPosition, m_unicyclePosition;
     double m_personDistanceNorm;
     double m_theta;
     iDynTree::MatrixDynSize m_inverseB, m_R;
     std::deque<TrajectoryPoint> m_desiredTrajectory;
-    double m_gain, m_maxVelocity, m_maxAngularVelocity, m_time;
-    double m_slowWhenTurnGain;
-    double m_slowWhenBackwardFactor;
+    double m_gain, m_time;
     double m_semiMajorInnerEllipseOffset;
     double m_semiMinorInnerEllipseOffset;
     FreeSpaceEllipse m_outerEllipse, m_innerEllipse;
     double m_conservativeFactor;
-
-    double saturate(double input, double saturation);
-
-    double saturate(double input, double positiveSaturation, double negativeSaturation);
 
     void interpolateReferences(double time,
                                const std::deque<TrajectoryPoint>::reverse_iterator& point,
                                iDynTree::Vector2& yOutput, iDynTree::Vector2 &yDotOutput);
 
 public:
-    UnicyleController();
+    PersonFollowingController();
 
     //the state is [y, x, theta], i.e. the 2D position of the point to be followed, the 2D position of the cart and the angle wrt Z axis;
-    //the controller is [u;w]
+    //the controller is [u;w;v], i.e. forward speed, angular velocity, lateral speed.
 
-    bool doControl(iDynTree::VectorDynSize &controllerOutput) override;
+    virtual bool doUnicycleControl(double& forwardSpeed, double& angularVelocity, double& lateralVelocity) override;
 
-    bool setStateFeedback(const double t, const iDynTree::VectorDynSize &stateFeedback) override;
+    virtual bool setUnicycleStateFeedback(const double t, const iDynTree::Vector2& unicyclePosition, double unicycleOrientation) override;
 
     bool setPersonDistance(double xPosition, double yPosition);
 
@@ -62,12 +55,6 @@ public:
     const iDynTree::Vector2& getPersonPosition(const iDynTree::Vector2& unicyclePosition, double unicycleAngle);
 
     bool setGain(double controllerGain);
-
-    bool setSaturations(double maxVelocity, double maxAngularVelocity);
-
-    bool setSlowWhenTurnGain(double slowWhenTurnGain); //if >0 the unicycle progress more slowly when also turning.
-
-    bool setSlowWhenBackwardFactor(double slowWhenBackwardFactor); //if >0 the unicycle progress more slowly when going backward. It is a multiplicative gain
 
     bool setDesiredPoint(const TrajectoryPoint &desiredPoint);
 
@@ -90,4 +77,4 @@ public:
     bool setInnerFreeSpaceEllipseOffsets(double semiMajorAxisOffset, double semiMinorAxisOffset);
 };
 
-#endif // UNICYCLECONTROLLER_H
+#endif // PERSONFOLLOWINGCONTROLLER_H

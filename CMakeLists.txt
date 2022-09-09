@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.1)
 project(UnicyclePlanner
         LANGUAGES CXX
-        VERSION 0.4.3)
+        VERSION 0.5.0)
 
 # Defines the CMAKE_INSTALL_LIBDIR, CMAKE_INSTALL_BINDIR and many other useful macros
 # See https://cmake.org/cmake/help/latest/module/GNUInstallDirs.html
@@ -54,7 +54,9 @@ find_package(Eigen3 REQUIRED)
 
 set(UCPLANNER_SOURCES src/ControlledUnicycle.cpp
                       src/UnicyclePlanner.cpp
-                      src/UnicycleController.cpp
+                      src/UnicycleBaseController.cpp
+                      src/PersonFollowingController.cpp
+                      src/UnicycleDirectController.cpp
                       src/UnicycleOptimization.cpp
                       src/UnicycleFoot.cpp
                       src/FootPrint.cpp
@@ -69,7 +71,9 @@ set(UCPLANNER_SOURCES src/ControlledUnicycle.cpp
                       src/FreeSpaceEllipse.cpp)
 
 set(UCPLANNER_HEADERS include/ControlledUnicycle.h
-                      include/UnicycleController.h
+                      include/UnicycleBaseController.h
+                      include/PersonFollowingController.h
+                      include/UnicycleDirectController.h
                       include/UnicycleOptimization.h
                       include/UnicycleFoot.h
                       include/FootPrint.h

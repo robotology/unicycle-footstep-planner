@@ -23,12 +23,20 @@ bool UnicyclePlanner::getInitialStateFromFeet(double initTime)
 
     if ((m_left->numberOfSteps() == 0) && (m_right->numberOfSteps() == 0)){
 
-        if (!m_controller->getDesiredPoint(initTime, unicycleState.position, dummyVector))
-            return false;
+        if (m_currentController == UnicycleController::PERSON_FOLLOWING)
+        {
+            if (!m_personFollowingController->getDesiredPoint(initTime, unicycleState.position, dummyVector))
+                return false;
 
-        unicycleState.position(0) = unicycleState.position(0) - m_controller->getPersonDistance()(0);
-        unicycleState.position(1) = unicycleState.position(1) - m_controller->getPersonDistance()(1);
-        unicycleState.angle = 0;
+            unicycleState.position(0) = unicycleState.position(0) - m_personFollowingController->getPersonDistance()(0);
+            unicycleState.position(1) = unicycleState.position(1) - m_personFollowingController->getPersonDistance()(1);
+            unicycleState.angle = 0;
+        }
+        else
+        {
+            unicycleState.position.zero();
+            unicycleState.angle = 0.0;
+        }
 
         m_left->addStepFromUnicycle(unicycleState, initTime);
         m_right->addStepFromUnicycle(unicycleState, initTime);
@@ -106,11 +114,11 @@ bool UnicyclePlanner::getInitialStateFromFeet(double initTime)
 
         TrajectoryPoint initialPoint;
         initialPoint.initTime = initTime;
-        initialPoint.yDesired = m_controller->getPersonPosition(unicycleState.position, unicycleState.angle);
+        initialPoint.yDesired = m_personFollowingController->getPersonPosition(unicycleState.position, unicycleState.angle);
         dummyVector.zero();
         initialPoint.yDotDesired = dummyVector;
 
-        if (!(m_controller->setDesiredPoint(initialPoint))){
+        if (!(m_personFollowingController->setDesiredPoint(initialPoint))){
             std::cerr <<"Failed to set a the intial reference given the provided FootPrints." <<std::endl;
             return false;
         }
@@ -118,16 +126,26 @@ bool UnicyclePlanner::getInitialStateFromFeet(double initTime)
         if (m_firstStep) {
             initialPoint.initTime = initTime + m_nominalTime - m_minTime;
 
-            if (!(m_controller->setDesiredPoint(initialPoint))){
+            if (!(m_personFollowingController->setDesiredPoint(initialPoint))){
                 std::cerr <<"Failed to set a the intial dummy reference to have a slower first step." <<std::endl;
                 return false;
             }
+
+            m_directController->setInactiveUntil(initTime + m_nominalTime - m_minTime);
         }
     }
 
     if(!(m_unicycle->setInitialState(unicycleState.position, unicycleState.angle))){
         std::cerr << "Error while setting the initial state for the integrator." << std::endl;
         return false;
+    }
+
+    //Change first stepping foot according to the desired lateral velocity
+    if (m_firstStep && m_currentController == UnicycleController::DIRECT &&
+            std::abs(m_directController->desiredLateralVelocity()) > 0)
+    {
+        //If we want to move right, use the right as first stepping foot
+        m_swingLeft = m_directController->desiredLateralVelocity() > 0;
     }
 
     return true;
@@ -308,7 +326,9 @@ bool UnicyclePlanner::addTerminalStep(const UnicycleState &lastUnicycleState)
 }
 
 UnicyclePlanner::UnicyclePlanner()
-    :m_controller(std::make_shared<UnicyleController>())
+    :m_personFollowingController(std::make_shared<PersonFollowingController>())
+    ,m_directController(std::make_shared<UnicycleDirectController>())
+    ,m_currentController(UnicycleController::PERSON_FOLLOWING)
     ,m_unicycle(std::make_shared<ControlledUnicycle>())
     ,m_integrator(m_unicycle)
     ,m_initTime(0.0)
@@ -332,8 +352,10 @@ UnicyclePlanner::UnicyclePlanner()
     ,m_left(nullptr)
     ,m_right(nullptr)
     ,m_swingLeft(true)
+    , m_linearVelocityConservativeFactor(0.9)
+    , m_angularVelocityConservativeFactor(0.7)
 {
-    m_unicycle->setController(m_controller);
+    m_unicycle->setController(m_personFollowingController);
     m_integrator.setMaximumStepSize(0.01);
     m_unicycleProblem.setMaxLength(0.20);
     m_unicycleProblem.setMinWidth(0.08);
@@ -345,31 +367,50 @@ bool UnicyclePlanner::setDesiredPersonDistance(double xPosition, double yPositio
 {
     std::lock_guard<std::mutex> guard(m_mutex);
 
-    return m_controller->setPersonDistance(xPosition, yPosition);
+    return m_personFollowingController->setPersonDistance(xPosition, yPosition);
 }
 
 bool UnicyclePlanner::setControllerGain(double controllerGain)
 {
+    return setPersonFollowingControllerGain(controllerGain);
+}
+
+bool UnicyclePlanner::setPersonFollowingControllerGain(double controllerGain)
+{
     std::lock_guard<std::mutex> guard(m_mutex);
 
-    return m_controller->setGain(controllerGain);
+    return m_personFollowingController->setGain(controllerGain);
 }
 
 bool UnicyclePlanner::setSlowWhenTurnGain(double slowWhenTurnGain)
 {
     std::lock_guard<std::mutex> guard(m_mutex);
 
-    return m_controller->setSlowWhenTurnGain(slowWhenTurnGain);
+    return m_personFollowingController->setSlowWhenTurnGain(slowWhenTurnGain) &&
+            m_directController->setSlowWhenTurnGain(slowWhenTurnGain);
 }
 
 bool UnicyclePlanner::setSlowWhenBackwardFactor(double slowWhenBackwardFactor)
 {
     std::lock_guard<std::mutex> guard(m_mutex);
 
-    return m_controller->setSlowWhenBackwardFactor(slowWhenBackwardFactor);
+    return m_personFollowingController->setSlowWhenBackwardFactor(slowWhenBackwardFactor) &&
+            m_directController->setSlowWhenBackwardFactor(slowWhenBackwardFactor);
+}
+
+bool UnicyclePlanner::setSlowWhenSidewaysFactor(double slowWhenSidewaysFactor)
+{
+    std::lock_guard<std::mutex> guard(m_mutex);
+
+    return m_personFollowingController->setSlowWhenSidewaysFactor(slowWhenSidewaysFactor) && m_directController->setSlowWhenSidewaysFactor(slowWhenSidewaysFactor);
 }
 
 bool UnicyclePlanner::addDesiredTrajectoryPoint(double initTime, const iDynTree::Vector2 &yDesired)
+{
+    return addPersonFollowingDesiredTrajectoryPoint(initTime, yDesired);
+}
+
+bool UnicyclePlanner::addPersonFollowingDesiredTrajectoryPoint(double initTime, const iDynTree::Vector2 &yDesired)
 {
     std::lock_guard<std::mutex> guard(m_mutex);
 
@@ -377,10 +418,15 @@ bool UnicyclePlanner::addDesiredTrajectoryPoint(double initTime, const iDynTree:
     newPoint.yDesired = yDesired;
     newPoint.yDotDesired.zero();
     newPoint.initTime = initTime;
-    return m_controller->setDesiredPoint(newPoint);
+    return m_personFollowingController->setDesiredPoint(newPoint);
 }
 
 bool UnicyclePlanner::addDesiredTrajectoryPoint(double initTime, const iDynTree::Vector2 &yDesired, const iDynTree::Vector2 &yDotDesired)
+{
+    return addPersonFollowingDesiredTrajectoryPoint(initTime, yDesired, yDotDesired);
+}
+
+bool UnicyclePlanner::addPersonFollowingDesiredTrajectoryPoint(double initTime, const iDynTree::Vector2 &yDesired, const iDynTree::Vector2 &yDotDesired)
 {
     std::lock_guard<std::mutex> guard(m_mutex);
 
@@ -388,21 +434,60 @@ bool UnicyclePlanner::addDesiredTrajectoryPoint(double initTime, const iDynTree:
     newPoint.yDesired = yDesired;
     newPoint.yDotDesired = yDotDesired;
     newPoint.initTime = initTime;
-    return m_controller->setDesiredPoint(newPoint);
+    return m_personFollowingController->setDesiredPoint(newPoint);
 }
 
 void UnicyclePlanner::clearDesiredTrajectory()
 {
+    return clearPersonFollowingDesiredTrajectory();
+}
+
+void UnicyclePlanner::clearPersonFollowingDesiredTrajectory()
+{
     std::lock_guard<std::mutex> guard(m_mutex);
 
-    m_controller->clearDesiredTrajectory();
+    m_personFollowingController->clearDesiredTrajectory();
 }
 
 bool UnicyclePlanner::clearDesiredTrajectoryUpTo(double time)
 {
+    return clearPersonFollowingDesiredTrajectoryUpTo(time);
+}
+
+bool UnicyclePlanner::clearPersonFollowingDesiredTrajectoryUpTo(double time)
+{
     std::lock_guard<std::mutex> guard(m_mutex);
 
-    return m_controller->clearDesiredTrajectoryUpTo(time);
+    return m_personFollowingController->clearDesiredTrajectoryUpTo(time);
+}
+
+void UnicyclePlanner::setDesiredDirectControl(double forwardVelocity, double angularVelocity, double lateralVelocity)
+{
+    std::lock_guard<std::mutex> guard(m_mutex);
+
+    m_directController->setConstantControl(forwardVelocity, angularVelocity, lateralVelocity);
+}
+
+bool UnicyclePlanner::setSaturationsConservativeFactors(double linearVelocityConservativeFactor, double angularVelocityConservativeFactor)
+{
+    std::lock_guard<std::mutex> guard(m_mutex);
+
+    if (linearVelocityConservativeFactor < 0.0 || linearVelocityConservativeFactor > 1.0)
+    {
+        std::cerr << " The parameter linearVelocityConservativeFactor is supposed to be between 0 and 1" << std::endl;
+        return false;
+    }
+
+    if (angularVelocityConservativeFactor < 0.0 || angularVelocityConservativeFactor > 1.0)
+    {
+        std::cerr << " The parameter angularVelocityConservativeFactor is supposed to be between 0 and 1" << std::endl;
+        return false;
+    }
+
+    m_linearVelocityConservativeFactor = linearVelocityConservativeFactor;
+    m_angularVelocityConservativeFactor = angularVelocityConservativeFactor;
+
+    return true;
 }
 
 bool UnicyclePlanner::setMaximumIntegratorStepSize(double dT)
@@ -590,9 +675,13 @@ bool UnicyclePlanner::computeNewSteps(std::shared_ptr< FootPrint > leftFoot, std
     m_left.reset(new UnicycleFoot(leftFoot));
     m_right.reset(new UnicycleFoot(rightFoot));
 
-    double maxVelocity = std::sqrt(std::pow(m_maxLength,2) - std::pow(m_nominalWidth,2))/m_minTime * 0.90;
-    double maxAngVelocity = m_maxAngle/m_minTime*0.70;
-    if (!m_controller->setSaturations(maxVelocity, maxAngVelocity))
+    double maxVelocity = std::sqrt(std::pow(m_maxLength,2) - std::pow(m_nominalWidth,2))/m_minTime * m_linearVelocityConservativeFactor;
+    double maxAngVelocity = m_maxAngle/m_minTime * m_angularVelocityConservativeFactor;
+
+    if (!m_personFollowingController->setSaturations(maxVelocity, maxAngVelocity))
+        return false;
+
+    if (!m_directController->setSaturations(maxVelocity, maxAngVelocity))
         return false;
 
     if (!initializePlanner(m_initTime)){
@@ -795,7 +884,7 @@ bool UnicyclePlanner::getPersonPosition(double time, iDynTree::Vector2& personPo
         std::cerr << "Time is out of range." << std::endl;
         return false;
     }
-    personPosition = m_controller->getPersonPosition(unicycleState.position, unicycleState.angle);
+    personPosition = m_personFollowingController->getPersonPosition(unicycleState.position, unicycleState.angle);
     return true;
 }
 
@@ -804,7 +893,7 @@ void UnicyclePlanner::setFreeSpaceEllipseMethod(FreeSpaceEllipseMethod method)
     std::lock_guard<std::mutex> guard(m_mutex);
 
     m_freeSpaceMethod = method;
-    m_controller->setFreeSpaceEllipse(FreeSpaceEllipse()); //Reset the ellipse
+    m_personFollowingController->setFreeSpaceEllipse(FreeSpaceEllipse()); //Reset the ellipse
     m_unicycleProblem.setFreeSpaceEllipse(FreeSpaceEllipse()); //Reset the ellipse
 }
 
@@ -815,7 +904,7 @@ bool UnicyclePlanner::setFreeSpaceEllipse(const FreeSpaceEllipse &freeSpaceEllip
     if (m_freeSpaceMethod == FreeSpaceEllipseMethod::REFERENCE_ONLY ||
             m_freeSpaceMethod == FreeSpaceEllipseMethod::REFERENCE_AND_FOOTSTEPS)
     {
-        if (!m_controller->setFreeSpaceEllipse(freeSpaceEllipse))
+        if (!m_personFollowingController->setFreeSpaceEllipse(freeSpaceEllipse))
         {
             return false;
         }
@@ -837,21 +926,40 @@ bool UnicyclePlanner::setFreeSpaceEllipseConservativeFactor(double conservativeF
 {
     std::lock_guard<std::mutex> guard(m_mutex);
 
-    return m_controller->setFreeSpaceEllipseConservativeFactor(conservativeFactor);
+    return m_personFollowingController->setFreeSpaceEllipseConservativeFactor(conservativeFactor);
 }
 
 bool UnicyclePlanner::setInnerFreeSpaceEllipseOffset(double offset)
 {
     std::lock_guard<std::mutex> guard(m_mutex);
 
-    return m_controller->setInnerFreeSpaceEllipseOffset(offset);
+    return m_personFollowingController->setInnerFreeSpaceEllipseOffset(offset);
 }
 
 bool UnicyclePlanner::setInnerFreeSpaceEllipseOffsets(double semiMajorAxisOffset, double semiMinorAxisOffset)
 {
     std::lock_guard<std::mutex> guard(m_mutex);
 
-    return m_controller->setInnerFreeSpaceEllipseOffsets(semiMajorAxisOffset, semiMinorAxisOffset);
+    return m_personFollowingController->setInnerFreeSpaceEllipseOffsets(semiMajorAxisOffset, semiMinorAxisOffset);
+}
+
+bool UnicyclePlanner::setUnicycleController(UnicycleController controller)
+{
+    std::lock_guard<std::mutex> guard(m_mutex);
+
+    if (controller == UnicycleController::PERSON_FOLLOWING)
+    {
+        m_currentController = controller;
+        return m_unicycle->setController(m_personFollowingController);
+    }
+
+    if (controller == UnicycleController::DIRECT)
+    {
+        m_currentController = controller;
+        return m_unicycle->setController(m_directController);
+    }
+
+    return false;
 }
 
 

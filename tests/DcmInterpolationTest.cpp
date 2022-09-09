@@ -23,7 +23,7 @@
 /**
  * Struct containing the necessary quantities for the trajectory planner
  */
-typedef struct
+struct Configuration
 {
     // timing quantities
     double plannerHorizon = 10.0, dT = 0.010;
@@ -64,7 +64,7 @@ typedef struct
     double lastStepDCMOffsetPercentage = 0.2;
 
     bool swingLeft = true;
-} Configuration;
+};
 
 
 /**
@@ -76,7 +76,7 @@ bool configurePlanner(std::shared_ptr<UnicyclePlanner> planner, const Configurat
     bool ok = true;
 
     ok = ok && planner->setDesiredPersonDistance(conf.referencePointDistanceX, conf.referencePointDistanceY);
-    ok = ok && planner->setControllerGain(conf.unicycleGain);
+    ok = ok && planner->setPersonFollowingControllerGain(conf.unicycleGain);
     ok = ok && planner->setMaximumIntegratorStepSize(conf.dT);
     ok = ok && planner->setMaxStepLength(conf.maxStepLength);
     ok = ok && planner->setMaxAngleVariation(conf.maxAngleVariation);
@@ -252,8 +252,8 @@ bool interpolationTest()
     double initTime = 0;
 
     // add desired initial and final position dor the unicycle
-    iDynTree::assertTrue(unicyclePlanner->addDesiredTrajectoryPoint(initTime, initPosition, initVelocity));
-    iDynTree::assertTrue(unicyclePlanner->addDesiredTrajectoryPoint(initTime + conf.plannerHorizon,
+    iDynTree::assertTrue(unicyclePlanner->addPersonFollowingDesiredTrajectoryPoint(initTime, initPosition, initVelocity));
+    iDynTree::assertTrue(unicyclePlanner->addPersonFollowingDesiredTrajectoryPoint(initTime + conf.plannerHorizon,
                                                             finalPosition, finalVelocity));
 
     // generate the reference footprints and the trajectory for the DCM
@@ -300,12 +300,12 @@ bool interpolationTest()
     iDynTree::assertTrue(unicyclePlanner->getPersonPosition(initTime, initPosition));
 
     // remove all desired trajectory point
-    unicyclePlanner->clearDesiredTrajectory();
+    unicyclePlanner->clearPersonFollowingDesiredTrajectory();
 
     // set new desired positin
     finalPosition(0) = initPosition(0) + 0.3;
     finalPosition(1) = initPosition(1) + 0.5;
-    iDynTree::assertTrue(unicyclePlanner->addDesiredTrajectoryPoint(initTime + conf.plannerHorizon, finalPosition));
+    iDynTree::assertTrue(unicyclePlanner->addPersonFollowingDesiredTrajectoryPoint(initTime + conf.plannerHorizon, finalPosition));
 
     iDynTree::assertTrue(dcmGenerator->setDCMInitialState(boundaryConditionAtMergePoint));
 
@@ -339,12 +339,12 @@ bool interpolationTest()
     iDynTree::assertTrue(unicyclePlanner->getPersonPosition(initTime, initPosition));
 
     // remove all desired trajectory point
-    unicyclePlanner->clearDesiredTrajectory();
+    unicyclePlanner->clearPersonFollowingDesiredTrajectory();
 
     // set new desired positin
     finalPosition(0) = initPosition(0) + 0.0;
     finalPosition(1) = initPosition(1) + 0.2;
-    iDynTree::assertTrue(unicyclePlanner->addDesiredTrajectoryPoint(initTime + conf.plannerHorizon, finalPosition));
+    iDynTree::assertTrue(unicyclePlanner->addPersonFollowingDesiredTrajectoryPoint(initTime + conf.plannerHorizon, finalPosition));
     iDynTree::assertTrue(dcmGenerator->setDCMInitialState(boundaryConditionAtMergePoint));
 
     // evaluate the new trajectory
