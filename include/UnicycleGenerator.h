@@ -69,6 +69,16 @@ public:
     bool setMergePointRatio(double mergePointRatio);
 
 
+    /**
+     * Add merge points continuosly in the range [mergePointRatioBegin, mergePointRatioEnd].
+     * If equal, only one point is added.
+     * @param mergePointRatioBegin Beginning of the region in which merge points are added. The value need to be in the range [0, 1].
+     * @param mergePointRatioEnd End of the region where merge points are added. The value need to be in the range [0, 1].
+     * @return true/false in case of success/failure
+     */
+    bool setMergePointRatio(double mergePointRatioBegin, double mergePointRatioEnd);
+
+
     //Getters
     void getStepPhases(std::vector<StepPhase>& leftPhases, std::vector<StepPhase>& rightPhases) const;
 

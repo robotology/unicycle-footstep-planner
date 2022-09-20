@@ -31,7 +31,8 @@ public:
     double nominalSwitchTime = 1.0;
     double maxStepTime = 10.0, nominalStepTime = 2.0;
     bool pauseActive = false;
-    double mergePointRatio = 0.5;
+    double mergePointRatioBegin = 0.5;
+    double mergePointRatioEnd = 0.5;
 
 
     std::shared_ptr<FeetCubicSplineGenerator> feetSplineGenerator = nullptr;
@@ -102,7 +103,9 @@ public:
             swing->insert(swing->end(), endSwitchSamples, StepPhase::SwitchIn);
             stance->insert(stance->end(), endSwitchSamples, StepPhase::SwitchOut);
             phaseShift.push_back(endSwitchSamples);
-            mergePoints.push_back(endSwitchSamples - 1);
+
+            for (size_t m = 0; m < endSwitchSamples; ++m)
+                mergePoints.push_back(m);
 
             return true;
         }
@@ -142,7 +145,7 @@ public:
             if (pause){
                 pauseTime = stepTime - nominalStepTime;
                 switchTime = nominalSwitchTime + pauseTime;
-            } else pauseTime = 0;
+            }
 
             //Samples
             stepSamples = static_cast<size_t>(std::round(stepTime/dT));
@@ -167,15 +170,17 @@ public:
             phaseShift.push_back(phaseShift.back() + switchSamples); //it stores the indeces when a change of phase occurs
 
             if (orderedStepIndex != 2){ //add no merge point in the first half switch
-                //bool pause = m_pauseActive && (switchTime > m_maxSwitchTime); //if true, it will pause in the middle
-                size_t mergePoint;
+                size_t initialMergePoint, finalMergePoint;
                 if (pause){
-                    mergePoint = phaseShift.back() - static_cast<size_t>(std::round(nominalSwitchTime * (1 - mergePointRatio)/(dT)));
-                    mergePoints.push_back(mergePoint);
+                    initialMergePoint = phaseShift.back() - static_cast<size_t>(std::round(nominalSwitchTime * (1 - mergePointRatioBegin)/(dT)));
+                    finalMergePoint = phaseShift.back() - static_cast<size_t>(std::round(nominalSwitchTime * (1 - mergePointRatioEnd)/(dT)));
                 } else {
-                    mergePoint = phaseShift.back() - static_cast<size_t>(std::round(switchTime * (1 - mergePointRatio)/(dT)));
-                    mergePoints.push_back(mergePoint);
+                    initialMergePoint = phaseShift.back() - static_cast<size_t>(std::round(switchTime * (1 - mergePointRatioBegin)/(dT)));
+                    finalMergePoint = phaseShift.back() - static_cast<size_t>(std::round(switchTime * (1 - mergePointRatioEnd)/(dT)));
                 }
+
+                for (size_t m = initialMergePoint; m <= finalMergePoint; ++m)
+                    mergePoints.push_back(m);
             }
 
             swing->insert(swing->end(), swingSamples, StepPhase::Swing); //first step
@@ -190,7 +195,8 @@ public:
         stance->insert(stance->end(), switchSamples, StepPhase::SwitchOut);
         phaseShift.push_back(phaseShift.back() + switchSamples);
 
-        mergePoints.push_back(phaseShift.back() - 1); //merge on the last
+        for (size_t m = phaseShift.back() - switchSamples; m < phaseShift.back(); ++m)
+            mergePoints.push_back(m);
 
         lFootPhases->shrink_to_fit();
         rFootPhases->shrink_to_fit();
@@ -610,11 +616,29 @@ bool UnicycleGenerator::setPauseConditions(double maxStepTime, double nominalSte
 
 bool UnicycleGenerator::setMergePointRatio(double mergePointRatio)
 {
-    if(mergePointRatio < 0 || mergePointRatio > 1){
-        std::cerr << "[UnicycleGenerator::setMergePointRatio] The merge point ratio has to be a positive number less the one";
+    return setMergePointRatio(mergePointRatio, mergePointRatio);
+}
+
+bool UnicycleGenerator::setMergePointRatio(double mergePointRatioBegin, double mergePointRatioEnd)
+{
+    if(mergePointRatioBegin < 0 || mergePointRatioBegin > 1){
+        std::cerr << "[UnicycleGenerator::setMergePointRatio] The mergePointRatioBegin has to be in the range [0, 1].";
         return false;
     }
-    m_pimpl->mergePointRatio = mergePointRatio;
+    if(mergePointRatioEnd < 0 || mergePointRatioEnd > 1){
+        std::cerr << "[UnicycleGenerator::setMergePointRatio] The mergePointRatioEnd has to be in the range [0, 1].";
+        return false;
+    }
+
+    if (mergePointRatioBegin > mergePointRatioEnd)
+    {
+        std::cerr << "[UnicycleGenerator::setMergePointRatio] The mergePointRatioEnd has to be greater or equal than mergePointRatioBegin.";
+        return false;
+    }
+
+    m_pimpl->mergePointRatioBegin = mergePointRatioBegin;
+    m_pimpl->mergePointRatioEnd = mergePointRatioEnd;
+
     return true;
 }
 
