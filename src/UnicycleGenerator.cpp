@@ -104,7 +104,7 @@ public:
             stance->insert(stance->end(), endSwitchSamples, StepPhase::SwitchOut);
             phaseShift.push_back(endSwitchSamples);
 
-            for (size_t m = 0; m < endSwitchSamples; ++m)
+            for (size_t m = 1; m < endSwitchSamples; ++m) //Starting from 1 because 0 has been already added
                 mergePoints.push_back(m);
 
             return true;
