@@ -55,6 +55,8 @@ public:
 
     bool setPauseConditions(double maxStepTime, double nominalStepTime);
 
+    void setPauseActive(bool isPauseActive);
+
     void disablePauseConditions();
 
 
