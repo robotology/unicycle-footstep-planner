@@ -591,6 +591,7 @@ bool UnicycleGenerator::setPauseConditions(double maxStepTime, double nominalSte
     if (maxStepTime < 0){
         std::cerr << "[UnicycleGenerator::setPauseConditions] If the maxStepTime is negative, the robot won't pause in middle stance." << std::endl;
         m_pimpl->pauseActive = false;
+        return false;
     }
 
     m_pimpl->pauseActive = true;
