@@ -44,7 +44,7 @@ class GeneralSupportTrajectory
 
     std::pair<double, double> m_trajectoryDomain; /**< Time domain of the trajectory */
     double m_omega; /**< Time constant of the 3D-LIPM */
-
+    std::string m_type; /**< String representing the type of the trajectory. This is useful for debugging */
  public:
     /**
      * Constructor.
@@ -52,47 +52,60 @@ class GeneralSupportTrajectory
      * @param endTime is the end time of the trajectory;
      * @param omega time constant of the linear inverted pendulum.
      */
-    GeneralSupportTrajectory(const double &startTime, const double &endTime, const double& omega);
+    GeneralSupportTrajectory(const double &startTime, const double &endTime, const double& omega, const std::string& type);
 
     virtual ~GeneralSupportTrajectory();
+
+    /**
+     * Get the type of the trajectory. E.g., Single support, double support...
+     * @return the type of the trajectory
+     */
+    const std::string& getType() const;
 
     /**
      * Pure virtual method. It returns the position of the DCM
      * trajectory evaluated at time t.
      * @param t is the trajectory evaluation time;
      * @param DCMPosition cartesian position of the Diverget Component of Motion;
-     * @param checkDomainCondition flag used to check if the time belongs to the trajectory domain (default value true).
+     * @param checkDomainCondition flag used to check if the time belongs to the trajectory domain.
+     * @param domainTolerance tolerance applied to the check domain condition (default value 0.0).
      * @return true / false in case of success / failure.
      */
-    virtual bool getDCMPosition(const double &t, iDynTree::Vector2& DCMPosition, const bool &checkDomainCondition = true) = 0;
+    virtual bool getDCMPosition(const double &t, iDynTree::Vector2& DCMPosition, const bool &checkDomainCondition,
+                                const double &domainTolerance = 0.0) = 0;
 
     /**
      * Pure virtual method. It returns the velocity of the DCM
      * trajectory evaluated at time t.
      * @param t is the trajectory evaluation time;
      * @param DCMVelocity cartesian velocity of the Diverget Component of Motion;
-     * @param checkDomainCondition flag used to check if the time belongs to the trajectory domain (default value true).
+     * @param checkDomainCondition flag used to check if the time belongs to the trajectory domain.
+     * @param domainTolerance tolerance applied to the check domain condition (default value 0.0).
      * @return true / false in case of success / failure.
      */
-    virtual bool getDCMVelocity(const double &t, iDynTree::Vector2& DCMVelocity, const bool &checkDomainCondition = true) = 0;
+    virtual bool getDCMVelocity(const double &t, iDynTree::Vector2& DCMVelocity, const bool &checkDomainCondition,
+                                const double &domainTolerance = 0.0) = 0;
 
     /**
      * Pure virtual method. It returns the position of the ZMP
      * trajectory evaluated at time t.
      * @param t is the trajectory evaluation time;
      * @param ZMPPosition cartesian position of the Zero Moment Point;
-     * @param checkDomainCondition flag used to check if the time belongs to the trajectory domain (default value true).
+     * @param checkDomainCondition flag used to check if the time belongs to the trajectory domain.
+     * @param domainTolerance tolerance applied to the check domain condition (default value 0.0).
      * @return true / false in case of success / failure.
      */
-    virtual bool getZMPPosition(const double &t, iDynTree::Vector2& ZMPPosition, const bool &checkDomainCondition = true) = 0;
+    virtual bool getZMPPosition(const double &t, iDynTree::Vector2& ZMPPosition, const bool &checkDomainCondition,
+                                const double &domainTolerance = 0.0) = 0;
 
     /**
      * Return true if the time t belongs to the trajectory time
      * domain (i.e t belongs (startTime, endTime)).
      * @param t is the time.
-     * @return true if startTime <= t <=  endTime, false otherwise.
+     * @param tolerance positive number considered as a tolerance in the domain check (default value 0.0)
+     * @return true if startTime - tolerance <= t <=  endTime + tolerance, false otherwise.
      */
-    bool timeBelongsToDomain(const double &t);
+    bool timeBelongsToDomain(const double &t, const double& tolerance = 0.0);
 
     /**
      * Get the trajectory domain.

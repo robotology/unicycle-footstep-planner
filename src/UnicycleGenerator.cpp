@@ -30,7 +30,7 @@ public:
     double switchPercentage = 0.5, dT = 0.01, endSwitch = 0.0, initTime = 0.0;
     double nominalSwitchTime = 1.0;
     double maxStepTime = 10.0, nominalStepTime = 2.0;
-    bool pauseActive = false;
+    bool pauseActive = true;
     double mergePointRatioBegin = 0.5;
     double mergePointRatioEnd = 0.5;
 
@@ -584,31 +584,31 @@ bool UnicycleGenerator::setTerminalHalfSwitchTime(double lastHalfSwitchTime)
     return true;
 }
 
+void UnicycleGenerator::setPauseActive(bool isPauseActive)
+{
+    m_pimpl->pauseActive = isPauseActive;
+}
+
 bool UnicycleGenerator::setPauseConditions(double maxStepTime, double nominalStepTime)
 {
     std::lock_guard<std::mutex> guard(m_pimpl->mutex);
 
     if (maxStepTime < 0){
         std::cerr << "[UnicycleGenerator::setPauseConditions] If the maxStepTime is negative, the robot won't pause in middle stance." << std::endl;
-        m_pimpl->pauseActive = false;
+        return false;
     }
 
-    m_pimpl->pauseActive = true;
+    if (nominalStepTime <= 0){
+        std::cerr << "[UnicycleGenerator::setPauseConditions] The nominalStepTime is supposed to be positive." << std::endl;
+        return false;
+    }
+
+    if ((nominalStepTime) > maxStepTime){
+        std::cerr << "[UnicycleGenerator::setPauseConditions] The nominalSwitchTime cannot be greater than maxSwitchTime." << std::endl;
+        return false;
+    }
+
     m_pimpl->maxStepTime = maxStepTime;
-
-    if (m_pimpl->pauseActive){
-        if (nominalStepTime <= 0){
-            std::cerr << "[UnicycleGenerator::setPauseConditions] The nominalStepTime is supposed to be positive." << std::endl;
-            m_pimpl->pauseActive = false;
-            return false;
-        }
-
-        if ((nominalStepTime) > maxStepTime){
-            std::cerr << "[UnicycleGenerator::setPauseConditions] The nominalSwitchTime cannot be greater than maxSwitchTime." << std::endl;
-            m_pimpl->pauseActive = false;
-            return false;
-        }
-    }
     m_pimpl->nominalStepTime = nominalStepTime;
 
     return true;

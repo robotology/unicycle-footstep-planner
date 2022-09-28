@@ -18,14 +18,15 @@
 #include <Eigen/Dense>
 
 // iDynTree
-#include "iDynTree/Core/VectorFixSize.h"
-#include "iDynTree/Core/EigenHelpers.h"
+#include <iDynTree/Core/VectorFixSize.h>
+#include <iDynTree/Core/EigenHelpers.h>
 
 //--------General Support Trajectory definition
 
 GeneralSupportTrajectory::GeneralSupportTrajectory(const double &startTime, const double &endTime,
-                                                   const double &omega)
+                                                   const double &omega, const std::string& type)
 {
+    m_type = type;
     // set the general support trajectory domain
     assert(startTime <= endTime);
     assert(omega > 0);
@@ -37,16 +38,21 @@ GeneralSupportTrajectory::GeneralSupportTrajectory(const double &startTime, cons
 GeneralSupportTrajectory::~GeneralSupportTrajectory()
 { }
 
-bool GeneralSupportTrajectory::timeBelongsToDomain(const double &t)
+const std::string& GeneralSupportTrajectory::getType() const
+{
+    return m_type;
+}
+
+bool GeneralSupportTrajectory::timeBelongsToDomain(const double &t, const double& tolerance)
 {
     // check if m_startTime <= t <=  m_endTime
     double startTime = std::get<0>(m_trajectoryDomain);
     double endTime = std::get<1>(m_trajectoryDomain);
 
-    if ((t >= startTime) && (t <= endTime))
+    if ((t >= startTime - tolerance) && (t <= endTime + tolerance)) {
         return true;
+    }
 
-//    std::cerr << "[GENERAL SUPPORT TRAJECTORY] the time t: " << t << " does not belong to the trajectory domain" << std::endl;
     return false;
 }
 
@@ -94,30 +100,39 @@ public:
      * GeneralSupportTrajectory class.
      * @param t is the trajectory evaluation time;
      * @param DCMPosition is the cartesian position of the Diverget Component of Motion;
-     * @param checkDomainCondition flag used to check if the time belongs to the trajectory domain (default value true).
+     * @param checkDomainCondition flag used to check if the time belongs to the trajectory domain.
+     * @param domainTolerance tolerance applied to the check domain condition (default value 0.0).
      * @return true / false in case of success / failure.
      */
-    bool getDCMPosition(const double &t, iDynTree::Vector2& DCMPosition, const bool &checkDomainCondition = true) override;
+    bool getDCMPosition(const double &t, iDynTree::Vector2& DCMPosition,
+                        const bool &checkDomainCondition,
+                        const double &domainTolerance = 0.0) override;
 
     /**
      * Implementation of the getDCMVelocity method of the
      * GeneralSupportTrajectory class.
      * @param t is the trajectory evaluation time;
      * @param DCMVelocity cartesian velocity of the Diverget Component of Motion;
-     * @param checkDomainCondition flag used to check if the time belongs to the trajectory domain (default value true).
+     * @param checkDomainCondition flag used to check if the time belongs to the trajectory domain.
+     * @param domainTolerance tolerance applied to the check domain condition (default value 0.0).
      * @return true / false in case of success / failure.
      */
-    bool getDCMVelocity(const double &t, iDynTree::Vector2& DCMVelocity, const bool &checkDomainCondition = true) override;
+    bool getDCMVelocity(const double &t, iDynTree::Vector2& DCMVelocity,
+                        const bool &checkDomainCondition,
+                        const double &domainTolerance = 0.0) override;
 
     /**
      * Implementation of the getZMPPosition method of the
      * GeneralSupportTrajectory class.
      * @param t is the trajectory evaluation time;
      * @param ZMPPosition cartesian position of the Zero Moment Point;
-     * @param checkDomainCondition flag used to check if the time belongs to the trajectory domain (default value true).
+     * @param checkDomainCondition flag used to check if the time belongs to the trajectory domain.
+     * @param domainTolerance tolerance applied to the check domain condition (default value 0.0).
      * @return true / false in case of success / failure.
      */
-    virtual bool getZMPPosition(const double &t, iDynTree::Vector2& ZMPVelocity, const bool &checkDomainCondition = true) override;
+    virtual bool getZMPPosition(const double &t, iDynTree::Vector2& ZMPVelocity,
+                                const bool &checkDomainCondition,
+                                const double &domainTolerance = 0.0) override;
 };
 
 //--------Single Support Trajectory definition
@@ -127,7 +142,7 @@ SingleSupportTrajectory::SingleSupportTrajectory(const double &startTime,
                                                  const double &omega,
                                                  const iDynTree::Vector2 &ZMP,
                                                  const DCMTrajectoryPoint& boundaryCondition):
-    GeneralSupportTrajectory(startTime, endTime, omega),
+    GeneralSupportTrajectory(startTime, endTime, omega, "single support"),
     m_ZMP(ZMP)
 {
     m_boundaryConditionTime = boundaryCondition.time;
@@ -135,11 +150,12 @@ SingleSupportTrajectory::SingleSupportTrajectory(const double &startTime,
 }
 
 bool SingleSupportTrajectory::getZMPPosition(const double &t, iDynTree::Vector2 &ZMPPosition,
-                                             const bool &checkDomainCondition)
+                                             const bool &checkDomainCondition,
+                                             const double &domainTolerance)
 {
     // Evaluate the position of the ZMP at time t
     if (checkDomainCondition)
-        if (!timeBelongsToDomain(t)){
+        if (!timeBelongsToDomain(t, domainTolerance)){
             std::cerr << "[SINGLE SUPPORT TRAJECTORY] the time t: " << t
                       << " does not belong to the trajectory domain." << std::endl;
             return false;
@@ -150,11 +166,12 @@ bool SingleSupportTrajectory::getZMPPosition(const double &t, iDynTree::Vector2 
 }
 
 bool SingleSupportTrajectory::getDCMPosition(const double &t, iDynTree::Vector2 &DCMPosition,
-                                             const bool &checkDomainCondition)
+                                             const bool &checkDomainCondition,
+                                             const double &domainTolerance)
 {
     // Evaluate the position of the DCM at time t
     if (checkDomainCondition)
-        if (!timeBelongsToDomain(t)){
+        if (!timeBelongsToDomain(t, domainTolerance)){
             std::cerr << "[SINGLE SUPPORT TRAJECTORY] the time t: " << t
                       << " does not belong to the trajectory domain." << std::endl;
             return false;
@@ -168,11 +185,12 @@ bool SingleSupportTrajectory::getDCMPosition(const double &t, iDynTree::Vector2 
 }
 
 bool SingleSupportTrajectory::getDCMVelocity(const double &t, iDynTree::Vector2 &DCMVelocity,
-                                             const bool &checkDomainCondition)
+                                             const bool &checkDomainCondition,
+                                             const double &domainTolerance)
 {
     // Evaluate the velocity of the DCM at time t
     if (checkDomainCondition)
-        if (!timeBelongsToDomain(t)){
+        if (!timeBelongsToDomain(t, domainTolerance)){
             std::cerr << "[SINGLE SUPPORT TRAJECTORY] the time t: " << t
                       << " does not belong to the trajectory domain." << std::endl;
             return false;
@@ -233,30 +251,39 @@ public:
      * GeneralSupportTrajectory class.
      * @param t is the trajectory evaluation time;
      * @param DCMPosition is the cartesian position of the Diverget Component of Motion;
-     * @param checkDomainCondition flag used to check if the time belongs to the trajectory domain (default value true).
+     * @param checkDomainCondition flag used to check if the time belongs to the trajectory domain.
+     * @param domainTolerance tolerance applied to the check domain condition (default value 0.0).
      * @return true / false in case of success / failure.
      */
-    bool getDCMPosition(const double &t, iDynTree::Vector2& DCMPosition, const bool &checkDomainCondition = true) override;
+    bool getDCMPosition(const double &t, iDynTree::Vector2& DCMPosition,
+                        const bool &checkDomainCondition,
+                        const double &domainTolerance = 0.0) override;
 
     /**
      * Implementation of the getDCMVelocity method of the
      * GeneralSupportTrajectory class.
      * @param t is the trajectory evaluation time;
      * @param DCMVelocity is the cartesian velocity of the Diverget Component of Motion;
-     * @param checkDomainCondition flag used to check if the time belongs to the trajectory domain (default value true).
+     * @param checkDomainCondition flag used to check if the time belongs to the trajectory domain.
+     * @param domainTolerance tolerance applied to the check domain condition (default value 0.0).
      * @return true / false in case of success / failure.
      */
-    bool getDCMVelocity(const double &t, iDynTree::Vector2& DCMVelocity, const bool &checkDomainCondition = true) override;
+    bool getDCMVelocity(const double &t, iDynTree::Vector2& DCMVelocity,
+                        const bool &checkDomainCondition,
+                        const double &domainTolerance = 0.0) override;
 
     /**
      * Implementation of the getZMPPosition method of the
      * GeneralSupportTrajectory class.
      * @param t is the trajectory evaluation time;
      * @param ZMPPosition cartesian position of the Zero Moment Point;
-     * @param checkDomainCondition flag used to check if the time belongs to the trajectory domain (default value true).
+     * @param checkDomainCondition flag used to check if the time belongs to the trajectory domain.
+     * @param domainTolerance tolerance applied to the check domain condition (default value 0.0).
      * @return true / false in case of success / failure.
      */
-    virtual bool getZMPPosition(const double &t, iDynTree::Vector2& ZMPVelocity, const bool &checkDomainCondition = true) override;
+    virtual bool getZMPPosition(const double &t, iDynTree::Vector2& ZMPVelocity,
+                                const bool &checkDomainCondition,
+                                const double &domainTolerance = 0.0) override;
 
 };
 
@@ -329,30 +356,39 @@ public:
      * GeneralSupportTrajectory class.
      * @param t is the trajectory evaluation time;
      * @param DCMPosition is the cartesian position of the Diverget Component of Motion;
-     * @param checkDomainCondition flag used to check if the time belongs to the trajectory domain (default value true).
+     * @param checkDomainCondition flag used to check if the time belongs to the trajectory domain.
+     * @param domainTolerance tolerance applied to the check domain condition (default value 0.0).
      * @return true / false in case of success / failure.
      */
-    bool getDCMPosition(const double &t, iDynTree::Vector2& DCMPosition, const bool &checkDomainCondition = true) override;
+    bool getDCMPosition(const double &t, iDynTree::Vector2& DCMPosition,
+                        const bool &checkDomainCondition,
+                        const double &domainTolerance = 0.0) override;
 
     /**
      * Implementation of the getDCMVelocity method of the
      * GeneralSupportTrajectory class.
      * @param t is the trajectory evaluation time;
      * @param DCMVelocity is the cartesian velocity of the Diverget Component of Motion;
-     * @param checkDomainCondition flag used to check if the time belongs to the trajectory domain (default value true).
+     * @param checkDomainCondition flag used to check if the time belongs to the trajectory domain.
+     * @param domainTolerance tolerance applied to the check domain condition (default value 0.0).
      * @return true / false in case of success / failure.
      */
-    bool getDCMVelocity(const double &t, iDynTree::Vector2& DCMVelocity, const bool &checkDomainCondition = true) override;
+    bool getDCMVelocity(const double &t, iDynTree::Vector2& DCMVelocity,
+                        const bool &checkDomainCondition,
+                        const double &domainTolerance = 0.0) override;
 
     /**
      * Implementation of the getZMPPosition method of the
      * GeneralSupportTrajectory class.
      * @param t is the trajectory evaluation time;
      * @param ZMPPosition cartesian position of the Zero Moment Point;
-     * @param checkDomainCondition flag used to check if the time belongs to the trajectory domain (default value true).
+     * @param checkDomainCondition flag used to check if the time belongs to the trajectory domain.
+     * @param domainTolerance tolerance applied to the check domain condition (default value 0.0).
      * @return true / false in case of success / failure.
      */
-    virtual bool getZMPPosition(const double &t, iDynTree::Vector2& ZMPVelocity, const bool &checkDomainCondition = true) override;
+    virtual bool getZMPPosition(const double &t, iDynTree::Vector2& ZMPVelocity,
+                                const bool &checkDomainCondition,
+                                const double &domainTolerance = 0.0) override;
 
 };
 
@@ -361,7 +397,7 @@ public:
 DoubleSupportTrajectory::DoubleSupportTrajectory(const DCMTrajectoryPoint &initBoundaryCondition,
                                                  const DCMTrajectoryPoint &finalBoundaryCondition,
                                                  const double &omega):
-    GeneralSupportTrajectory(initBoundaryCondition.time, finalBoundaryCondition.time, omega)
+    GeneralSupportTrajectory(initBoundaryCondition.time, finalBoundaryCondition.time, omega, "double support standard")
 {
 
     double dsDuration = finalBoundaryCondition.time - initBoundaryCondition.time;
@@ -431,10 +467,11 @@ iDynTree::Vector4 DoubleSupportTrajectory::polinominalInterpolation(const iDynTr
 }
 
 bool DoubleSupportTrajectory::getDCMPosition(const double &t, iDynTree::Vector2 &DCMPosition,
-                                             const bool &checkDomainCondition)
+                                             const bool &checkDomainCondition,
+                                             const double &domainTolerance)
 {
     if(checkDomainCondition)
-        if (!timeBelongsToDomain(t)){
+        if (!timeBelongsToDomain(t, domainTolerance)){
             std::cerr << "[DOUBLE SUPPORT TRAJECTORY] the time t: " << t
                       << " does not belong to the trajectory domain." << std::endl;
             return false;
@@ -457,10 +494,11 @@ bool DoubleSupportTrajectory::getDCMPosition(const double &t, iDynTree::Vector2 
 }
 
 bool DoubleSupportTrajectory::getDCMVelocity(const double &t, iDynTree::Vector2 &DCMVelocity,
-                                             const bool &checkDomainCondition)
+                                             const bool &checkDomainCondition,
+                                             const double &domainTolerance)
 {
     if(checkDomainCondition)
-        if (!timeBelongsToDomain(t)){
+        if (!timeBelongsToDomain(t, domainTolerance)){
             std::cerr << "[DOUBLE SUPPORT TRAJECTORY] the time t: " << t
                       << "does not belong to the trajectory domain." << std::endl;
             return false;
@@ -483,11 +521,12 @@ bool DoubleSupportTrajectory::getDCMVelocity(const double &t, iDynTree::Vector2 
 }
 
 bool DoubleSupportTrajectory::getZMPPosition(const double &t, iDynTree::Vector2 &ZMPPosition,
-                                             const bool &checkDomainCondition)
+                                             const bool &checkDomainCondition,
+                                             const double &domainTolerance)
 {
     // Evaluate the position of the ZMP at time t
     if (checkDomainCondition)
-        if (!timeBelongsToDomain(t)){
+        if (!timeBelongsToDomain(t, domainTolerance)){
             std::cerr << "[DOUBLE SUPPORT TRAJECTORY] the time t: " << t
                       << " does not belong to the trajectory domain." << std::endl;
             return false;
@@ -495,8 +534,8 @@ bool DoubleSupportTrajectory::getZMPPosition(const double &t, iDynTree::Vector2 
 
     // We can avoid to check the Domain condition since it was already evaluated above
     iDynTree::Vector2 DCMPosition, DCMVelocity;
-    getDCMPosition(t, DCMPosition);
-    getDCMVelocity(t, DCMVelocity);
+    getDCMPosition(t, DCMPosition, checkDomainCondition, domainTolerance);
+    getDCMVelocity(t, DCMVelocity,checkDomainCondition, domainTolerance);
 
     iDynTree::toEigen(ZMPPosition) = iDynTree::toEigen(DCMPosition) - iDynTree::toEigen(DCMVelocity) / m_omega;
 
@@ -509,7 +548,7 @@ DoubleSupportTrajectoryMinJerk::DoubleSupportTrajectoryMinJerk(const DCMTrajecto
                                                                const iDynTree::Vector2 &initialAcceleration,
                                                                const iDynTree::Vector2 &initialJerk,
                                                                const double &omega):
-    GeneralSupportTrajectory(initBoundaryCondition.time, finalBoundaryCondition.time, omega)
+    GeneralSupportTrajectory(initBoundaryCondition.time, finalBoundaryCondition.time, omega, "double support minimum jerk")
 {
 
     double dsDuration = finalBoundaryCondition.time - initBoundaryCondition.time;
@@ -588,10 +627,11 @@ iDynTree::Vector6 DoubleSupportTrajectoryMinJerk::polinominalInterpolation(const
 }
 
 bool DoubleSupportTrajectoryMinJerk::getDCMPosition(const double &t, iDynTree::Vector2 &DCMPosition,
-                                                    const bool &checkDomainCondition)
+                                                    const bool &checkDomainCondition,
+                                                    const double &domainTolerance)
 {
     if(checkDomainCondition)
-        if (!timeBelongsToDomain(t)){
+        if (!timeBelongsToDomain(t, domainTolerance)){
             std::cerr << "[DOUBLE SUPPORT TRAJECTORY] the time t: " << t
                       << " does not belong to the trajectory domain." << std::endl;
             return false;
@@ -616,10 +656,11 @@ bool DoubleSupportTrajectoryMinJerk::getDCMPosition(const double &t, iDynTree::V
 }
 
 bool DoubleSupportTrajectoryMinJerk::getDCMVelocity(const double &t, iDynTree::Vector2 &DCMVelocity,
-                                                    const bool &checkDomainCondition)
+                                                    const bool &checkDomainCondition,
+                                                    const double &domainTolerance)
 {
     if(checkDomainCondition)
-        if (!timeBelongsToDomain(t)){
+        if (!timeBelongsToDomain(t, domainTolerance)){
             std::cerr << "[DOUBLE SUPPORT TRAJECTORY] the time t: " << t
                       << "does not belong to the trajectory domain." << std::endl;
             return false;
@@ -644,11 +685,12 @@ bool DoubleSupportTrajectoryMinJerk::getDCMVelocity(const double &t, iDynTree::V
 }
 
 bool DoubleSupportTrajectoryMinJerk::getZMPPosition(const double &t, iDynTree::Vector2 &ZMPPosition,
-                                                    const bool &checkDomainCondition)
+                                                    const bool &checkDomainCondition,
+                                                    const double &domainTolerance)
 {
     // Evaluate the position of the ZMP at time t
     if (checkDomainCondition)
-        if (!timeBelongsToDomain(t)){
+        if (!timeBelongsToDomain(t, domainTolerance)){
             std::cerr << "[DOUBLE SUPPORT TRAJECTORY] the time t: " << t
                       << " does not belong to the trajectory domain." << std::endl;
             return false;
@@ -656,8 +698,8 @@ bool DoubleSupportTrajectoryMinJerk::getZMPPosition(const double &t, iDynTree::V
 
     // We can avoid to check the Domain condition since it was already evaluated above
     iDynTree::Vector2 DCMPosition, DCMVelocity;
-    getDCMPosition(t, DCMPosition);
-    getDCMVelocity(t, DCMVelocity);
+    getDCMPosition(t, DCMPosition, checkDomainCondition, domainTolerance);
+    getDCMVelocity(t, DCMVelocity, checkDomainCondition, domainTolerance);
 
     iDynTree::toEigen(ZMPPosition) = iDynTree::toEigen(DCMPosition) - iDynTree::toEigen(DCMVelocity) / m_omega;
 
@@ -864,7 +906,7 @@ bool DCMTrajectoryGeneratorHelper::addLastStep(const double &singleSupportStartT
     doubleSupportFinalBoundaryCondition.DCMPosition = doubleSupportEndPosition;
 
     if(!newSingleSupport->getDCMVelocity(doubleSupportInitBoundaryCondition.time,
-                                         doubleSupportInitBoundaryCondition.DCMVelocity)){
+                                         doubleSupportInitBoundaryCondition.DCMVelocity, true, m_dT/2)){
         std::cerr << "[DCMTrajectoryGeneratorHelper::addLastStep] Error when the velocity of the DCM in the next SS phase is evaluated." <<std::endl;
         return false;
     }
@@ -908,25 +950,25 @@ bool DCMTrajectoryGeneratorHelper::addNewStep(const double &singleSupportStartTi
 
     // set the boundary conditions
     if(!newSingleSupportTrajectory->getDCMPosition(doubleSupportInitBoundaryCondition.time,
-                                                   doubleSupportInitBoundaryCondition.DCMPosition)){
+                                                   doubleSupportInitBoundaryCondition.DCMPosition, true, m_dT/2)){
         std::cerr << "[DCMTrajectoryGeneratorHelper::addNewStep] Error when the position of the DCM in the next SS phase is evaluated." <<std::endl;
         return false;
     }
 
     if(!newSingleSupportTrajectory->getDCMVelocity(doubleSupportInitBoundaryCondition.time,
-                                                   doubleSupportInitBoundaryCondition.DCMVelocity)){
+                                                   doubleSupportInitBoundaryCondition.DCMVelocity, true, m_dT/2)){
         std::cerr << "[DCMTrajectoryGeneratorHelper::addNewStep] Error when the velocity of the DCM in the next SS phase is evaluated." <<std::endl;
         return false;
     }
 
     if(!nextSingleSupport->getDCMPosition(doubleSupportFinalBoundaryCondition.time,
-                                          doubleSupportFinalBoundaryCondition.DCMPosition)){
+                                          doubleSupportFinalBoundaryCondition.DCMPosition, true, m_dT/2)){
         std::cerr << "[DCMTrajectoryGeneratorHelper::addNewStep] Error when the position of the DCM in the previous SS phase is evaluated." <<std::endl;
         return false;
     }
 
     if(!nextSingleSupport->getDCMVelocity(doubleSupportFinalBoundaryCondition.time,
-                                          doubleSupportFinalBoundaryCondition.DCMVelocity)){
+                                          doubleSupportFinalBoundaryCondition.DCMVelocity, true, m_dT/2)){
         std::cerr << "[DCMTrajectoryGeneratorHelper::addNewStep] Error when the velocity of the DCM in the previous SS phase is evaluated." <<std::endl;
         return false;
     }
@@ -1004,13 +1046,14 @@ bool DCMTrajectoryGeneratorHelper::addFirstDoubleSupportPhase(const DCMTrajector
 
     // set the boundary conditions
     if(!nextSingleSupport->getDCMPosition(doubleSupportFinalBoundaryCondition.time,
-                                          doubleSupportFinalBoundaryCondition.DCMPosition)){
+                                          doubleSupportFinalBoundaryCondition.DCMPosition, true, m_dT/2)){
         std::cerr << "[DCMTrajectoryGeneratorHelper::addFirstDoubleSupportPhase] Error when the position of the DCM in the next SS phase is evaluated." <<std::endl;
         return false;
     }
 
     if(!nextSingleSupport->getDCMVelocity(doubleSupportFinalBoundaryCondition.time,
-                                          doubleSupportFinalBoundaryCondition.DCMVelocity)){
+                                          doubleSupportFinalBoundaryCondition.DCMVelocity, true, m_dT/2
+           )){
         std::cerr << "[DCMTrajectoryGeneratorHelper::addFirstDoubleSupportPhase] Error when the velocity of the DCM in the next SS phase is evaluated."
                   << std::endl;
         return false;
@@ -1320,17 +1363,17 @@ bool DCMTrajectoryGeneratorHelper::evaluateDCMTrajectory()
             subTrajectory++;
         }
 
-        if(!(*subTrajectory)->getDCMPosition(time, DCMPosition)){
+        if(!(*subTrajectory)->getDCMPosition(time, DCMPosition, true, m_dT/2)){
             std::cerr << "[DCMTrajectoryGeneratorHelper::evaluateDCMTrajectory] Error when the position of the DCM is evaluated." << std::endl;
             return false;
         }
 
-        if(!(*subTrajectory)->getDCMVelocity(time, DCMVelocity)){
+        if(!(*subTrajectory)->getDCMVelocity(time, DCMVelocity, true, m_dT/2)){
             std::cerr << "[DCMTrajectoryGeneratorHelper::evaluateDCMTrajectory] Error when the velocity of the DCM is evaluated." << std::endl;
             return false;
         }
 
-        if(!(*subTrajectory)->getZMPPosition(time, ZMPPosition)){
+        if(!(*subTrajectory)->getZMPPosition(time, ZMPPosition, true, m_dT/2)){
             std::cerr << "[DCMTrajectoryGeneratorHelper::evaluateDCMTrajectory] Error when the position of the ZMP is evaluated." << std::endl;
             return false;
         }
