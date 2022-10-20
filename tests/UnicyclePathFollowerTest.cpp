@@ -169,6 +169,7 @@ private:
                     break;
                 }
                 //update the slope angle with the direction of the next pose in the path
+                //TODO check if use the latest pose from path or from poses_history
                 slope_angle = std::atan2(path.poses.at(index + 1).pose.position.y - path.poses.at(index).pose.position.y, 
                                          path.poses.at(index + 1).pose.position.x - path.poses.at(index).pose.position.x);
             }
