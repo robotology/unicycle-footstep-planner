@@ -25,8 +25,12 @@
 #include <tf2_ros/buffer.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 
+#include <algorithm>
+
 using namespace std::chrono_literals;
 using std::placeholders::_1;
+
+/*****************************************************************************************************************************/
 
 class RosNode : public rclcpp::Node
 {
@@ -35,18 +39,160 @@ private:
     const std::string m_sub_topic_name = "/plan";
     const std::string m_pathPub_topic_name = "/unicycle_path_follower/dcm_path";
     const std::string m_footprints_topic_name = "/unicycle_path_follower/footprints";
+    const std::string m_robot_frame = "projection";
+    //const std::string m_world_frame = "map";
     //pubs and subs
     rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr m_dcm_pub;
     rclcpp::Subscription<nav_msgs::msg::Path>::SharedPtr m_path_sub;
     rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr m_footprint_markers_pub;
     // TFs
-    std::shared_ptr<tf2_ros::TransformListener> m_tf_listener_{nullptr};
+    std::shared_ptr<tf2_ros::TransformListener> m_tf_listener{nullptr};
     std::unique_ptr<tf2_ros::Buffer> m_tf_buffer_in;
+    
+    //debug
+    bool debug_once = false;
 
     void sub_callback(nav_msgs::msg::Path::ConstPtr &msg_in)
     {
+        try
+        {
+            if (debug_once)
+            {
+                RCLCPP_INFO(this->get_logger(), "Quitting callback");
+                return;
+            }
+            
+            // Each time a path is published I need to transform it to the robot frame
+            geometry_msgs::msg::TransformStamped tf = m_tf_buffer_in->lookupTransform(m_robot_frame, msg_in->header.frame_id, rclcpp::Time(0));
+            nav_msgs::msg::Path transformed_path = transformPlan(tf, msg_in, false);
 
+            //plannerTest();
+
+            debug_once = true;
+            return;
+        }
+        catch(const std::exception& e)
+        {
+            RCLCPP_ERROR(this->get_logger(), "Failed to transform global path to robot frame");
+            return;
+        }
     }
+
+    nav_msgs::msg::Path transformPlan(geometry_msgs::msg::TransformStamped & tf_, nav_msgs::msg::Path::ConstPtr &untransformed_path, bool prune_plan = true)
+    {
+        if (untransformed_path->poses.empty()) {
+            std::cerr << "Received plan with zero length" << std::endl;
+            throw std::runtime_error("Received plan with zero length");
+        }
+        
+        // let's get the pose of the robot in the frame of the plan
+
+        // Transform the near part of the global plan into the robot's frame of reference.
+        nav_msgs::msg::Path transformed_plan_ = *untransformed_path;
+        transformed_plan_.header.frame_id = m_robot_frame;
+        transformed_plan_.header.stamp = untransformed_path->header.stamp;  //could be removed
+
+        //Transform the whole path (we could transform the path up to a certain point to save resources)
+        //std::cout << "Transform the whole path for loop" << std::endl;
+        for (int i = 0; i < untransformed_path->poses.size(); ++i)
+        {
+            tf2::doTransform(untransformed_path->poses.at(i), transformed_plan_.poses.at(i), tf_);
+            std::cout << "Transformed X: " << transformed_plan_.poses.at(i).pose.position.x << "Transformed Y: " << transformed_plan_.poses.at(i).pose.position.y <<std::endl;
+        }
+        
+        // Remove the portion of the global plan that is behind the robot
+        if (prune_plan) {
+            // Helper predicate lambda function to see what is the positive x-element in a vector of poses
+            // Warning: The robot needs to have a portion of the path that goes forward (positive X)
+            auto greaterThanZero = [](const geometry_msgs::msg::PoseStamped &i){
+                return i.pose.position.x > 0.0;
+            };
+
+            transformed_plan_.poses.erase(begin(transformed_plan_.poses), 
+                                        std::find_if(transformed_plan_.poses.begin(),
+                                                transformed_plan_.poses.end(),
+                                                greaterThanZero));
+        }
+        
+        if (transformed_plan_.poses.empty()) {
+            std::cerr << "Resulting plan has 0 poses in it." << std::endl;
+            throw std::runtime_error("Resulting plan has 0 poses in it");
+        }
+        return transformed_plan_;
+    }
+
+    bool populateDesiredPath(UnicyclePlanner& planner, double initTime, double endTime, double dT, const nav_msgs::msg::Path &path, const double granularity){
+
+        double t = initTime;    //0.0
+        iDynTree::Vector2 yDes, yDotDes, polarCoordinates;    //yDes is the x, y pose 
+        size_t index = 1;   //skip the first pose (should be too close to the robot origin and could be ignored)
+        std::vector<iDynTree::Vector2> poses_history;
+        // In theory, the first pose should be the reference frame in (0,0)
+        double slope_angle = std::atan2(path.poses.at(index).pose.position.y, path.poses.at(index).pose.position.x);
+        double speed = granularity/dT;
+
+        while (t <= endTime){ 
+            /*
+            yDes(0) = path.poses.at(index).pose.position.x * t;
+            yDotDes(0) = path.poses.at(index).pose.position.x;
+            //yDes(1) = 0.5*std::sin(0.1*t); 
+            yDes(1) = path.poses.at(index).pose.position.y * t;
+            //yDotDes(1) = 0.5*0.1*std::cos(0.1*t);   //could be zeroed ?
+            yDotDes(1) = path.poses.at(index).pose.position.y;
+            */
+            //Calculate the points separated by a fixed granularity
+            if (poses_history.empty())
+            {
+                yDes(0) = granularity * std::cos(slope_angle);
+                yDes(1) = granularity * std::sin(slope_angle);
+                poses_history.push_back(yDes);
+            }
+            else
+            {
+                yDes(0) = granularity * std::cos(slope_angle) + poses_history.back()(0);
+                yDes(1) = granularity * std::sin(slope_angle) + poses_history.back()(1);
+                poses_history.push_back(yDes);
+            }
+            // Velocities
+            yDotDes(0) = speed * std::cos(slope_angle);
+            yDotDes(1) = speed * std::sin(slope_angle);
+            
+            // check if the next goal pose of the path is reached
+            if (nextPoseReached(path, yDes, index, slope_angle))
+            {
+                ++index;
+                //check if last posed is reached
+                if (index >= path.poses.size() - 1)
+                {
+                    if(!planner.addPersonFollowingDesiredTrajectoryPoint(t, yDes, yDotDes))
+                        return false;
+                    break;
+                }
+                //update the slope angle with the direction of the next pose in the path
+                slope_angle = std::atan2(path.poses.at(index + 1).pose.position.y - path.poses.at(index).pose.position.y, 
+                                         path.poses.at(index + 1).pose.position.x - path.poses.at(index).pose.position.x);
+            }
+            
+            if(!planner.addPersonFollowingDesiredTrajectoryPoint(t, yDes, yDotDes))
+                return false;
+
+            t += dT;
+        }
+        return true;
+    }
+
+    bool nextPoseReached (const nav_msgs::msg::Path &path, const iDynTree::Vector2 &pose, const size_t &current_index, const double &slope_angle){
+        double distance_x = std::abs(path.poses.at(current_index).pose.position.x * std::cos(slope_angle)) -
+                            std::abs(pose(0) * std::cos(slope_angle));
+        double distance_y = std::abs(path.poses.at(current_index).pose.position.y * std::sin(slope_angle)) -
+                            std::abs(pose(1) * std::sin(slope_angle));
+        // condition if I am matching the pose or overshooting it
+        if (distance_x >= 0 && distance_y >=0)
+            return true;
+        else
+            return false;
+    }
+
 
 public:
     RosNode() : Node("unicycle_path_follower_node")
@@ -60,13 +206,13 @@ public:
                                                                     );
         //TFs
         m_tf_buffer_in = std::make_unique<tf2_ros::Buffer>(this->get_clock());
-        m_tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*m_tf_buffer_in);
+        m_tf_listener = std::make_shared<tf2_ros::TransformListener>(*m_tf_buffer_in);
 
     }
     ~RosNode();
 };
 
-
+/*****************************************************************************************************************************/
 
 struct Configuration {
     double initTime = 0.0, endTime = 50.0, dT = 0.01, K = 10, dX = 0.2, dY = 0.0;
