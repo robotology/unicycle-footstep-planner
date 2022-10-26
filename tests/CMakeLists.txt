@@ -63,6 +63,9 @@ find_package(test_msgs REQUIRED)
 
 find_package(visualization_msgs REQUIRED)
 
+find_package(tf2_ros REQUIRED)
+find_package(tf2_geometry_msgs REQUIRED)
+
 #add_subdirectory(doc)
 
 #if(BUILD_TESTING)
@@ -93,12 +96,9 @@ feature_summary(WHAT ALL INCLUDE_QUIET_PACKAGES)
 #set(ament_index_cpp_DIR "/opt/ros/humble/share/ament_index_cpp/cmake")
 #include_directories(${rclcpp_DIR}, ${ament_cmake_core_DIR}, ${ament_cmake_libraries_DIR}, ${ament_index_cpp_DIR})
 #include_directories(/opt/ros/humble/include/tf2_geometry_msgs)
-#include_directories(/opt/ros/humble/include/tf2)
-#include_directories(/opt/ros/humble/include/tf2_ros)
 
 #find_package(rclcpp REQUIRED)
-#find_package(tf2_ros REQUIRED)
-#find_package(tf2 REQUIRED)
+
 #find_package(tf2_msgs REQUIRED)
 #find_package(nav_msgs REQUIRED)
 
@@ -123,6 +123,13 @@ add_test(NAME DcmInterpolationTest
 
 # ProtoCode
 add_executable(ProtoCode ProtoCode.cpp)
-target_link_libraries(ProtoCode UnicyclePlanner ${iDynTree_LIBRARIES} rclcpp tf2_ros tf2 tf2_msgs nav_msgs)
+target_link_libraries(ProtoCode UnicyclePlanner ${iDynTree_LIBRARIES} 
+                      rclcpp::rclcpp 
+                      tf2_ros::tf2_ros
+                      tf2_geometry_msgs::tf2_geometry_msgs
+                      tf2_msgs::tf2_msgs__rosidl_typesupport_cpp 
+                      nav_msgs::nav_msgs__rosidl_typesupport_cpp
+                      geometry_msgs::geometry_msgs__rosidl_typesupport_cpp
+                      visualization_msgs::visualization_msgs__rosidl_typesupport_cpp)
 add_test(NAME ProtoCode
   COMMAND ProtoCode)

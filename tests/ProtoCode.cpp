@@ -54,7 +54,7 @@ private:
     //debug
     bool debug_once = false;
 
-    void sub_callback(nav_msgs::msg::Path::ConstPtr &msg_in)
+    void sub_callback(const nav_msgs::msg::Path::ConstPtr &msg_in)
     {
         try
         {
@@ -80,7 +80,7 @@ private:
         }
     }
 
-    nav_msgs::msg::Path transformPlan(geometry_msgs::msg::TransformStamped & tf_, nav_msgs::msg::Path::ConstPtr &untransformed_path, bool prune_plan = true){
+    nav_msgs::msg::Path transformPlan(geometry_msgs::msg::TransformStamped & tf_, const nav_msgs::msg::Path::ConstPtr &untransformed_path, bool prune_plan = true){
         if (untransformed_path->poses.empty()) {
             std::cerr << "Received plan with zero length" << std::endl;
             throw std::runtime_error("Received plan with zero length");
@@ -204,6 +204,98 @@ private:
         return true;
     }
 
+
+struct Configuration {
+    double initTime = 0.0, endTime = 50.0, dT = 0.01, K = 10, dX = 0.2, dY = 0.0;
+    double maxL = 0.2, minL = 0.05, minW = 0.08, maxAngle = iDynTree::deg2rad(45), minAngle = iDynTree::deg2rad(5);
+    double nominalW = 0.14, maxT = 10, minT = 3, nominalT = 4, timeWeight = 2.5, positionWeight = 1;
+    bool swingLeft = true;
+    double slowWhenTurnGain = 0.5;
+};
+
+bool printSteps(std::deque<Step> leftSteps, std::deque<Step> rightSteps){
+    std::cerr << "Left foot "<< leftSteps.size() << " steps:"<< std::endl;
+    for (auto step : leftSteps){
+        std::cerr << "Position "<< step.position.toString() << std::endl;
+        std::cerr << "Angle "<< iDynTree::rad2deg(step.angle) << std::endl;
+        std::cerr << "Time  "<< step.impactTime << std::endl;
+    }
+
+
+    std::cerr << std::endl << "Right foot "<< rightSteps.size() << " steps:" << std::endl;
+    for (auto step : rightSteps){
+        std::cerr << "Position "<< step.position.toString() << std::endl;
+        std::cerr << "Angle "<< iDynTree::rad2deg(step.angle) << std::endl;
+        std::cerr << "Time  "<< step.impactTime << std::endl;
+    }
+
+    return true;
+}
+
+bool checkConstraints(std::deque<Step> leftSteps, std::deque<Step> rightSteps, Configuration conf){
+    //Checking constraints
+
+    conf.swingLeft = (leftSteps.front().impactTime >= rightSteps.front().impactTime);
+
+    if (leftSteps.front().impactTime == rightSteps.front().impactTime)
+        leftSteps.pop_front(); //this is a fake step!
+
+    bool result = true;
+    double distance = 0.0, deltaAngle = 0.0, deltaTime = 0.0, c_theta, s_theta;
+    iDynTree::MatrixDynSize rTranspose(2,2);
+    iDynTree::Vector2 rPl;
+
+    while (!leftSteps.empty() && !rightSteps.empty()){
+        distance = (iDynTree::toEigen(leftSteps.front().position) - iDynTree::toEigen(rightSteps.front().position)).norm();
+
+        if (distance > conf.maxL){
+            std::cerr <<"[ERROR] Distance constraint not satisfied" << std::endl;
+            result = false;
+        }
+
+        deltaAngle = std::abs(leftSteps.front().angle - rightSteps.front().angle);
+
+        if (deltaAngle > conf.maxAngle){
+            std::cerr <<"[ERROR] Angle constraint not satisfied" << std::endl;
+            result = false;
+        }
+
+        deltaTime = std::abs(leftSteps.front().impactTime - rightSteps.front().impactTime);
+
+        if (deltaTime < conf.minT){
+            std::cerr <<"[ERROR] Min time constraint not satisfied" << std::endl;
+            result = false;
+        }
+
+        c_theta = std::cos(rightSteps.front().angle);
+        s_theta = std::sin(rightSteps.front().angle);
+
+        rTranspose(0,0) = c_theta;
+        rTranspose(1,0) = -s_theta;
+        rTranspose(0,1) = s_theta;
+        rTranspose(1,1) = c_theta;
+
+        iDynTree::toEigen(rPl) =
+                iDynTree::toEigen(rTranspose)*(iDynTree::toEigen(leftSteps.front().position) - iDynTree::toEigen(rightSteps.front().position));
+
+        if (rPl(1) < conf.minW){
+            std::cerr <<"[ERROR] Width constraint not satisfied" << std::endl;
+            result = false;
+        }
+
+        if(conf.swingLeft)
+            rightSteps.pop_front();
+        else leftSteps.pop_front();
+
+        conf.swingLeft = !conf.swingLeft;
+
+    }
+
+    if(!result)
+        return false;
+
+    return true;
+}
     
     bool plannerTest(const nav_msgs::msg::Path &path){
 
@@ -356,7 +448,7 @@ private:
     }
 
 public:
-    RosNode() : Node("unicycle_path_follower_node")
+    RosNode() : rclcpp::Node("unicycle_path_follower_node")
     {
         // pubs and subs
         m_dcm_pub = this->create_publisher<nav_msgs::msg::Path>(m_pathPub_topic_name, 10);
@@ -371,104 +463,10 @@ public:
         m_tf_listener = std::make_shared<tf2_ros::TransformListener>(*m_tf_buffer_in);
 
     }
-    ~RosNode();
 };
 
-/*****************************************************************************************************************************/
 
-struct Configuration {
-    double initTime = 0.0, endTime = 50.0, dT = 0.01, K = 10, dX = 0.2, dY = 0.0;
-    double maxL = 0.2, minL = 0.05, minW = 0.08, maxAngle = iDynTree::deg2rad(45), minAngle = iDynTree::deg2rad(5);
-    double nominalW = 0.14, maxT = 10, minT = 3, nominalT = 4, timeWeight = 2.5, positionWeight = 1;
-    bool swingLeft = true;
-    double slowWhenTurnGain = 0.5;
-};
-
-bool printSteps(std::deque<Step> leftSteps, std::deque<Step> rightSteps){
-    std::cerr << "Left foot "<< leftSteps.size() << " steps:"<< std::endl;
-    for (auto step : leftSteps){
-        std::cerr << "Position "<< step.position.toString() << std::endl;
-        std::cerr << "Angle "<< iDynTree::rad2deg(step.angle) << std::endl;
-        std::cerr << "Time  "<< step.impactTime << std::endl;
-    }
-
-
-    std::cerr << std::endl << "Right foot "<< rightSteps.size() << " steps:" << std::endl;
-    for (auto step : rightSteps){
-        std::cerr << "Position "<< step.position.toString() << std::endl;
-        std::cerr << "Angle "<< iDynTree::rad2deg(step.angle) << std::endl;
-        std::cerr << "Time  "<< step.impactTime << std::endl;
-    }
-
-    return true;
-}
-
-bool checkConstraints(std::deque<Step> leftSteps, std::deque<Step> rightSteps, Configuration conf){
-    //Checking constraints
-
-    conf.swingLeft = (leftSteps.front().impactTime >= rightSteps.front().impactTime);
-
-    if (leftSteps.front().impactTime == rightSteps.front().impactTime)
-        leftSteps.pop_front(); //this is a fake step!
-
-    bool result = true;
-    double distance = 0.0, deltaAngle = 0.0, deltaTime = 0.0, c_theta, s_theta;
-    iDynTree::MatrixDynSize rTranspose(2,2);
-    iDynTree::Vector2 rPl;
-
-    while (!leftSteps.empty() && !rightSteps.empty()){
-        distance = (iDynTree::toEigen(leftSteps.front().position) - iDynTree::toEigen(rightSteps.front().position)).norm();
-
-        if (distance > conf.maxL){
-            std::cerr <<"[ERROR] Distance constraint not satisfied" << std::endl;
-            result = false;
-        }
-
-        deltaAngle = std::abs(leftSteps.front().angle - rightSteps.front().angle);
-
-        if (deltaAngle > conf.maxAngle){
-            std::cerr <<"[ERROR] Angle constraint not satisfied" << std::endl;
-            result = false;
-        }
-
-        deltaTime = std::abs(leftSteps.front().impactTime - rightSteps.front().impactTime);
-
-        if (deltaTime < conf.minT){
-            std::cerr <<"[ERROR] Min time constraint not satisfied" << std::endl;
-            result = false;
-        }
-
-        c_theta = std::cos(rightSteps.front().angle);
-        s_theta = std::sin(rightSteps.front().angle);
-
-        rTranspose(0,0) = c_theta;
-        rTranspose(1,0) = -s_theta;
-        rTranspose(0,1) = s_theta;
-        rTranspose(1,1) = c_theta;
-
-        iDynTree::toEigen(rPl) =
-                iDynTree::toEigen(rTranspose)*(iDynTree::toEigen(leftSteps.front().position) - iDynTree::toEigen(rightSteps.front().position));
-
-        if (rPl(1) < conf.minW){
-            std::cerr <<"[ERROR] Width constraint not satisfied" << std::endl;
-            result = false;
-        }
-
-        if(conf.swingLeft)
-            rightSteps.pop_front();
-        else leftSteps.pop_front();
-
-        conf.swingLeft = !conf.swingLeft;
-
-    }
-
-    if(!result)
-        return false;
-
-    return true;
-}
-
-
+/*
 bool populateDesiredTrajectory(UnicyclePlanner& planner, double initTime, double endTime, double dT){
 
     double t = initTime;
@@ -484,6 +482,10 @@ bool populateDesiredTrajectory(UnicyclePlanner& planner, double initTime, double
     }
     return true;
 }
+*/
+/*****************************************************************************************************************************/
+
+
 
 
 
