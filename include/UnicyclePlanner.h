@@ -47,6 +47,14 @@ class UnicyclePlanner {
 
     std::shared_ptr<UnicycleFoot> m_left, m_right;
 
+    struct PoseStamped
+    {
+        UnicycleState pose;
+        double time;
+    };
+
+    std::vector<PoseStamped> m_integratedPath;
+
     //state
     bool m_swingLeft;
 
@@ -151,6 +159,8 @@ public:
     bool setInnerFreeSpaceEllipseOffsets(double semiMajorAxisOffset, double semiMinorAxisOffset);
 
     bool setUnicycleController(UnicycleController controller);
+
+    bool computeNewStepsFromPath(std::shared_ptr< FootPrint > leftFoot, std::shared_ptr< FootPrint > rightFoot, double initTime, double endTime, std::vector<UnicycleState> navigationPath);
 };
 
 #endif // UNICYCLEPLANNER_H
