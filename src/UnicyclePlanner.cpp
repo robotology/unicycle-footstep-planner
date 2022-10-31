@@ -1055,7 +1055,8 @@ bool UnicyclePlanner::computeNewStepsFromPath(std::shared_ptr< FootPrint > leftF
         m_integratedPath.push_back(ps);
         
         // Check if I am close to an intermediate goal pose
-        if (poseDistance(unicycleState, navigationPath[index]) < distance_threshold)
+        //poseDistance(unicycleState, navigationPath[index])
+        if (sqrt(pow(unicycleState.position(0) - navigationPath[index].position(0), 2) + pow(unicycleState.position(1) - navigationPath[index].position(1), 2)) < distance_threshold)
         {
             //Pass to the next pose in the path
             ++index;
@@ -1211,6 +1212,7 @@ bool UnicyclePlanner::computeNewStepsFromPath(std::shared_ptr< FootPrint > leftF
 
     }
     //OLD LOOP
+    /*
     while (t <= m_endTime){
         deltaTime = t - prevStep.impactTime;
 
@@ -1316,7 +1318,7 @@ bool UnicyclePlanner::computeNewStepsFromPath(std::shared_ptr< FootPrint > leftF
             t += m_dT;
         }
     }
-
+    */
     /*
     if (m_addTerminalStep){
 
@@ -1362,6 +1364,8 @@ bool UnicyclePlanner::computeNewStepsFromPath(std::shared_ptr< FootPrint > leftF
     return true;
 }
 
+/*
 double poseDistance (const UnicycleState &pose1, const UnicycleState &pose2){
         return sqrt(pow(pose2.position(0) - pose1.position(0), 2) + pow(pose2.position(1) - pose1.position(1), 2));
     }
+*/
