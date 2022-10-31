@@ -964,15 +964,14 @@ bool UnicyclePlanner::setUnicycleController(UnicycleController controller)
 
 bool UnicyclePlanner::computeNewStepsFromPath(std::shared_ptr< FootPrint > leftFoot, std::shared_ptr< FootPrint > rightFoot, double initTime, double endTime, std::vector<UnicycleState> navigationPath)
 {
-    std::lock_guard<std::mutex> guard(m_mutex);
-
+    //std::lock_guard<std::mutex> guard(m_mutex);
+    std::cerr << "computeNewStepsFromPath" << std::endl;
     if (navigationPath.size()<2)
     {
         std::cerr <<"The navigation path has less than 2 poses (at least 2 points are needed)."<<std::endl;
         return false;
     }
-    
-
+    std::cerr << "check 1" << std::endl;
     if (!leftFoot || !rightFoot){
         std::cerr <<"Empty feet pointers."<<std::endl;
         return false;
@@ -987,7 +986,7 @@ bool UnicyclePlanner::computeNewStepsFromPath(std::shared_ptr< FootPrint > leftF
         std::cerr << "Error: the minAngle parameter is supposed to be lower than the maxAngle. Otherwise, when the feet start parallel, it would be impossible to rotate the swing foot." << std::endl;
         return false;
     }
-
+    std::cerr << "init params" << std::endl;
     m_initTime = initTime;
     m_endTime = endTime;
 
@@ -1000,14 +999,14 @@ bool UnicyclePlanner::computeNewStepsFromPath(std::shared_ptr< FootPrint > leftF
     if (!m_personFollowingController->setSaturations(maxVelocity, maxAngVelocity))
         return false;
 
-    if (!m_directController->setSaturations(maxVelocity, maxAngVelocity))
-        return false;
+    //if (!m_directController->setSaturations(maxVelocity, maxAngVelocity))
+    //    return false;
 
     if (!initializePlanner(m_initTime)){
         std::cerr << "Error during planner initialization." <<std::endl;
         return false;
     }
-
+    std::cerr << "init costs" << std::endl;
     double cost, minCost = 1e10; //this big number is actually not necessary since there is a check on tOptim also
     double deltaTime = 0, pauseTime = 0;
     double deltaAngle = 0;
@@ -1038,14 +1037,18 @@ bool UnicyclePlanner::computeNewStepsFromPath(std::shared_ptr< FootPrint > leftF
     } else {
         timeOffset = 0;
     }
-
+    std::cerr << "clearing up trajectory" << std::endl;
     //set initial pose and first pose from the path of poses
-    m_personFollowingController->clearDesiredTrajectory();
+    
+    //m_personFollowingController->clearDesiredTrajectory();
+    std::cerr << "setting up trajectory" << std::endl;
     this->addPersonFollowingDesiredTrajectoryPoint(m_initTime, navigationPath[0].position);
     this->addPersonFollowingDesiredTrajectoryPoint(m_endTime, navigationPath[1].position);      //set end time, if the unicyle reaches the pose before we will use that time instead
     size_t index = 1;   //index pointing to the intermediate pose that has yet to be reached
     const double distance_threshold = 0.001;    //should be parametrized TODO - threshold at whitch I consider the goal reached
     //New while loop where the path gets integrated through its intermediate poses, up to a certain time istant
+    std::cerr << "while loop" << std::endl;
+
     while (t <= m_endTime)
     {
         if(!getIntegratorSolution(t, unicycleState)){
@@ -1053,11 +1056,12 @@ bool UnicyclePlanner::computeNewStepsFromPath(std::shared_ptr< FootPrint > leftF
         }
         PoseStamped ps {unicycleState, t};
         m_integratedPath.push_back(ps);
-        
+        std::cerr << m_integratedPath.size() << " Adding pose at time: " << t << std::endl;
         // Check if I am close to an intermediate goal pose
         //poseDistance(unicycleState, navigationPath[index])
         if (sqrt(pow(unicycleState.position(0) - navigationPath[index].position(0), 2) + pow(unicycleState.position(1) - navigationPath[index].position(1), 2)) < distance_threshold)
         {
+            std::cerr << "Reached intermediate path pose: " << index << std::endl;
             //Pass to the next pose in the path
             ++index;
             // Check if the end of the path is reached
@@ -1084,13 +1088,15 @@ bool UnicyclePlanner::computeNewStepsFromPath(std::shared_ptr< FootPrint > leftF
             this->addPersonFollowingDesiredTrajectoryPoint(m_endTime, navigationPath[index].position);  // next goal
         }
         t += m_dT;  //increment time
+        
     }
 
     //Now I have a vector containing all the solution poses stamped along the path
     t = m_initTime;  //reset t for the new loop
     UnicycleState bestState;    //variable for storing the local best state
     size_t bestIndex = 0;       //index at which I've found the (local) best solution
-    
+    std::cerr << "Sampling loop" << std::endl;
+
     //Sample the trajectory for the optimal footseps
     for (size_t i = 0; i < m_integratedPath.size(); ++i)
     {
