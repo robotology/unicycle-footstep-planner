@@ -727,6 +727,11 @@ bool UnicyclePlanner::computeNewSteps(std::shared_ptr< FootPrint > leftFoot, std
             return false;
         }
 
+        PoseStamped ps {unicycleState, t};
+        m_integratedPath.push_back(ps);
+        std::cerr << m_integratedPath.size() << " Adding pose at time: " << t << " - X: " << ps.pose.position(0) << " Y: " << ps.pose.position(1) 
+            << " Theta: " << ps.pose.angle << std::endl;
+
         deltaAngle = std::abs(stanceFoot->getUnicycleAngleFromStep(prevStep) - unicycleState.angle);
 
         if ((deltaTime >= m_minTime) && (t > (m_initTime + timeOffset))){ //The step is not too fast
@@ -1040,10 +1045,17 @@ bool UnicyclePlanner::computeNewStepsFromPath(std::shared_ptr< FootPrint > leftF
     std::cerr << "clearing up trajectory" << std::endl;
     //set initial pose and first pose from the path of poses
     
-    //m_personFollowingController->clearDesiredTrajectory();
+    m_personFollowingController->clearDesiredTrajectory();
     std::cerr << "setting up trajectory" << std::endl;
-    this->addPersonFollowingDesiredTrajectoryPoint(m_initTime, navigationPath[0].position);
-    this->addPersonFollowingDesiredTrajectoryPoint(m_endTime, navigationPath[1].position);      //set end time, if the unicyle reaches the pose before we will use that time instead
+    iDynTree::Vector2 speed;
+    speed(0) = 0.1;
+    speed(1) = 0.0;
+    this->addPersonFollowingDesiredTrajectoryPoint(m_initTime, navigationPath[0].position, speed);
+    this->addPersonFollowingDesiredTrajectoryPoint(m_endTime, navigationPath[1].position, speed);      //set end time, if the unicyle reaches the pose before we will use that time instead
+    if (!initializePlanner(m_initTime)){
+        std::cerr << "Error during planner initialization." <<std::endl;
+        return false;
+    }
     size_t index = 1;   //index pointing to the intermediate pose that has yet to be reached
     const double distance_threshold = 0.001;    //should be parametrized TODO - threshold at whitch I consider the goal reached
     //New while loop where the path gets integrated through its intermediate poses, up to a certain time istant
@@ -1056,12 +1068,15 @@ bool UnicyclePlanner::computeNewStepsFromPath(std::shared_ptr< FootPrint > leftF
         }
         PoseStamped ps {unicycleState, t};
         m_integratedPath.push_back(ps);
-        std::cerr << m_integratedPath.size() << " Adding pose at time: " << t << std::endl;
+        std::cerr << m_integratedPath.size() << " Adding pose at time: " << t << " - X: " << ps.pose.position(0) << " Y: " << ps.pose.position(1) 
+            << " Theta: " << ps.pose.angle << std::endl;
         // Check if I am close to an intermediate goal pose
         //poseDistance(unicycleState, navigationPath[index])
-        if (sqrt(pow(unicycleState.position(0) - navigationPath[index].position(0), 2) + pow(unicycleState.position(1) - navigationPath[index].position(1), 2)) < distance_threshold)
+        double distance = sqrt(pow(unicycleState.position(0) - navigationPath[index].position(0), 2) + pow(unicycleState.position(1) - navigationPath[index].position(1), 2));
+        std::cerr << "Distance until next pose " << distance << std::endl;
+        if (distance < distance_threshold)
         {
-            std::cerr << "Reached intermediate path pose: " << index << std::endl;
+            std::cerr << "REACHED INTERMEDIATE PATH POSE N: " << index << std::endl;
             //Pass to the next pose in the path
             ++index;
             // Check if the end of the path is reached
@@ -1086,6 +1101,10 @@ bool UnicyclePlanner::computeNewStepsFromPath(std::shared_ptr< FootPrint > leftF
             m_personFollowingController->clearDesiredTrajectory();  
             this->addPersonFollowingDesiredTrajectoryPoint(t, unicycleState.position);  // current state as starting position
             this->addPersonFollowingDesiredTrajectoryPoint(m_endTime, navigationPath[index].position);  // next goal
+            if (!initializePlanner(t)){
+                std::cerr << "Error during planner initialization." <<std::endl;
+                return false;
+            }
         }
         t += m_dT;  //increment time
         
