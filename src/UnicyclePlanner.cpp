@@ -1042,25 +1042,36 @@ bool UnicyclePlanner::computeNewStepsFromPath(std::shared_ptr< FootPrint > leftF
     } else {
         timeOffset = 0;
     }
+    //play with free space ellipse
+    //m_personFollowingController->setFreeSpaceEllipseConservativeFactor(2.0);
     std::cerr << "clearing up trajectory" << std::endl;
     //set initial pose and first pose from the path of poses
     
     m_personFollowingController->clearDesiredTrajectory();
     std::cerr << "setting up trajectory" << std::endl;
+    iDynTree::Vector2 zero;
+    zero(0) = 0.0;
+    zero(1) = 0.0;
     iDynTree::Vector2 speed;
-    speed(0) = 0.1;
+    speed(0) = maxVelocity;
     speed(1) = 0.0;
-    this->addPersonFollowingDesiredTrajectoryPoint(m_initTime, navigationPath[0].position, speed);
-    this->addPersonFollowingDesiredTrajectoryPoint(m_endTime, navigationPath[1].position, speed);      //set end time, if the unicyle reaches the pose before we will use that time instead
-    if (!initializePlanner(m_initTime)){
-        std::cerr << "Error during planner initialization." <<std::endl;
+    //double poses_distance = sqrt(pow(navigationPath[1].position(0) - navigationPath[0].position(0), 2) + pow(navigationPath[1].position(1) - navigationPath[0].position(1), 2));
+    double poses_distance = sqrt(pow(navigationPath[1].position(0), 2) + pow(navigationPath[1].position(1), 2));
+    double expected_eta = poses_distance / speed(0);
+    this->addPersonFollowingDesiredTrajectoryPoint(m_initTime, zero, speed); //starts with 0 speed?
+    this->addPersonFollowingDesiredTrajectoryPoint(expected_eta, navigationPath[1].position, speed);      //set end time, if the unicyle reaches the pose before we will use that time instead
+    //Integrate between these two poses
+    m_integrator.clearSolution();
+
+    if(!m_integrator.integrate(initTime, expected_eta)){
+        std::cerr << "Error while integrating the unicycle dynamics." << std::endl;
         return false;
     }
     size_t index = 1;   //index pointing to the intermediate pose that has yet to be reached
-    const double distance_threshold = 0.001;    //should be parametrized TODO - threshold at whitch I consider the goal reached
+    const double distance_threshold = 0.002;    //should be parametrized TODO - threshold at whitch I consider the goal reached
     //New while loop where the path gets integrated through its intermediate poses, up to a certain time istant
     std::cerr << "while loop" << std::endl;
-
+    
     while (t <= m_endTime)
     {
         if(!getIntegratorSolution(t, unicycleState)){
@@ -1079,35 +1090,25 @@ bool UnicyclePlanner::computeNewStepsFromPath(std::shared_ptr< FootPrint > leftF
             std::cerr << "REACHED INTERMEDIATE PATH POSE N: " << index << std::endl;
             //Pass to the next pose in the path
             ++index;
-            // Check if the end of the path is reached
-            if (index >= navigationPath.size())
+            //compute distance to new pose and timings
+            poses_distance = sqrt(pow(unicycleState.position(0) - navigationPath[index].position(0), 2) + pow(unicycleState.position(1) - navigationPath[index].position(1), 2));
+            expected_eta = poses_distance / speed(0);
+            // Check if the end of the path is reached or max time
+            if (index >= navigationPath.size() || expected_eta > m_endTime || t >= m_endTime)
             {
                 break;  //exit loop
             }
-            
-            /*
-            //I need to switch poses, starting from the state
-            //First, I need to transform the next pose wrt the current state
-            iDynTree::Rotation rotation {cos(ps.pose.angle - navigationPath[index - 2].angle),-sin(ps.pose.angle - navigationPath[index - 2].angle), 0,
-                                         sin(ps.pose.angle - navigationPath[index - 2].angle), cos(ps.pose.angle - navigationPath[index - 2].angle), 0,
-                                         0                                                   , 0                                                   , 1}; 
-            iDynTree::Position postion {ps.pose.position(0) - navigationPath[index - 2].position(0),
-                                        ps.pose.position(1) - navigationPath[index - 2].position(1),
-                                        0};
-            iDynTree::Transform tf{rotation, postion};
-            */
-
             //clear trajectories, and starting from current state go to the next pose in path
             m_personFollowingController->clearDesiredTrajectory();  
-            this->addPersonFollowingDesiredTrajectoryPoint(t, unicycleState.position);  // current state as starting position
-            this->addPersonFollowingDesiredTrajectoryPoint(m_endTime, navigationPath[index].position);  // next goal
-            if (!initializePlanner(t)){
-                std::cerr << "Error during planner initialization." <<std::endl;
+            this->addPersonFollowingDesiredTrajectoryPoint(t, unicycleState.position, speed);  // current state as starting position
+            this->addPersonFollowingDesiredTrajectoryPoint(expected_eta, navigationPath[index].position, speed);  // next goal
+            //Integrate between these two poses
+            if(!m_integrator.integrate(t, expected_eta)){
+                std::cerr << "Error while integrating the unicycle dynamics." << std::endl;
                 return false;
             }
         }
         t += m_dT;  //increment time
-        
     }
 
     //Now I have a vector containing all the solution poses stamped along the path
