@@ -729,8 +729,8 @@ bool UnicyclePlanner::computeNewSteps(std::shared_ptr< FootPrint > leftFoot, std
 
         PoseStamped ps {unicycleState, t};
         m_integratedPath.push_back(ps);
-        std::cerr << m_integratedPath.size() << " Adding pose at time: " << t << " - X: " << ps.pose.position(0) << " Y: " << ps.pose.position(1) 
-            << " Theta: " << ps.pose.angle << std::endl;
+        //std::cerr << m_integratedPath.size() << " Adding pose at time: " << t << " - X: " << ps.pose.position(0) << " Y: " << ps.pose.position(1) 
+        //    << " Theta: " << ps.pose.angle << std::endl;
 
         deltaAngle = std::abs(stanceFoot->getUnicycleAngleFromStep(prevStep) - unicycleState.angle);
 
