@@ -160,7 +160,7 @@ public:
 
     bool setUnicycleController(UnicycleController controller);
 
-    bool computeNewStepsFromPath(std::shared_ptr< FootPrint > leftFoot, std::shared_ptr< FootPrint > rightFoot, double initTime, double endTime, std::vector<UnicycleState> navigationPath);
+    bool interpolateNewStepsFromPath(std::shared_ptr< FootPrint > leftFoot, std::shared_ptr< FootPrint > rightFoot, double initTime, double endTime, std::vector<UnicycleState> navigationPath);
 };
 
 #endif // UNICYCLEPLANNER_H
