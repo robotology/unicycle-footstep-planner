@@ -1003,6 +1003,7 @@ bool UnicyclePlanner::interpolateNewStepsFromPath(std::shared_ptr< FootPrint > l
     m_right.reset(new UnicycleFoot(rightFoot));
 
     double maxVelocity = std::sqrt(std::pow(m_maxLength,2) - std::pow(m_nominalWidth,2))/m_minTime * m_linearVelocityConservativeFactor;
+    double maxLateralVelocity = maxVelocity * 0.2;    //corrective factor equal to slowWhenSidewaysFactor
     double maxAngVelocity = m_maxAngle/m_minTime * m_angularVelocityConservativeFactor;
 
     if (!m_personFollowingController->setSaturations(maxVelocity, maxAngVelocity))
@@ -1047,30 +1048,46 @@ bool UnicyclePlanner::interpolateNewStepsFromPath(std::shared_ptr< FootPrint > l
         timeOffset = 0;
     }
 
-    //TODO - do I need to check if the y component of the movement between two poses is dominant? so to reduce the maximum linear velocity?
-
     //Interpolation of the given path
     double prevTime = m_initTime;   //latest time istant of a pose in the path
     PoseStamped initialPS {navigationPath[0], prevTime};
     m_integratedPath.push_back(initialPS);  //the first pose of the path
+
     for (size_t i = 0; i < navigationPath.size() - 1; ++i)
     {
+        //do I need to check if the y component of the movement between two poses is dominant? so to reduce the maximum linear velocity?
+        //transform the i+1-th pose in the i-th reference freme
+        double cosine = std::cos(navigationPath[i].angle);
+        double sine = std::sin(navigationPath[i].angle);
+        iDynTree::Rotation R(cosine, -sine, 0,
+                             sine, cosine, 0,
+                             0, 0, 1);
+        iDynTree::Position pos(navigationPath[i].position(0), navigationPath[i].position(1), 0);
+        iDynTree::Transform T(R, pos);  //transform from the robot frame to the i-th pose
+        iDynTree::Position pose2(navigationPath[i+1].position(0), navigationPath[i+1].position(1), 0);
+        iDynTree::Position transformedPose = T * pose2;
+        //find the X and Y components of the new transformed pose to see how much lateral movement the robot has to make
+        double proprotionFactor = std::abs(atan2(transformedPose(1), transformedPose(0)) / M_PI_2); //factor that goes from 0 to 1 -> if 0 I have only X component. If 1 only Y component of speed
+        double linearSpeed = (1 - proprotionFactor) * maxVelocity + proprotionFactor * maxLateralVelocity;    //speed composed by the movement components
+        
         //let's assume a linear motion between two consecutive path poses
         //we now calculate the future time istant of the next pose in the path and the geometrical components
         double distance = std::sqrt(pow(navigationPath[i+1].position(0) - navigationPath[i].position(0), 2) +
                                     pow(navigationPath[i+1].position(1) - navigationPath[i].position(1), 2) 
                                     );
-        
         double cos_theta = std::abs(navigationPath[i+1].position(0) - navigationPath[i].position(0) / distance);    //lets take only the positive part
         double sin_theta = std::abs(navigationPath[i+1].position(1) - navigationPath[i].position(1) / distance); 
+
         //calculate the direction of the two consecutive poses on its components
         iDynTree::Vector3 direction;   //(x, y, theta) direction sign components
         direction(0) = (navigationPath[i+1].position(0) - navigationPath[i].position(0) >= 0) ? 1 : -1;
         direction(1) = (navigationPath[i+1].position(1) - navigationPath[i].position(1) >= 0) ? 1 : -1;
         direction(2) = (navigationPath[i+1].angle - navigationPath[i].angle >= 0) ? 1 : -1;
+
         //times
-        double elapsedTimeLinear = distance / maxVelocity;
+        double elapsedTimeLinear = distance / linearSpeed;
         double elapsedTimeAngular = std::abs( (navigationPath[i+1].angle - navigationPath[i].angle) / maxAngVelocity );
+
         //shim controller. rotation BEFORE linear movement and untill the robot is aligned with the path
         if (elapsedTimeAngular > elapsedTimeLinear)     //TODO
         {
@@ -1078,6 +1095,7 @@ bool UnicyclePlanner::interpolateNewStepsFromPath(std::shared_ptr< FootPrint > l
             //update also t for each dT passed
         }
         double elapsedTime = std::max(elapsedTimeLinear, elapsedTimeAngular);   //we take the bigger of the two :: TMP
+        
         elapsedTime += prevTime;    //add the time elapsed for all the previous poses in the path
 
         //interpolate between two path poses
@@ -1098,9 +1116,9 @@ bool UnicyclePlanner::interpolateNewStepsFromPath(std::shared_ptr< FootPrint > l
             else
             {
                 //starting from the previous pose in the path, I add each passed increment on each component
-                nextState.position(0) = navigationPath[i].position(0) + direction(0) * iterationNum * (maxVelocity * cos_theta);    //the first part of the equation computes the number of iteration of dT passed untill this time istant.
+                nextState.position(0) = navigationPath[i].position(0) + direction(0) * iterationNum * (linearSpeed * cos_theta);    //the first part of the equation computes the number of iteration of dT passed untill this time istant.
                                                                                                                                     //the second part is the x component of the maximum speed
-                nextState.position(1) = navigationPath[i].position(1) + direction(1) * iterationNum * (maxVelocity * sin_theta);
+                nextState.position(1) = navigationPath[i].position(1) + direction(1) * iterationNum * (linearSpeed * sin_theta);
                 nextState.angle = navigationPath[i].angle + direction(2) * iterationNum * maxAngVelocity;
             }
             
