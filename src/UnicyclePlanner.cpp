@@ -974,13 +974,13 @@ bool UnicyclePlanner::interpolateNewStepsFromPath(std::shared_ptr< FootPrint > l
                                                   std::vector<UnicycleState> navigationPath)
 {
     std::lock_guard<std::mutex> guard(m_mutex);
-    std::cerr << "interpolateNewStepsFromPath" << std::endl;
+    std::cout << "interpolateNewStepsFromPath" << std::endl;
     if (navigationPath.size()<2)
     {
         std::cerr <<"The navigation path has less than 2 poses (at least 2 points are needed)."<<std::endl;
         return false;
     }
-    std::cerr << "check 1" << std::endl;
+    std::cout << "Feet pointers check" << std::endl;
     if (!leftFoot || !rightFoot){
         std::cerr <<"Empty feet pointers."<<std::endl;
         return false;
@@ -1057,19 +1057,28 @@ bool UnicyclePlanner::interpolateNewStepsFromPath(std::shared_ptr< FootPrint > l
     {
         //First, we find the components of the linear motion (x,y) and deduce a proper speed
         //transform the i+1-th pose in the i-th reference freme
-        double cosine = std::cos(navigationPath[i].angle);
-        double sine = std::sin(navigationPath[i].angle);
+        double cosine = std::cos(-navigationPath[i].angle);
+        double sine = std::sin(-navigationPath[i].angle);
         iDynTree::Rotation R(cosine, -sine, 0,
                              sine, cosine, 0,
                              0, 0, 1);
-        iDynTree::Position pos(navigationPath[i].position(0), navigationPath[i].position(1), 0);
+        iDynTree::Position pos(-navigationPath[i].position(0), -navigationPath[i].position(1), 0);
         iDynTree::Transform T(R, pos);  //transform from the robot frame to the i-th pose
         iDynTree::Position pose2(navigationPath[i+1].position(0), navigationPath[i+1].position(1), 0);
         iDynTree::Position transformedPose = T * pose2;
+        //Sanity check
+        iDynTree::Position tmp = T * (-pos);
+        std::cout << "Sanity check X: " << tmp(0) << " Y: " << tmp(1) << " Z: " << tmp(2) << std::endl;
+        //Debug
+        std::cout << "transformedPose X: " << transformedPose(0) << " Y: " << transformedPose(1) << " Z: " << transformedPose(2) << std::endl;
         //find the X and Y components of the new transformed pose to see how much lateral movement the robot has to make
         double proprotionFactor = std::abs(atan2(transformedPose(1), transformedPose(0)) / M_PI_2); //factor that goes from 0 to 1 -> if 0 I have only X component. If 1 only Y component of speed
         double linearSpeed = (1 - proprotionFactor) * maxVelocity + proprotionFactor * maxLateralVelocity;    //speed composed by the movement components
         
+        //Debug
+        std::cout << "linearSpeed: " << linearSpeed << " maxVelocity: " << maxVelocity << " maxLateralVelocity: " << maxLateralVelocity 
+        << " maxAngVelocity: " << maxAngVelocity << " proprotionFactor: " << proprotionFactor << std::endl;
+
         //Secondly, let's assume a linear uniform motion between two consecutive path poses at constant speed
         //we now calculate the future time istant of the next pose in the path and the geometrical components
         double distance = std::sqrt(pow(navigationPath[i+1].position(0) - navigationPath[i].position(0), 2) +
@@ -1078,16 +1087,23 @@ bool UnicyclePlanner::interpolateNewStepsFromPath(std::shared_ptr< FootPrint > l
         double cos_theta = std::abs(navigationPath[i+1].position(0) - navigationPath[i].position(0) / distance);    //lets take only the positive part
         double sin_theta = std::abs(navigationPath[i+1].position(1) - navigationPath[i].position(1) / distance); 
 
+        //Debug
+        std::cout << "distance: " << distance << " abs cos_theta: " << cos_theta << " abs sin_theta: " << sin_theta << std::endl;
+
         //calculate the direction of the two consecutive poses on its components (x,y,theta)
         iDynTree::Vector3 direction;   //(x, y, theta) direction sign components
         direction(0) = (navigationPath[i+1].position(0) - navigationPath[i].position(0) >= 0) ? 1 : -1;
         direction(1) = (navigationPath[i+1].position(1) - navigationPath[i].position(1) >= 0) ? 1 : -1;
-        direction(2) = (navigationPath[i+1].angle - navigationPath[i].angle >= 0) ? 1 : -1;
+        direction(2) = (navigationPath[i+1].angle - navigationPath[i].angle >= 0) ? 1 : -1; //is theta in respect to X
 
         //times. The linear and angular motions are considered indipendent from each other
         double elapsedTimeLinear = distance / linearSpeed;
         double elapsedTimeAngular = std::abs( (navigationPath[i+1].angle - navigationPath[i].angle) / maxAngVelocity );
         double endTime = 0;
+
+        //Debug
+        std::cout << "direction(0): " << direction(0) << " direction(1): " << direction(1) << " direction(2): " << direction(2) << std::endl;
+        std::cout << "elapsedTimeLinear: " << elapsedTimeLinear << " elapsedTimeAngular: " << elapsedTimeAngular << std::endl;
 
         //shim controller. rotation BEFORE linear movement and untill the extra angle is done
         if (elapsedTimeAngular > elapsedTimeLinear)     //TODO
@@ -1155,6 +1171,14 @@ bool UnicyclePlanner::interpolateNewStepsFromPath(std::shared_ptr< FootPrint > l
         }
     }
     //now we have everything on the m_integratedPath. Both time and poses for the time horizon
+
+    //Debug
+    std::cout << "m_integratedPath Size: " << m_integratedPath.size() << std::endl;
+    for (size_t i = 0; i < m_integratedPath.size(); i++)
+    {
+        std::cout << "Pose time: "<< m_integratedPath[i].time << " X: " << m_integratedPath[i].pose.position(0) << " Y: " << m_integratedPath[i].pose.position(1) << " Angle: " << m_integratedPath[i].pose.angle << std::endl;
+    }
+    
 
     //for loop that goes through the integratedPath and evaluates each pose for the best feet placement.
     UnicycleState optimalState;
