@@ -1112,7 +1112,7 @@ bool UnicyclePlanner::interpolateNewStepsFromPath(std::shared_ptr< FootPrint > l
         std::cout << "direction(0): " << direction(0) << " direction(1): " << direction(1) << " direction(2): " << direction(2) << std::endl;
         std::cout << "elapsedTimeLinear: " << elapsedTimeLinear << " elapsedTimeAngular: " << elapsedTimeAngular << std::endl;
 
-        //shim controller. rotation BEFORE linear movement and untill the extra angle is done
+        //SHIM CONTROLLER. rotation BEFORE linear movement and untill the extra angle is done
         if (elapsedTimeAngular > elapsedTimeLinear)     
         {
             std::cout << "Shim controller activated" << std::endl;
@@ -1127,7 +1127,7 @@ bool UnicyclePlanner::interpolateNewStepsFromPath(std::shared_ptr< FootPrint > l
             {
                 t += m_dT;
                 endTime += m_dT;
-                shimState.angle = navigationPath[i].angle + direction(2) * maxAngVelocity * m_dT * i;   //
+                shimState.angle = m_integratedPath.back().pose.angle + direction(2) * maxAngVelocity * m_dT;   //
                 //save the pose
                 PoseStamped ps {shimState, t};
                 m_integratedPath.push_back(ps);
@@ -1167,13 +1167,17 @@ bool UnicyclePlanner::interpolateNewStepsFromPath(std::shared_ptr< FootPrint > l
                                                                                                                                     //the second part is the x component of the maximum speed
                 nextState.position(1) = m_integratedPath.back().pose.position(1) + direction(1) * m_dT * (linearSpeed * sin_theta);
                 
-                if (iterationNum * m_dT >= elapsedTimeAngular)  //triggers if I am overshooting over the destination angle
+                double next_angle = m_integratedPath.back().pose.angle + direction(2) * m_dT * maxAngVelocity;
+                std::cout << "next_angle: " << next_angle << std::endl;
+                
+                if ((direction(2)>0 && next_angle >= navigationPath[i+1].angle) || (direction(2)<0 && next_angle <= navigationPath[i+1].angle))  //triggers if I am overshooting over the destination angle
                 {
+                    std::cout << "overshooting angle: " << next_angle << " >= " << navigationPath[i+1].angle << std::endl;
                     nextState.angle = navigationPath[i+1].angle;
                 }
                 else
                 {
-                    nextState.angle = m_integratedPath.back().pose.angle + direction(2) * m_dT * maxAngVelocity;
+                    nextState.angle = next_angle;
                 }
             }
             iterationNum = 0; //reset the counter for each couple of poses
