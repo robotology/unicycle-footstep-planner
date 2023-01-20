@@ -1050,6 +1050,11 @@ bool UnicyclePlanner::interpolateNewStepsFromPath(std::shared_ptr< FootPrint > l
 
     //Interpolation of the given path
     double prevTime = m_initTime;   //latest time istant of a pose in the path
+    UnicycleState zeroPos;  //force the path from starting at 0,0,0 in robot frame
+    zeroPos.angle = .0;
+    zeroPos.position(0) = .0;
+    zeroPos.position(1) = .0;
+    navigationPath.insert(navigationPath.begin(), zeroPos);
     PoseStamped initialPS {navigationPath[0], prevTime};
     m_integratedPath.push_back(initialPS);  //the first pose of the path
 
@@ -1084,8 +1089,10 @@ bool UnicyclePlanner::interpolateNewStepsFromPath(std::shared_ptr< FootPrint > l
         double distance = std::sqrt(pow(navigationPath[i+1].position(0) - navigationPath[i].position(0), 2) +
                                     pow(navigationPath[i+1].position(1) - navigationPath[i].position(1), 2) 
                                     );
-        double cos_theta = std::abs(navigationPath[i+1].position(0) - navigationPath[i].position(0) / distance);    //lets take only the positive part
-        double sin_theta = std::abs(navigationPath[i+1].position(1) - navigationPath[i].position(1) / distance); 
+        double slope = (navigationPath[i+1].position(1) - navigationPath[i].position(1)) / (navigationPath[i+1].position(0) - navigationPath[i].position(0));
+        double slope_angle = atan(slope);
+        double cos_theta = std::abs(cos(slope_angle));    
+        double sin_theta = std::abs(sin(slope_angle)); 
 
         //Debug
         std::cout << "distance: " << distance << " abs cos_theta: " << cos_theta << " abs sin_theta: " << sin_theta << std::endl;
@@ -1094,7 +1101,7 @@ bool UnicyclePlanner::interpolateNewStepsFromPath(std::shared_ptr< FootPrint > l
         iDynTree::Vector3 direction;   //(x, y, theta) direction sign components
         direction(0) = (navigationPath[i+1].position(0) - navigationPath[i].position(0) >= 0) ? 1 : -1;
         direction(1) = (navigationPath[i+1].position(1) - navigationPath[i].position(1) >= 0) ? 1 : -1;
-        direction(2) = (navigationPath[i+1].angle - navigationPath[i].angle >= 0) ? 1 : -1; //is theta in respect to X
+        direction(2) = (navigationPath[i+1].angle - navigationPath[i].angle >= 0) ? 1 : -1; 
 
         //times. The linear and angular motions are considered indipendent from each other
         double elapsedTimeLinear = distance / linearSpeed;
@@ -1106,8 +1113,9 @@ bool UnicyclePlanner::interpolateNewStepsFromPath(std::shared_ptr< FootPrint > l
         std::cout << "elapsedTimeLinear: " << elapsedTimeLinear << " elapsedTimeAngular: " << elapsedTimeAngular << std::endl;
 
         //shim controller. rotation BEFORE linear movement and untill the extra angle is done
-        if (elapsedTimeAngular > elapsedTimeLinear)     //TODO
+        if (elapsedTimeAngular > elapsedTimeLinear)     
         {
+            std::cout << "Shim controller activated" << std::endl;
             //compute the interpolation for the rotation of the unicycle on itself untill is aligned and add this time to the elapsedTimeLinear
             //update also t for each dT passed
             int missingIterations = std::ceil((elapsedTimeAngular - elapsedTimeLinear) / m_dT) ;    //round up by excess to calculate the number of iterations for fulling the time gap
@@ -1123,6 +1131,7 @@ bool UnicyclePlanner::interpolateNewStepsFromPath(std::shared_ptr< FootPrint > l
                 //save the pose
                 PoseStamped ps {shimState, t};
                 m_integratedPath.push_back(ps);
+                std::cout << "Pose time: "<< m_integratedPath.back().time << " X: " << m_integratedPath.back().pose.position(0) << " Y: " << m_integratedPath.back().pose.position(1) << " Angle: " << m_integratedPath.back().pose.angle << std::endl;
             }
             //now we have elapsedTimeAngular <= elapsedTimeLinear
             //so we add elapsedTimeLinear to the missing time
@@ -1146,6 +1155,7 @@ bool UnicyclePlanner::interpolateNewStepsFromPath(std::shared_ptr< FootPrint > l
             //check if we overshoot the final pose -> then we clamp it
             if (t >= endTime)
             {
+                std::cout << "t >= endTime of pose at index i+1: " << i+1 << std::endl;
                 nextState.position(0) = navigationPath[i+1].position(0);
                 nextState.position(1) = navigationPath[i+1].position(1);
                 nextState.angle = navigationPath[i+1].angle;
@@ -1153,15 +1163,25 @@ bool UnicyclePlanner::interpolateNewStepsFromPath(std::shared_ptr< FootPrint > l
             else
             {
                 //starting from the previous pose in the path, I add each passed increment on each component
-                nextState.position(0) = navigationPath[i].position(0) + direction(0) * iterationNum * (linearSpeed * cos_theta);    //the first part of the equation computes the number of iteration of dT passed untill this time istant.
+                nextState.position(0) = m_integratedPath.back().pose.position(0) + direction(0) * m_dT * (linearSpeed * cos_theta);    //the first part of the equation computes the number of iteration of dT passed untill this time istant.
                                                                                                                                     //the second part is the x component of the maximum speed
-                nextState.position(1) = navigationPath[i].position(1) + direction(1) * iterationNum * (linearSpeed * sin_theta);
-                nextState.angle = navigationPath[i].angle + direction(2) * iterationNum * maxAngVelocity;
+                nextState.position(1) = m_integratedPath.back().pose.position(1) + direction(1) * m_dT * (linearSpeed * sin_theta);
+                
+                if (iterationNum * m_dT >= elapsedTimeAngular)  //triggers if I am overshooting over the destination angle
+                {
+                    nextState.angle = navigationPath[i+1].angle;
+                }
+                else
+                {
+                    nextState.angle = m_integratedPath.back().pose.angle + direction(2) * m_dT * maxAngVelocity;
+                }
             }
+            iterationNum = 0; //reset the counter for each couple of poses
             
             //save the pose
             PoseStamped ps {nextState, t};
             m_integratedPath.push_back(ps);
+            std::cout << "Pose time: "<< m_integratedPath.back().time << " X: " << m_integratedPath.back().pose.position(0) << " Y: " << m_integratedPath.back().pose.position(1) << " Angle: " << m_integratedPath.back().pose.angle << std::endl;
         }
         prevTime = t;   //keep track of the latest time istant
         //check if we have passed the maximum time horizon
@@ -1174,10 +1194,10 @@ bool UnicyclePlanner::interpolateNewStepsFromPath(std::shared_ptr< FootPrint > l
 
     //Debug
     std::cout << "m_integratedPath Size: " << m_integratedPath.size() << std::endl;
-    for (size_t i = 0; i < m_integratedPath.size(); i++)
-    {
-        std::cout << "Pose time: "<< m_integratedPath[i].time << " X: " << m_integratedPath[i].pose.position(0) << " Y: " << m_integratedPath[i].pose.position(1) << " Angle: " << m_integratedPath[i].pose.angle << std::endl;
-    }
+    //for (size_t i = 0; i < m_integratedPath.size(); i++)
+    //{
+    //    std::cout << "Pose time: "<< m_integratedPath[i].time << " X: " << m_integratedPath[i].pose.position(0) << " Y: " << m_integratedPath[i].pose.position(1) << " Angle: " << m_integratedPath[i].pose.angle << std::endl;
+    //}
     
 
     //for loop that goes through the integratedPath and evaluates each pose for the best feet placement.
