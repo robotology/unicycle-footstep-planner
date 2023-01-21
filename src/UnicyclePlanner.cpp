@@ -1207,9 +1207,15 @@ bool UnicyclePlanner::interpolateNewStepsFromPath(std::shared_ptr< FootPrint > l
     //    std::cout << "Pose time: "<< m_integratedPath[i].time << " X: " << m_integratedPath[i].pose.position(0) << " Y: " << m_integratedPath[i].pose.position(1) << " Angle: " << m_integratedPath[i].pose.angle << std::endl;
     //}
     
+
+
+
+
+
     std::cout << "EVALUATING POSES" << std::endl;
     std::cout << "CONSTRAINTS m_minTime: " << m_minTime << " timeOffset: " << timeOffset << " m_initTime: " << m_initTime << " m_maxTime: " << m_maxTime << std::endl;
     //for loop that goes through the integratedPath and evaluates each pose for the best feet placement.
+    /*
     UnicycleState optimalState;
     for (int i = 0; i < m_integratedPath.size(); i++)
     {
@@ -1333,6 +1339,172 @@ bool UnicyclePlanner::interpolateNewStepsFromPath(std::shared_ptr< FootPrint > l
             break;
         }
     }   //end of the loop
+    */
+
+    t = m_initTime;
+    tOptim = -1.0;
+
+    for (int i=0; i < m_integratedPath.size(); ++i){
+
+        t = m_integratedPath[i].time;
+        deltaTime = t - prevStep.impactTime;
+
+        unicycleState = m_integratedPath[i].pose;
+        //if(!getIntegratorSolution(t, unicycleState)){
+        //    return false;
+        //}
+
+        deltaAngle = std::abs(stanceFoot->getUnicycleAngleFromStep(prevStep) - unicycleState.angle);
+
+        std::cout << "Time: " << m_integratedPath[i].time << " deltaTime: " << deltaTime << " deltaAngle: " << deltaAngle << std::endl;
+
+        if ((deltaTime >= m_minTime) && (t > (m_initTime + timeOffset))){ //The step is not too fast
+            if (!(swingFoot->isTinyStep(unicycleState))){ //the step is not tiny
+            
+            std::cout << "Step not Tiny" << std::endl;
+
+                deltaTime -= pauseTime; //deltaTime is the duration of a step. We remove the time in which the robot is simply standing still, otherwise the following condition could be triggered.
+                if ((deltaTime > m_maxTime) || (t == m_endTime)){ //If this condition is true, it means we just exited the feasible region for what concerns the time. Hence, we check if we found a feasible solutions
+                    if (tOptim > 0){  //a feasible point has been found
+
+                        //if(!getIntegratorSolution(tOptim, unicycleState)){
+                        //    return false;
+                        //}
+
+                        auto bestMatch = std::find_if(m_integratedPath.begin(),
+                                                      m_integratedPath.end(),
+                                                      [&tOptim] (PoseStamped pS) {return (pS.time == tOptim);});
+
+                        std::cout<< "ADDING FEET FROM best match at tOptim: " << tOptim <<  
+                        " optimalState X: " << bestMatch->pose.position(0) << " optimalState Y: " << bestMatch->pose.position(1) << 
+                        " optimalState Th: " << bestMatch->pose.angle << std::endl;
+
+                        if(!swingFoot->addStepFromUnicycle(bestMatch->pose, tOptim)){
+                            std::cout << "Error while inserting new step." << std::endl;
+                            return false;
+                        }
+
+                        t = tOptim;
+                        i = (int)(tOptim / m_dT);
+                        pauseTime = 0;
+
+                        //reset
+                        tOptim = -1.0;
+                        m_firstStep = false;
+                        timeOffset = 0;
+
+                        m_swingLeft = !m_swingLeft;
+
+                    } else { //No feasible solution has been found
+
+                        std::cout << "Unable to satisfy constraints given the specified maxStepTime. In the last evaluation of constraints, the following were not satisfied:" << std::endl;
+
+                        m_unicycleProblem.printViolatedConstraints(rPl, deltaAngle, deltaTime, newFootPosition);
+
+                        if(!stanceFoot->getUnicycleStateFromStep(prevStep, unicycleState)){
+                            return false;
+                        }
+
+                        bool isTiny = swingFoot->isTinyStep(unicycleState);
+
+                        if(!isTiny){
+                            if(!swingFoot->addParallelStep(*(stanceFoot), t)){
+                                std::cout << "Error while inserting new step." << std::endl;
+                                return false;
+                            }
+                            std::cout << "Adding parallel step" << std::endl;
+
+                            pauseTime = 0;
+                            m_firstStep = false;
+                            timeOffset = 0;
+                            m_swingLeft = !m_swingLeft;
+
+                        } else {
+
+                            pauseTime = t - prevStep.impactTime; //We set as pause time the time since the last step up to now, since we did not manage to find any solution
+                        }
+                    }
+
+                    stanceFoot = m_swingLeft ? m_right : m_left;
+                    swingFoot = m_swingLeft ? m_left : m_right;
+
+                    if (!(stanceFoot->getLastStep(prevStep))){
+                        std::cout << "Error updating last step" << std::endl;
+                        return false;
+                    }
+
+                } else { //if ((deltaTime > m_maxTime) || (t == m_endTime)) //here I need to find the best solution
+
+                    if(!get_rPl(unicycleState, rPl)){
+                        std::cout << "Error while retrieving the relative position" << std::endl;
+                        return false;
+                    }
+                    std::cout<< "Getting rPl (0): " << rPl(0) << " (1): " << rPl(1) << " FROM: unicycleState X: " << 
+                    unicycleState.position(0) << " Y: " << unicycleState.position(1) << std::endl;
+
+                    swingFoot->getFootPositionFromUnicycle(unicycleState, newFootPosition);
+                    std::cout<< "Getting newFootPosition (0): " << newFootPosition(0) << " (1): " << newFootPosition(1) << std::endl;
+
+                    if ((deltaTime > 0) && checkConstraints(rPl, deltaAngle, deltaTime, newFootPosition, prevStep.position))
+                    {
+                        std::cout << "Getting cost value" << std::endl;
+                        if(!m_unicycleProblem.getCostValue(rPl, deltaAngle, deltaTime, newFootPosition, cost)){
+                            std::cout << "Error while evaluating the cost function." << std::endl;
+                            return false;
+                        }
+                        std::cout<< "Evaluating best match: tOptim: " << tOptim << " minCost: " << minCost << 
+                        " optimalState X: " << unicycleState.position(0) << " optimalState Y: " << unicycleState.position(1) << 
+                        " optimalState Th: " << unicycleState.angle << std::endl;
+
+                        if ((tOptim < 0) || (cost <= minCost)){ //no other feasible point has been found yet
+                            tOptim = t;
+                            minCost = cost;
+                        }
+                        std::cout<< "FOUND best match at index: " << i << " tOptim: " << tOptim << " minCost: " << minCost << 
+                        " optimalState X: " << unicycleState.position(0) << " optimalState Y: " << unicycleState.position(1) << 
+                        " optimalState Th: " << unicycleState.angle << std::endl;
+                    }
+                    else
+                    {
+                        std::cout << "deltaTime > 0? " << deltaTime << std::endl;
+                    }
+                    
+                    
+
+                    //if((deltaTime > 0) && (m_unicycleProblem.areConstraintsSatisfied(rPl, deltaAngle, deltaTime, newFootPosition))){ //constraints are satisfied
+//
+                    //    if(!m_unicycleProblem.getCostValue(rPl, deltaAngle, deltaTime, newFootPosition, cost)){
+                    //        std::cerr << "Error while evaluating the cost function." << std::endl;
+                    //        return false;
+                    //    }
+                    //    std::cout<< "Evaluating best match: tOptim: " << tOptim << " minCost: " << minCost << 
+                    //    " optimalState X: " << unicycleState.position(0) << " optimalState Y: " << unicycleState.position(1) << 
+                    //    " optimalState Th: " << unicycleState.angle << std::endl;
+//
+                    //    if ((tOptim < 0) || (cost <= minCost)){ //no other feasible point has been found yet
+                    //        tOptim = t;
+                    //        minCost = cost;
+                    //    }
+                    //    std::cout<< "FOUND best match at index: " << i << " tOptim: " << tOptim << " minCost: " << minCost << 
+                    //    " optimalState X: " << unicycleState.position(0) << " optimalState Y: " << unicycleState.position(1) << 
+                    //    " optimalState Th: " << unicycleState.angle << std::endl;
+                    //}
+                    //else
+                    //{
+                    //    std::cout<< "CONSTRAINTS NOT SATISFIED: deltaTime: " << deltaTime << std::endl;
+                    //    m_unicycleProblem.printViolatedConstraints(rPl, deltaAngle, deltaTime, newFootPosition);
+                    //}
+                }
+            } else { //Arrive here if the step is tiny
+                pauseTime += m_dT;
+                std::cout << "TINY STEP - pauseTime: " << pauseTime << std::endl;
+            }
+        }
+
+        if (((t+m_dT) > m_endTime) && (t < m_endTime)){
+            break;
+        }
+    }
 
     //Add the last parallel terminal step
     if (m_addTerminalStep){
@@ -1342,7 +1514,7 @@ bool UnicyclePlanner::interpolateNewStepsFromPath(std::shared_ptr< FootPrint > l
                                       [=] (PoseStamped pS) {return (pS.time == m_endTime);});
 
         if(!addTerminalStep(bestMatch->pose)){
-            std::cerr << "Error while adding the terminal step." << std::endl;
+            std::cout << "Error while adding the terminal step." << std::endl;
             return false;
         }
     }
@@ -1376,161 +1548,6 @@ bool UnicyclePlanner::interpolateNewStepsFromPath(std::shared_ptr< FootPrint > l
     }
 
     return true;
-
-    /*
-    while (t <= m_endTime){     //obsolete
-        deltaTime = t - prevStep.impactTime;
-
-        if(!getIntegratorSolution(t, unicycleState)){
-            return false;
-        }
-
-        PoseStamped ps {unicycleState, t};
-        m_integratedPath.push_back(ps);
-        //std::cerr << m_integratedPath.size() << " Adding pose at time: " << t << " - X: " << ps.pose.position(0) << " Y: " << ps.pose.position(1) 
-        //    << " Theta: " << ps.pose.angle << std::endl;
-
-        deltaAngle = std::abs(stanceFoot->getUnicycleAngleFromStep(prevStep) - unicycleState.angle);
-
-        if ((deltaTime >= m_minTime) && (t > (m_initTime + timeOffset))){ //The step is not too fast
-            if (!(swingFoot->isTinyStep(unicycleState))){ //the step is not tiny
-                deltaTime -= pauseTime; //deltaTime is the duration of a step. We remove the time in which the robot is simply standing still, otherwise the following condition could be triggered.
-                if ((deltaTime > m_maxTime) || (t == m_endTime)){ //If this condition is true, it means we just exited the feasible region for what concerns the time. Hence, we check if we found a feasible solutions
-                    if (tOptim > 0){  //a feasible point has been found
-
-                        if(!getIntegratorSolution(tOptim, unicycleState)){
-                            return false;
-                        }
-
-                        if(!swingFoot->addStepFromUnicycle(unicycleState, tOptim)){
-                            std::cerr << "Error while inserting new step." << std::endl;
-                            return false;
-                        }
-
-                        t = tOptim;
-                        pauseTime = 0;
-
-                        //reset
-                        tOptim = -1.0;
-                        m_firstStep = false;
-                        timeOffset = 0;
-
-                        m_swingLeft = !m_swingLeft;
-
-                    } else { //No feasible solution has been found
-
-                        std::cerr << "Unable to satisfy constraints given the specified maxStepTime. In the last evaluation of constraints, the following were not satisfied:" << std::endl;
-
-                        m_unicycleProblem.printViolatedConstraints(rPl, deltaAngle, deltaTime, newFootPosition);
-
-                        if(!stanceFoot->getUnicycleStateFromStep(prevStep, unicycleState)){
-                            return false;
-                        }
-
-                        bool isTiny = swingFoot->isTinyStep(unicycleState);
-
-                        if(!isTiny){
-                            if(!swingFoot->addParallelStep(*(stanceFoot), t)){
-                                std::cerr << "Error while inserting new step." << std::endl;
-                                return false;
-                            }
-
-                            pauseTime = 0;
-                            m_firstStep = false;
-                            timeOffset = 0;
-                            m_swingLeft = !m_swingLeft;
-
-                        } else {
-
-                            pauseTime = t - prevStep.impactTime; //We set as pause time the time since the last step up to now, since we did not manage to find any solution
-                        }
-                    }
-
-                    stanceFoot = m_swingLeft ? m_right : m_left;
-                    swingFoot = m_swingLeft ? m_left : m_right;
-
-                    if (!(stanceFoot->getLastStep(prevStep))){
-                        std::cerr << "Error updating last step" << std::endl;
-                        return false;
-                    }
-
-                } else { //if ((deltaTime > m_maxTime) || (t == m_endTime)) //here I need to find the best solution
-
-                    if(!get_rPl(unicycleState, rPl)){
-                        std::cerr << "Error while retrieving the relative position" << std::endl;
-                        return false;
-                    }
-
-                    swingFoot->getFootPositionFromUnicycle(unicycleState, newFootPosition);
-
-
-                    if((deltaTime > 0) && (m_unicycleProblem.areConstraintsSatisfied(rPl, deltaAngle, deltaTime, newFootPosition))){ //constraints are satisfied
-
-                        if(!m_unicycleProblem.getCostValue(rPl, deltaAngle, deltaTime, newFootPosition, cost)){
-                            std::cerr << "Error while evaluating the cost function." << std::endl;
-                            return false;
-                        }
-
-                        if ((tOptim < 0) || (cost <= minCost)){ //no other feasible point has been found yet
-                            tOptim = t;
-                            minCost = cost;
-                        }
-                    }
-                }
-            } else { //Arrive here if the step is tiny
-                pauseTime += m_dT;
-            }
-        }
-
-        if (((t+m_dT) > m_endTime) && (t < m_endTime)){
-            t = m_endTime;
-        } else {
-            t += m_dT;
-        }
-    }
-
-    if (m_addTerminalStep){
-
-        if(!getIntegratorSolution(m_endTime, unicycleState)){
-            return false;
-        }
-
-        if(!addTerminalStep(unicycleState)){
-            std::cerr << "Error while adding the terminal step." << std::endl;
-            return false;
-        }
-
-    }
-
-    if ((numberOfStepsLeft == leftFoot->numberOfSteps()) && (numberOfStepsRight == rightFoot->numberOfSteps())){ //no steps have been added
-        Step lastLeft, lastRight;
-
-        leftFoot->getLastStep(lastLeft);
-        rightFoot->getLastStep(lastRight);
-
-        if (lastLeft.impactTime > lastRight.impactTime){
-            lastRight.impactTime = lastLeft.impactTime;
-            rightFoot->clearLastStep();
-            rightFoot->addStep(lastRight);
-
-            if (!m_resetStartingFoot) {
-                m_startLeft = false;
-            }
-
-        } else if (lastLeft.impactTime < lastRight.impactTime){
-            lastLeft.impactTime = lastRight.impactTime;
-            leftFoot->clearLastStep();
-            leftFoot->addStep(lastLeft);
-
-            if (!m_resetStartingFoot) {
-                m_startLeft = true;
-            }
-        }
-
-    }
-
-    return true;
-    */
 }
 
 /*
@@ -1538,3 +1555,64 @@ double poseDistance (const UnicycleState &pose1, const UnicycleState &pose2){
         return sqrt(pow(pose2.position(0) - pose1.position(0), 2) + pow(pose2.position(1) - pose1.position(1), 2));
     }
 */
+
+bool UnicyclePlanner::checkConstraints(iDynTree::Vector2 _rPl, double deltaAngle, double deltaTime, iDynTree::Vector2 newFootPosition, iDynTree::Vector2 prevStepPosition){
+    //Checking constraints
+
+    //conf.swingLeft = (leftSteps.front().impactTime >= rightSteps.front().impactTime);
+
+    //if (leftSteps.front().impactTime == rightSteps.front().impactTime)
+    //    leftSteps.pop_front(); //this is a fake step!
+
+    bool result = true;
+    //double distance = 0.0, c_theta, s_theta;
+    //iDynTree::MatrixDynSize rTranspose(2,2);
+    //iDynTree::Vector2 rPl;
+
+    double distance = (iDynTree::toEigen(newFootPosition) - iDynTree::toEigen(prevStepPosition)).norm();
+
+        if (distance > m_maxLength){
+            std::cout <<"[ERROR] Distance constraint not satisfied: " << distance << std::endl;
+            result = false;
+        }
+
+        //double deltaAngle = std::abs(leftSteps.front().angle - rightSteps.front().angle);
+
+        if (deltaAngle > m_maxAngle){
+            std::cout <<"[ERROR] Angle constraint not satisfied: " << deltaAngle << std::endl;
+            result = false;
+        }
+
+        //deltaTime = std::abs(leftSteps.front().impactTime - rightSteps.front().impactTime);
+
+        if (deltaTime < m_minTime){
+            std::cout <<"[ERROR] Min time constraint not satisfied" << std::endl;
+            result = false;
+        }
+
+        //c_theta = std::cos(rightSteps.front().angle);
+        //s_theta = std::sin(rightSteps.front().angle);
+        //rTranspose(0,0) = c_theta;
+        //rTranspose(1,0) = -s_theta;
+        //rTranspose(0,1) = s_theta;
+        //rTranspose(1,1) = c_theta;
+        //iDynTree::toEigen(rPl) =
+        //        iDynTree::toEigen(rTranspose)*(iDynTree::toEigen(leftSteps.front().position) - iDynTree::toEigen(rightSteps.front().position));
+
+        if (_rPl(1) < 0.12){    //minWidth
+            std::cout <<"[ERROR] Width constraint not satisfied" << std::endl;
+            result = false;
+        }
+
+        //if(conf.swingLeft)
+        //    rightSteps.pop_front();
+        //else leftSteps.pop_front();
+
+    //conf.swingLeft = !conf.swingLeft;
+
+    if(!result)
+        return false;
+
+    return true;
+}
+

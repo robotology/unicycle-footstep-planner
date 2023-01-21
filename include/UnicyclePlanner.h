@@ -68,6 +68,8 @@ class UnicyclePlanner {
 
     bool addTerminalStep(const UnicycleState &lastUnicycleState);
 
+    bool checkConstraints(iDynTree::Vector2 _rPl, double deltaAngle, double deltaTime, iDynTree::Vector2 newFootPosition, iDynTree::Vector2 prevStep);
+
 public:
 
     UnicyclePlanner();
