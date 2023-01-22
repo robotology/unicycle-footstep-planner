@@ -1586,7 +1586,7 @@ bool UnicyclePlanner::checkConstraints(iDynTree::Vector2 _rPl, double deltaAngle
         //deltaTime = std::abs(leftSteps.front().impactTime - rightSteps.front().impactTime);
 
         if (deltaTime < m_minTime){
-            std::cout <<"[ERROR] Min time constraint not satisfied" << std::endl;
+            std::cout <<"[ERROR] Min time constraint not satisfied: " << deltaTime << std::endl;
             result = false;
         }
 
@@ -1599,8 +1599,8 @@ bool UnicyclePlanner::checkConstraints(iDynTree::Vector2 _rPl, double deltaAngle
         //iDynTree::toEigen(rPl) =
         //        iDynTree::toEigen(rTranspose)*(iDynTree::toEigen(leftSteps.front().position) - iDynTree::toEigen(rightSteps.front().position));
 
-        if (_rPl(1) < 0.12){    //minWidth
-            std::cout <<"[ERROR] Width constraint not satisfied" << std::endl;
+        if (_rPl(1) < 0.08){    //minWidth
+            std::cout <<"[ERROR] Width constraint not satisfied: " << _rPl(1) << std::endl;
             result = false;
         }
 
