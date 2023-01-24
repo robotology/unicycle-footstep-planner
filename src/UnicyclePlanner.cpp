@@ -1043,7 +1043,8 @@ bool UnicyclePlanner::interpolateNewStepsFromPath(std::shared_ptr< FootPrint > l
     double timeOffset;
 
     if (m_firstStep){
-        timeOffset = m_nominalTime;
+        //timeOffset = m_nominalTime;
+        timeOffset = m_minTime;
     } else {
         timeOffset = 0;
     }
@@ -1054,7 +1055,9 @@ bool UnicyclePlanner::interpolateNewStepsFromPath(std::shared_ptr< FootPrint > l
     zeroPos.angle = .0;
     zeroPos.position(0) = .0;
     zeroPos.position(1) = .0;
-    navigationPath.insert(navigationPath.begin(), zeroPos);
+    //navigationPath.insert(navigationPath.begin(), zeroPos);
+    //IMPORTANT -> since the planner reasons in a grid coastmap we will unlikely have the correct starting position of 0,0,0 -> so we overwrite it
+    navigationPath.at(0) = zeroPos;
     PoseStamped initialPS {navigationPath[0], prevTime};
     m_integratedPath.push_back(initialPS);  //the first pose of the path
 
@@ -1105,7 +1108,30 @@ bool UnicyclePlanner::interpolateNewStepsFromPath(std::shared_ptr< FootPrint > l
         iDynTree::Vector3 direction;   //(x, y, theta) direction sign components
         direction(0) = (navigationPath[i+1].position(0) - navigationPath[i].position(0) >= 0) ? 1 : -1;
         direction(1) = (navigationPath[i+1].position(1) - navigationPath[i].position(1) >= 0) ? 1 : -1;
-        direction(2) = (navigationPath[i+1].angle - navigationPath[i].angle >= 0) ? 1 : -1; 
+        //direction(2) = (navigationPath[i+1].angle - navigationPath[i].angle >= 0) ? 1 : -1; //WRONG : due to periodicity around 180 deg
+
+        if (std::abs(navigationPath[i+1].angle - navigationPath[i].angle) >= M_PI)
+        {
+            if (navigationPath[i+1].angle >= 0)
+            {
+                direction(2) = -1;
+            }
+            else
+            {
+                direction(2) = 1;
+            }
+        }
+        else
+        {
+            if (navigationPath[i+1].angle >= 0)
+            {
+                direction(2) = 1;
+            }
+            else
+            {
+                direction(2) = -1;
+            }
+        }
 
         //times. The linear and angular motions are considered indipendent from each other
         double elapsedTimeLinear = distance / linearSpeed;
@@ -1117,6 +1143,7 @@ bool UnicyclePlanner::interpolateNewStepsFromPath(std::shared_ptr< FootPrint > l
         std::cout << "elapsedTimeLinear: " << elapsedTimeLinear << " elapsedTimeAngular: " << elapsedTimeAngular << std::endl;
 
         //SHIM CONTROLLER. rotation BEFORE linear movement and untill the extra angle is done
+        //TODO handle +- 180 deg periodicity of angles
         if (elapsedTimeAngular > elapsedTimeLinear)     
         {
             std::cout << "Shim controller activated" << std::endl;
@@ -1202,144 +1229,10 @@ bool UnicyclePlanner::interpolateNewStepsFromPath(std::shared_ptr< FootPrint > l
 
     //Debug
     std::cout << "m_integratedPath Size: " << m_integratedPath.size() << std::endl;
-    //for (size_t i = 0; i < m_integratedPath.size(); i++)
-    //{
-    //    std::cout << "Pose time: "<< m_integratedPath[i].time << " X: " << m_integratedPath[i].pose.position(0) << " Y: " << m_integratedPath[i].pose.position(1) << " Angle: " << m_integratedPath[i].pose.angle << std::endl;
-    //}
     
-
-
-
-
 
     std::cout << "EVALUATING POSES" << std::endl;
     std::cout << "CONSTRAINTS m_minTime: " << m_minTime << " timeOffset: " << timeOffset << " m_initTime: " << m_initTime << " m_maxTime: " << m_maxTime << std::endl;
-    //for loop that goes through the integratedPath and evaluates each pose for the best feet placement.
-    /*
-    UnicycleState optimalState;
-    for (int i = 0; i < m_integratedPath.size(); i++)
-    {
-        deltaTime = m_integratedPath[i].time - prevStep.impactTime;
-        deltaAngle = std::abs(stanceFoot->getUnicycleAngleFromStep(prevStep) - m_integratedPath[i].pose.angle);
-        std::cout << "Time: " << m_integratedPath[i].time << " deltaTime: " << deltaTime << " deltaAngle: " << deltaAngle << std::endl;
-        //Sequence of checks:
-        //STEP NOT TOO FAST?
-        if ((deltaTime >= m_minTime) && (m_integratedPath[i].time > (m_initTime + timeOffset))) 
-        {
-            //STEP NOT TINY?
-            if (!swingFoot->isTinyStep(m_integratedPath[i].pose)) 
-            {
-                std::cout << "Step not Tiny" << std::endl;
-                //deltaTime is the duration of a step. We remove the time in which the robot is simply standing still, otherwise the following condition could be triggered.
-                deltaTime -= pauseTime;
-
-                if ((deltaTime <= m_maxTime) && (m_integratedPath[i].time != m_endTime))   //I haven't reached the step feasability limits yet
-                {   //here I need to find the best solution
-                    std::cout << "haven't reached the step feasability limits yet" << std::endl;
-                    if(!get_rPl(m_integratedPath[i].pose, rPl)){
-                        std::cerr << "Error while retrieving the relative position" << std::endl;
-                        return false;
-                    }
-                    std::cout<< "Getting rPl (0): " << rPl(0) << " (1): " << rPl(1) << " FROM: m_integratedPath[i].pose X: " << 
-                    m_integratedPath[i].pose.position(0) << " Y: " << m_integratedPath[i].pose.position(1) << std::endl;
-
-                    swingFoot->getFootPositionFromUnicycle(m_integratedPath[i].pose, newFootPosition);
-                    std::cout<< "Getting newFootPosition (0): " << newFootPosition(0) << " (1): " << newFootPosition(1) << std::endl;
-
-                    if((deltaTime > 0) && (m_unicycleProblem.areConstraintsSatisfied(rPl, deltaAngle, deltaTime, newFootPosition))){ //constraints are satisfied
-
-                        if(!m_unicycleProblem.getCostValue(rPl, deltaAngle, deltaTime, newFootPosition, cost)){
-                            std::cerr << "Error while evaluating the cost function." << std::endl;
-                            return false;
-                        }
-
-                        if ((tOptim < 0) || (cost <= minCost)){ //no other feasible point has been found yet
-                            tOptim = m_integratedPath[i].time;
-                            minCost = cost;
-                            optimalState = m_integratedPath[i].pose;
-                        }
-                        std::cout<< "Evaluating best match: tOptim: " << tOptim << " minCost: " << minCost << 
-                        " optimalState X: " << optimalState.position(0) << " optimalState Y: " << optimalState.position(1) << 
-                        " optimalState Th: " << optimalState.angle << std::endl;
-                    }
-                    else
-                    {
-                        std::cout<< "Constraints NOT satisfied" << std::endl;
-                        m_unicycleProblem.printViolatedConstraints(rPl, deltaAngle, deltaTime, newFootPosition);
-                    }
-                    
-                }
-                else // (deltaTime > m_maxTime) || (t == m_endTime) is true
-                {
-                    //If this condition is true, it means we just exited the feasible region for what concerns the time. Hence, we check if we found a feasible solutions
-                    //Here I evaluate the previous points found (if any)
-                    if (tOptim > 0){  //a feasible point has been found
-
-                        //auto bestMatch = std::find_if(m_integratedPath.begin(),
-                        //                              m_integratedPath.end(),
-                        //                              [&tOptim] (PoseStamped pS) {return (pS.time == tOptim);});
-
-                        if(!swingFoot->addStepFromUnicycle(optimalState, tOptim)){
-                            std::cerr << "Error while inserting new step." << std::endl;
-                            return false;
-                        }
-
-                        //t = tOptim;
-                        //I should reset the i index to tOptim time, so that I would start searching from there
-                        i = (int)(tOptim / m_dT);
-                        pauseTime = 0;
-                        std::cout<< "FOUND best match at index: " << i << " tOptim: " << tOptim << " minCost: " << minCost << 
-                        " optimalState X: " << optimalState.position(0) << " optimalState Y: " << optimalState.position(1) << 
-                        " optimalState Th: " << optimalState.angle << std::endl;
-                        //reset
-                        tOptim = -1.0;
-                        m_firstStep = false;
-                        timeOffset = 0;
-
-                        m_swingLeft = !m_swingLeft;
-
-                    } else { //No feasible solution has been found
-
-                        std::cerr << "Unable to satisfy constraints given the specified maxStepTime. In the last evaluation of constraints, the following were not satisfied:" << std::endl;
-
-                        m_unicycleProblem.printViolatedConstraints(rPl, deltaAngle, deltaTime, newFootPosition);
-
-                        if(!stanceFoot->getUnicycleStateFromStep(prevStep, unicycleState)){
-                            return false;
-                        }
-
-                        bool isTiny = swingFoot->isTinyStep(unicycleState);
-
-                        if(!isTiny){
-                            if(!swingFoot->addParallelStep(*(stanceFoot), m_integratedPath[i].time)){
-                                std::cerr << "Error while inserting new step." << std::endl;
-                                return false;
-                            }
-                            std::cout << "Adding parallel step" << std::endl;
-                            pauseTime = 0;
-                            m_firstStep = false;
-                            timeOffset = 0;
-                            m_swingLeft = !m_swingLeft;
-
-                        } else {
-
-                            pauseTime = m_integratedPath[i].time - prevStep.impactTime; //We set as pause time the time since the last step up to now, since we did not manage to find any solution
-                        }
-                    }
-                }
-            }
-            else { //Arrive here if the step is tiny
-                pauseTime += m_dT;
-                std::cout << "TINY STEP - pauseTime: " << pauseTime << std::endl;
-            }
-        }
-
-        //additional time horizon limit check
-        if (m_integratedPath[i].time >= m_endTime) {
-            break;
-        }
-    }   //end of the loop
-    */
 
     t = m_initTime;
     tOptim = -1.0;
