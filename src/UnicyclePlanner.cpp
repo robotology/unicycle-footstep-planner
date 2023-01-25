@@ -1003,7 +1003,7 @@ bool UnicyclePlanner::interpolateNewStepsFromPath(std::shared_ptr< FootPrint > l
     m_right.reset(new UnicycleFoot(rightFoot));
 
     double maxVelocity = std::sqrt(std::pow(m_maxLength,2) - std::pow(m_nominalWidth,2))/m_minTime * m_linearVelocityConservativeFactor;
-    double maxLateralVelocity = maxVelocity * 0.2;    //corrective factor equal to slowWhenSidewaysFactor
+    double maxLateralVelocity = maxVelocity * 0.2;    //corrective factor equal to slowWhenSidewaysFactor - TODO: parameterize
     double maxAngVelocity = m_maxAngle/m_minTime * m_angularVelocityConservativeFactor;
 
     if (!m_personFollowingController->setSaturations(maxVelocity, maxAngVelocity))
@@ -1135,11 +1135,17 @@ bool UnicyclePlanner::interpolateNewStepsFromPath(std::shared_ptr< FootPrint > l
 
         //times. The linear and angular motions are considered indipendent from each other
         double elapsedTimeLinear = distance / linearSpeed;
-        double elapsedTimeAngular = std::abs( (navigationPath[i+1].angle - navigationPath[i].angle) / maxAngVelocity );
+        double deltaPosesAngle = std::abs(navigationPath[i+1].angle - navigationPath[i].angle);
+        if (deltaPosesAngle >= M_PI)
+        {
+            deltaPosesAngle = std::abs(deltaPosesAngle - 2* M_PI);
+        }
+
+        double elapsedTimeAngular = deltaPosesAngle / maxAngVelocity;
         double endTime = 0;
 
         //Debug
-        std::cout << "direction(0): " << direction(0) << " direction(1): " << direction(1) << " direction(2): " << direction(2) << std::endl;
+        std::cout << "deltaPosesAngle: " << deltaPosesAngle << " direction(0): " << direction(0) << " direction(1): " << direction(1) << " direction(2): " << direction(2) << std::endl;
         std::cout << "elapsedTimeLinear: " << elapsedTimeLinear << " elapsedTimeAngular: " << elapsedTimeAngular << std::endl;
 
         //SHIM CONTROLLER. rotation BEFORE linear movement and untill the extra angle is done
@@ -1158,7 +1164,17 @@ bool UnicyclePlanner::interpolateNewStepsFromPath(std::shared_ptr< FootPrint > l
             {
                 t += m_dT;
                 endTime += m_dT;
-                shimState.angle = m_integratedPath.back().pose.angle + direction(2) * maxAngVelocity * m_dT;   //
+                shimState.angle = m_integratedPath.back().pose.angle + direction(2) * maxAngVelocity * m_dT;   
+                //deal with angle periodicity
+                if (shimState.angle > M_PI) //overshoot in the positive domain
+                {
+                    shimState.angle -= 2*M_PI;
+                }
+                else if (shimState.angle < -M_PI)   //overshoot in the negative domain
+                {
+                    shimState.angle += 2*M_PI;
+                }
+                
                 //save the pose
                 PoseStamped ps {shimState, t};
                 m_integratedPath.push_back(ps);
@@ -1177,6 +1193,17 @@ bool UnicyclePlanner::interpolateNewStepsFromPath(std::shared_ptr< FootPrint > l
 
         //interpolate between two path poses
         int iterationNum = 0;
+        double sweptAngle = 0; //the cumulative angle which is being swept after each iter
+        double missingAngle = 0;
+        if (elapsedTimeAngular >= elapsedTimeLinear)
+        {
+            missingAngle = std::ceil(elapsedTimeLinear / m_dT) * m_dT * maxAngVelocity;
+        }
+        else
+        {
+            missingAngle = elapsedTimeAngular * maxAngVelocity;
+        }
+        
         while (t < endTime)
         {
             //compute the next interpolated point
@@ -1198,10 +1225,13 @@ bool UnicyclePlanner::interpolateNewStepsFromPath(std::shared_ptr< FootPrint > l
                                                                                                                                     //the second part is the x component of the maximum speed
                 nextState.position(1) = m_integratedPath.back().pose.position(1) + direction(1) * m_dT * (linearSpeed * sin_theta);
                 
+                double angleIncrement = m_dT * maxAngVelocity;
                 double next_angle = m_integratedPath.back().pose.angle + direction(2) * m_dT * maxAngVelocity;
-                std::cout << "next_angle: " << next_angle << std::endl;
+                sweptAngle += angleIncrement;
+                std::cout << "next_angle: " << next_angle << " sweptAngle: " << sweptAngle << " missingAngle: " << missingAngle << std::endl;
                 
-                if ((direction(2)>0 && next_angle >= navigationPath[i+1].angle) || (direction(2)<0 && next_angle <= navigationPath[i+1].angle))  //triggers if I am overshooting over the destination angle
+                //if ((direction(2)>0 && next_angle >= navigationPath[i+1].angle) || (direction(2)<0 && next_angle <= navigationPath[i+1].angle))  WRONG
+                if (sweptAngle >= missingAngle)
                 {
                     std::cout << "overshooting angle: " << next_angle << " >= " << navigationPath[i+1].angle << std::endl;
                     nextState.angle = navigationPath[i+1].angle;
@@ -1248,6 +1278,11 @@ bool UnicyclePlanner::interpolateNewStepsFromPath(std::shared_ptr< FootPrint > l
         //}
 
         deltaAngle = std::abs(stanceFoot->getUnicycleAngleFromStep(prevStep) - unicycleState.angle);
+        //we have to take into account angle periodicity
+        if (deltaAngle >= M_PI)
+        {
+            deltaAngle = std::abs(deltaAngle - 2* M_PI);
+        }
 
         std::cout << "Time: " << m_integratedPath[i].time << " deltaTime: " << deltaTime << " deltaAngle: " << deltaAngle << std::endl;
 
