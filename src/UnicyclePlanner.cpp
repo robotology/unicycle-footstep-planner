@@ -727,8 +727,9 @@ bool UnicyclePlanner::computeNewSteps(std::shared_ptr< FootPrint > leftFoot, std
             return false;
         }
 
-        PoseStamped ps {unicycleState, t};
-        m_integratedPath.push_back(ps);
+        //DEBUG
+        //PoseStamped ps {unicycleState, t};
+        //m_integratedPath.push_back(ps);
         //std::cerr << m_integratedPath.size() << " Adding pose at time: " << t << " - X: " << ps.pose.position(0) << " Y: " << ps.pose.position(1) 
         //    << " Theta: " << ps.pose.angle << std::endl;
 
@@ -970,9 +971,10 @@ bool UnicyclePlanner::setUnicycleController(UnicycleController controller)
 bool UnicyclePlanner::interpolateNewStepsFromPath(std::shared_ptr< FootPrint > leftFoot, 
                                                   std::shared_ptr< FootPrint > rightFoot, 
                                                   double initTime, 
-                                                  double endTime, 
-                                                  std::vector<UnicycleState> navigationPath)
+                                                  double endTime
+                                                  )
 {
+    std::vector<UnicycleState> navigationPath = m_inputPath;
     std::lock_guard<std::mutex> guard(m_mutex);
     std::cout << "interpolateNewStepsFromPath" << std::endl;
     if (navigationPath.size()<2)
@@ -1544,3 +1546,8 @@ bool UnicyclePlanner::checkConstraints(iDynTree::Vector2 _rPl, double deltaAngle
     return true;
 }
 
+bool UnicyclePlanner::setInputPath (std::vector<UnicycleState> input)
+{
+    m_inputPath = input;
+    return true;
+}

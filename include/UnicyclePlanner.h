@@ -34,7 +34,7 @@ enum class UnicycleController
 class UnicyclePlanner {
     std::shared_ptr<PersonFollowingController> m_personFollowingController;
     std::shared_ptr<UnicycleDirectController> m_directController;
-    UnicycleController m_currentController;
+    //UnicycleController m_currentController;
     std::shared_ptr<ControlledUnicycle> m_unicycle;
     iDynTree::optimalcontrol::integrators::ForwardEuler m_integrator;
     UnicycleOptimization m_unicycleProblem;
@@ -44,6 +44,7 @@ class UnicyclePlanner {
     double m_leftYawOffset, m_rightYawOffset;
     double m_linearVelocityConservativeFactor, m_angularVelocityConservativeFactor;
     std::mutex m_mutex;
+    std::vector<UnicycleState> m_inputPath;
 
     std::shared_ptr<UnicycleFoot> m_left, m_right;
 
@@ -71,6 +72,8 @@ class UnicyclePlanner {
     bool checkConstraints(iDynTree::Vector2 _rPl, double deltaAngle, double deltaTime, iDynTree::Vector2 newFootPosition, iDynTree::Vector2 prevStep);
 
 public:
+
+    UnicycleController m_currentController;
 
     UnicyclePlanner();
 
@@ -162,7 +165,9 @@ public:
 
     bool setUnicycleController(UnicycleController controller);
 
-    bool interpolateNewStepsFromPath(std::shared_ptr< FootPrint > leftFoot, std::shared_ptr< FootPrint > rightFoot, double initTime, double endTime, std::vector<UnicycleState> navigationPath);
+    bool interpolateNewStepsFromPath(std::shared_ptr< FootPrint > leftFoot, std::shared_ptr< FootPrint > rightFoot, double initTime, double endTime);
+
+    bool setInputPath (std::vector<UnicycleState> input);
 };
 
 #endif // UNICYCLEPLANNER_H
