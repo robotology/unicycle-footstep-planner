@@ -974,12 +974,12 @@ bool UnicyclePlanner::interpolateNewStepsFromPath(std::shared_ptr< FootPrint > l
                                                   double endTime
                                                   )
 {
-    std::vector<UnicycleState> navigationPath = m_inputPath;
     std::lock_guard<std::mutex> guard(m_mutex);
+    std::vector<UnicycleState> navigationPath = m_inputPath;
     std::cout << "interpolateNewStepsFromPath" << std::endl;
     if (navigationPath.size()<2)
     {
-        std::cerr <<"The navigation path has less than 2 poses (at least 2 points are needed)."<<std::endl;
+        std::cerr <<"The navigation path has less than 2 poses (at least 2 points are needed) - Size: "<< navigationPath.size() <<std::endl;
         return false;
     }
     std::cout << "Feet pointers check" << std::endl;
@@ -1058,7 +1058,7 @@ bool UnicyclePlanner::interpolateNewStepsFromPath(std::shared_ptr< FootPrint > l
     zeroPos.position(0) = .0;
     zeroPos.position(1) = .0;
     //navigationPath.insert(navigationPath.begin(), zeroPos);
-    //IMPORTANT -> since the planner reasons in a grid coastmap we will unlikely have the correct starting position of 0,0,0 -> so we overwrite it
+    //IMPORTANT -> since the planner reasons in a coastmap-grid, we will unlikely have the correct starting position of 0,0,0 -> so we overwrite it
     navigationPath.at(0) = zeroPos;
     PoseStamped initialPS {navigationPath[0], prevTime};
     m_integratedPath.push_back(initialPS);  //the first pose of the path
@@ -1151,7 +1151,6 @@ bool UnicyclePlanner::interpolateNewStepsFromPath(std::shared_ptr< FootPrint > l
         std::cout << "elapsedTimeLinear: " << elapsedTimeLinear << " elapsedTimeAngular: " << elapsedTimeAngular << std::endl;
 
         //SHIM CONTROLLER. rotation BEFORE linear movement and untill the extra angle is done
-        //TODO handle +- 180 deg periodicity of angles
         if (elapsedTimeAngular > elapsedTimeLinear)     
         {
             std::cout << "Shim controller activated" << std::endl;
@@ -1275,9 +1274,6 @@ bool UnicyclePlanner::interpolateNewStepsFromPath(std::shared_ptr< FootPrint > l
         deltaTime = t - prevStep.impactTime;
 
         unicycleState = m_integratedPath[i].pose;
-        //if(!getIntegratorSolution(t, unicycleState)){
-        //    return false;
-        //}
 
         deltaAngle = std::abs(stanceFoot->getUnicycleAngleFromStep(prevStep) - unicycleState.angle);
         //we have to take into account angle periodicity
@@ -1487,58 +1483,38 @@ double poseDistance (const UnicycleState &pose1, const UnicycleState &pose2){
 */
 
 bool UnicyclePlanner::checkConstraints(iDynTree::Vector2 _rPl, double deltaAngle, double deltaTime, iDynTree::Vector2 newFootPosition, iDynTree::Vector2 prevStepPosition){
-    //Checking constraints
-
-    //conf.swingLeft = (leftSteps.front().impactTime >= rightSteps.front().impactTime);
-
-    //if (leftSteps.front().impactTime == rightSteps.front().impactTime)
-    //    leftSteps.pop_front(); //this is a fake step!
 
     bool result = true;
-    //double distance = 0.0, c_theta, s_theta;
-    //iDynTree::MatrixDynSize rTranspose(2,2);
-    //iDynTree::Vector2 rPl;
 
     double distance = (iDynTree::toEigen(newFootPosition) - iDynTree::toEigen(prevStepPosition)).norm();
 
-        if (distance > m_maxLength){
-            std::cout <<"[ERROR] Distance constraint not satisfied: " << distance << std::endl;
-            result = false;
-        }
+    if (distance > m_maxLength){
+        std::cout <<"[ERROR] Distance constraint not satisfied: " << distance << std::endl;
+        result = false;
+    }
 
-        //double deltaAngle = std::abs(leftSteps.front().angle - rightSteps.front().angle);
+    if (deltaAngle > m_maxAngle){
+        std::cout <<"[ERROR] Angle constraint not satisfied: " << deltaAngle << std::endl;
+        result = false;
+    }
 
-        if (deltaAngle > m_maxAngle){
-            std::cout <<"[ERROR] Angle constraint not satisfied: " << deltaAngle << std::endl;
-            result = false;
-        }
+    if (deltaTime < m_minTime){
+        std::cout <<"[ERROR] Min time constraint not satisfied: " << deltaTime << std::endl;
+        result = false;
+    }
+    //c_theta = std::cos(rightSteps.front().angle);
+    //s_theta = std::sin(rightSteps.front().angle);
+    //rTranspose(0,0) = c_theta;
+    //rTranspose(1,0) = -s_theta;
+    //rTranspose(0,1) = s_theta;
+    //rTranspose(1,1) = c_theta;
+    //iDynTree::toEigen(rPl) =
+    //        iDynTree::toEigen(rTranspose)*(iDynTree::toEigen(leftSteps.front().position) - iDynTree::toEigen(rightSteps.front().position));
 
-        //deltaTime = std::abs(leftSteps.front().impactTime - rightSteps.front().impactTime);
-
-        if (deltaTime < m_minTime){
-            std::cout <<"[ERROR] Min time constraint not satisfied: " << deltaTime << std::endl;
-            result = false;
-        }
-
-        //c_theta = std::cos(rightSteps.front().angle);
-        //s_theta = std::sin(rightSteps.front().angle);
-        //rTranspose(0,0) = c_theta;
-        //rTranspose(1,0) = -s_theta;
-        //rTranspose(0,1) = s_theta;
-        //rTranspose(1,1) = c_theta;
-        //iDynTree::toEigen(rPl) =
-        //        iDynTree::toEigen(rTranspose)*(iDynTree::toEigen(leftSteps.front().position) - iDynTree::toEigen(rightSteps.front().position));
-
-        if (_rPl(1) < 0.08){    //minWidth
-            std::cout <<"[ERROR] Width constraint not satisfied: " << _rPl(1) << std::endl;
-            result = false;
-        }
-
-        //if(conf.swingLeft)
-        //    rightSteps.pop_front();
-        //else leftSteps.pop_front();
-
-    //conf.swingLeft = !conf.swingLeft;
+    if (_rPl(1) < 0.08){    //minWidth -> TODO: use parameter from ini file
+        std::cout <<"[ERROR] Width constraint not satisfied: " << _rPl(1) << std::endl;
+        result = false;
+    }
 
     if(!result)
         return false;
