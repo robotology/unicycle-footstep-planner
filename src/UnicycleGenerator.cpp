@@ -387,6 +387,7 @@ bool UnicycleGenerator::generate(double initTime, double dT, double endTime)
     {
         std::lock_guard<std::mutex> guard(m_pimpl->mutex);
         std::cout << "calling UnicycleGenerator::generate" << std::endl;
+
         if (!(m_pimpl->planner->computeNewSteps(m_pimpl->leftFootPrint, m_pimpl->rightFootPrint, initTime, endTime))) {
             std::cerr << "[UnicycleGenerator::generate] Failed to compute new steps." << std::endl;
             return false;

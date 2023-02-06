@@ -866,6 +866,8 @@ bool UnicyclePlanner::computeNewSteps(std::shared_ptr< FootPrint > leftFoot, std
 
     }
 
+    std::cout << "Passing from: numberOfStepsLeft = " << numberOfStepsLeft << " to " << leftFoot->numberOfSteps() << " and " << 
+    "Passing from: numberOfStepsRight = " << numberOfStepsRight << " to " << rightFoot->numberOfSteps() << std::endl;
     return true;
 }
 
@@ -973,11 +975,7 @@ bool UnicyclePlanner::interpolateNewStepsFromPath(std::shared_ptr< FootPrint > l
     m_integratedPath.clear();   //TODO -> Transform it in local variable
     std::cout << "interpolateNewStepsFromPath" << std::endl;
     std::cout << "initTime: " << initTime << " endTime: " << endTime << std::endl;
-    if (navigationPath.size()<2)
-    {
-        std::cerr <<"The navigation path has less than 2 poses (at least 2 points are needed) - Size: "<< navigationPath.size() <<std::endl;
-        return false;
-    }
+    
     std::cout << "Feet pointers check" << std::endl;
     if (!leftFoot || !rightFoot){
         std::cerr <<"Empty feet pointers."<<std::endl;
@@ -1045,6 +1043,13 @@ bool UnicyclePlanner::interpolateNewStepsFromPath(std::shared_ptr< FootPrint > l
         timeOffset = m_minTime;
     } else {
         timeOffset = 0;
+    }
+
+    if (navigationPath.size()<2)
+    {
+        std::cerr <<"The navigation path has less than 2 poses (at least 2 points are needed) - Size: "<< navigationPath.size() << " Staying still." <<std::endl;
+        
+        return false;
     }
 
     //Interpolation of the given path
@@ -1486,7 +1491,7 @@ bool UnicyclePlanner::checkConstraints(iDynTree::Vector2 _rPl, double deltaAngle
     //iDynTree::toEigen(rPl) =
     //        iDynTree::toEigen(rTranspose)*(iDynTree::toEigen(leftSteps.front().position) - iDynTree::toEigen(rightSteps.front().position));
 
-    if (_rPl(1) < 0.08){    //minWidth -> TODO: use parameter from ini file
+    if (_rPl(1) < 0.10){    //minWidth -> TODO: use parameter from ini file
         std::cout <<"[ERROR] Width constraint not satisfied: " << _rPl(1) << std::endl;
         result = false;
     }
