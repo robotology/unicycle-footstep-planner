@@ -865,9 +865,23 @@ bool UnicyclePlanner::computeNewSteps(std::shared_ptr< FootPrint > leftFoot, std
         }
 
     }
-
+    //Debug print
     std::cout << "Passing from: numberOfStepsLeft = " << numberOfStepsLeft << " to " << leftFoot->numberOfSteps() << " and " << 
     "Passing from: numberOfStepsRight = " << numberOfStepsRight << " to " << rightFoot->numberOfSteps() << std::endl;
+    std::cout << "LEFT STEPS" << std::endl;
+    for (auto step : leftFoot->getSteps()){
+        std::cerr << "Position "<< step.position.toString() << std::endl;
+        std::cerr << "Angle "<< iDynTree::rad2deg(step.angle) << std::endl;
+        std::cerr << "Time  "<< step.impactTime << std::endl;
+    }
+
+
+    std::cout << std::endl << "RIGHT STEPS" << std::endl;
+    for (auto step : rightFoot->getSteps()){
+        std::cerr << "Position "<< step.position.toString() << std::endl;
+        std::cerr << "Angle "<< iDynTree::rad2deg(step.angle) << std::endl;
+        std::cerr << "Time  "<< step.impactTime << std::endl;
+    }
     return true;
 }
 
@@ -1045,9 +1059,10 @@ bool UnicyclePlanner::interpolateNewStepsFromPath(std::shared_ptr< FootPrint > l
         timeOffset = 0;
     }
 
+    //The robot has to stay still
     if (navigationPath.size()<2)
     {
-        std::cerr <<"The navigation path has less than 2 poses (at least 2 points are needed) - Size: "<< navigationPath.size() << " Staying still." <<std::endl;
+        std::cout <<"The navigation path has less than 2 poses (at least 2 points are needed) - Size: " << navigationPath.size() << " Staying still." <<std::endl;
         
         return false;
     }
