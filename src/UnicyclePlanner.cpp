@@ -1059,12 +1059,37 @@ bool UnicyclePlanner::interpolateNewStepsFromPath(std::shared_ptr< FootPrint > l
         timeOffset = 0;
     }
 
-    //The robot has to stay still
+    //The robot has to stay still at startup or when we have an invalid command
     if (navigationPath.size()<2)
     {
-        std::cout <<"The navigation path has less than 2 poses (at least 2 points are needed) - Size: " << navigationPath.size() << " Staying still." <<std::endl;
+        std::cerr <<"The navigation path has less than 2 poses (at least 2 points are needed) - Size: " << navigationPath.size() << " Staying still." <<std::endl;
         
-        return false;
+        UnicycleState zeroUnicycleState;
+        //Get the unicycle state from the current step:
+        if(!stanceFoot->getUnicycleStateFromStep(prevStep, zeroUnicycleState)){
+                            return false;
+                        }
+        std::cout << "Zero step at pose: X " << prevStep.position(0) << " Y " << prevStep.position(1) << " Time: " << prevStep.impactTime << std::endl;
+        
+        //Resetting starting swing foot
+        m_startLeft = true;
+        //Debug print
+        std::cout << "Passing from: numberOfStepsLeft = " << numberOfStepsLeft << " to " << leftFoot->numberOfSteps() << " and " << 
+        "Passing from: numberOfStepsRight = " << numberOfStepsRight << " to " << rightFoot->numberOfSteps() << std::endl;
+        std::cout << "LEFT STEPS" << std::endl;
+        for (auto step : leftFoot->getSteps()){
+            std::cerr << "Position "<< step.position.toString() << std::endl;
+            std::cerr << "Angle "<< iDynTree::rad2deg(step.angle) << std::endl;
+            std::cerr << "Time  "<< step.impactTime << std::endl;
+        }
+
+        std::cout << std::endl << "RIGHT STEPS" << std::endl;
+        for (auto step : rightFoot->getSteps()){
+            std::cerr << "Position "<< step.position.toString() << std::endl;
+            std::cerr << "Angle "<< iDynTree::rad2deg(step.angle) << std::endl;
+            std::cerr << "Time  "<< step.impactTime << std::endl;
+        }
+        return true;
     }
 
     //Interpolation of the given path
@@ -1073,7 +1098,6 @@ bool UnicyclePlanner::interpolateNewStepsFromPath(std::shared_ptr< FootPrint > l
     zeroPos.angle = .0;
     zeroPos.position(0) = .0;
     zeroPos.position(1) = .0;
-    //navigationPath.insert(navigationPath.begin(), zeroPos);
     //IMPORTANT -> since the planner reasons in a coastmap-grid, we will unlikely have the correct starting position of 0,0,0 -> so we overwrite it
     navigationPath.at(0) = zeroPos;
     PoseStamped initialPS {navigationPath[0], prevTime};
@@ -1126,29 +1150,24 @@ bool UnicyclePlanner::interpolateNewStepsFromPath(std::shared_ptr< FootPrint > l
         iDynTree::Vector3 direction;   //(x, y, theta) direction sign components
         direction(0) = (navigationPath[i+1].position(0) - navigationPath[i].position(0) >= 0) ? 1 : -1;
         direction(1) = (navigationPath[i+1].position(1) - navigationPath[i].position(1) >= 0) ? 1 : -1;
-        //direction(2) = (navigationPath[i+1].angle - navigationPath[i].angle >= 0) ? 1 : -1; //WRONG : due to periodicity around 180 deg
-
-        if (std::abs(navigationPath[i+1].angle - navigationPath[i].angle) >= M_PI)
+        
+        //Angles vary between (-pi, pi]
+        double angleDifference = navigationPath[i+1].angle - navigationPath[i].angle;
+        if (angleDifference > M_PI)
         {
-            if (navigationPath[i+1].angle >= 0)
-            {
-                direction(2) = -1;
-            }
-            else
-            {
-                direction(2) = 1;
-            }
+            direction(2) = -1;
         }
-        else
+        else if (angleDifference >=0 && angleDifference <= M_PI)
         {
-            if (navigationPath[i+1].angle >= 0)
-            {
-                direction(2) = 1;
-            }
-            else
-            {
-                direction(2) = -1;
-            }
+            direction(2) = 1;
+        }
+        else if (angleDifference <0 && angleDifference >= -M_PI)
+        {
+            direction(2) = -1;
+        }
+        else    // angleDifference < -M_PI
+        {
+            direction(2) = 1;
         }
 
         //times. The linear and angular motions are considered indipendent from each other
@@ -1283,8 +1302,7 @@ bool UnicyclePlanner::interpolateNewStepsFromPath(std::shared_ptr< FootPrint > l
     //Reset variables
     t = m_initTime;
     tOptim = -1.0;
-
-    //for (int i=0; i < m_integratedPath.size(); ++i){
+    //EVALUATION LOOP
     for (auto it = m_integratedPath.begin(); it != m_integratedPath.end(); ++it){
 
         t = it->time;
@@ -1293,6 +1311,9 @@ bool UnicyclePlanner::interpolateNewStepsFromPath(std::shared_ptr< FootPrint > l
         unicycleState = it->pose;
 
         deltaAngle = std::abs(stanceFoot->getUnicycleAngleFromStep(prevStep) - unicycleState.angle);
+        //Debug
+
+        //std::cout << "STANCE FOOT Last Step X: " << stanceFoot->getLastStep
         //we have to take into account angle periodicity
         if (deltaAngle >= M_PI)
         {
@@ -1329,7 +1350,6 @@ bool UnicyclePlanner::interpolateNewStepsFromPath(std::shared_ptr< FootPrint > l
 
                         t = tOptim;
 
-                        //i = (int)((tOptim - m_initTime) / m_dT);   //UGLY
                         it = bestMatch;
                         pauseTime = 0;
 
@@ -1390,7 +1410,15 @@ bool UnicyclePlanner::interpolateNewStepsFromPath(std::shared_ptr< FootPrint > l
                     swingFoot->getFootPositionFromUnicycle(unicycleState, newFootPosition);
                     std::cout<< "Getting newFootPosition (0): " << newFootPosition(0) << " (1): " << newFootPosition(1) << std::endl;
 
-                    if ((deltaTime > 0) && checkConstraints(rPl, deltaAngle, deltaTime, newFootPosition, prevStep.position))
+                    Step tmpStep;
+                    if (!(stanceFoot->getLastStep(tmpStep))){
+                        std::cout << "Error updating last step" << std::endl;
+                        return false;
+                    }
+                    
+                    std::cout << "STANCE FOOT Last Step X: " << tmpStep.position(0) << " Y: " << tmpStep.position(1) << " Angle: " << tmpStep.angle << std::endl;
+
+                    if ((deltaTime > 0) && checkConstraints(rPl, deltaAngle, deltaTime, newFootPosition, tmpStep.position))
                     {
                         std::cout << "Getting cost value" << std::endl;
                         if(!m_unicycleProblem.getCostValue(rPl, deltaAngle, deltaTime, newFootPosition, cost)){
