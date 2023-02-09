@@ -1094,12 +1094,12 @@ bool UnicyclePlanner::interpolateNewStepsFromPath(std::shared_ptr< FootPrint > l
 
     //Interpolation of the given path
     double prevTime = m_initTime;   //latest time istant of a pose in the path
-    UnicycleState zeroPos;  //force the path from starting at 0,0,0 in robot frame
-    zeroPos.angle = .0;
-    zeroPos.position(0) = .0;
-    zeroPos.position(1) = .0;
+    //UnicycleState zeroPos;  //force the path from starting at 0,0,0 in robot frame
+    //zeroPos.angle = .0;
+    //zeroPos.position(0) = .0;
+    //zeroPos.position(1) = .0;
     //IMPORTANT -> since the planner reasons in a coastmap-grid, we will unlikely have the correct starting position of 0,0,0 -> so we overwrite it
-    navigationPath.at(0) = zeroPos;
+    //navigationPath.at(0) = zeroPos;
     PoseStamped initialPS {navigationPath[0], prevTime};
     m_integratedPath.push_back(initialPS);  //the first pose of the path
 
@@ -1410,8 +1410,10 @@ bool UnicyclePlanner::interpolateNewStepsFromPath(std::shared_ptr< FootPrint > l
                     swingFoot->getFootPositionFromUnicycle(unicycleState, newFootPosition);
                     std::cout<< "Getting newFootPosition (0): " << newFootPosition(0) << " (1): " << newFootPosition(1) << std::endl;
 
+                    //Update the latest stance foot
+                    auto latestStanceFoot = m_swingLeft ? m_right : m_left;
                     Step tmpStep;
-                    if (!(stanceFoot->getLastStep(tmpStep))){
+                    if (!(latestStanceFoot->getLastStep(tmpStep))){
                         std::cout << "Error updating last step" << std::endl;
                         return false;
                     }
@@ -1495,7 +1497,21 @@ bool UnicyclePlanner::interpolateNewStepsFromPath(std::shared_ptr< FootPrint > l
         }
 
     }
-
+    //DEBUG
+    std::cout << "Passing from: numberOfStepsLeft = " << numberOfStepsLeft << " to " << leftFoot->numberOfSteps() << " and " << 
+    "Passing from: numberOfStepsRight = " << numberOfStepsRight << " to " << rightFoot->numberOfSteps() << std::endl;
+    std::cout << "LEFT STEPS" << std::endl;
+    for (auto step : leftFoot->getSteps()){
+        std::cerr << "Position "<< step.position.toString() << std::endl;
+        std::cerr << "Angle "<< iDynTree::rad2deg(step.angle) << std::endl;
+        std::cerr << "Time  "<< step.impactTime << std::endl;
+    }
+    std::cout << std::endl << "RIGHT STEPS" << std::endl;
+    for (auto step : rightFoot->getSteps()){
+        std::cerr << "Position "<< step.position.toString() << std::endl;
+        std::cerr << "Angle "<< iDynTree::rad2deg(step.angle) << std::endl;
+        std::cerr << "Time  "<< step.impactTime << std::endl;
+    }
     return true;
 }
 
