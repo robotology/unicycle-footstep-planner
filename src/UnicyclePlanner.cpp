@@ -1214,7 +1214,7 @@ bool UnicyclePlanner::interpolateNewStepsFromPath(std::shared_ptr< FootPrint > l
                 //save the pose
                 PoseStamped ps {shimState, t};
                 m_integratedPath.push_back(ps);
-                std::cout << "Pose time: "<< m_integratedPath.back().time << " X: " << m_integratedPath.back().pose.position(0) << " Y: " << m_integratedPath.back().pose.position(1) << " Angle: " << m_integratedPath.back().pose.angle << std::endl;
+                //std::cout << "Pose time: "<< m_integratedPath.back().time << " X: " << m_integratedPath.back().pose.position(0) << " Y: " << m_integratedPath.back().pose.position(1) << " Angle: " << m_integratedPath.back().pose.angle << std::endl;
             }
             //now we have elapsedTimeAngular <= elapsedTimeLinear
             //so we add elapsedTimeLinear to the missing time
@@ -1249,7 +1249,7 @@ bool UnicyclePlanner::interpolateNewStepsFromPath(std::shared_ptr< FootPrint > l
             //check if we overshoot the final pose -> then we clamp it
             if (t >= iterationEndTime)
             {
-                std::cout << "t >= iterationEndTime of pose at index i+1: " << i+1 << std::endl;
+                //std::cout << "t >= iterationEndTime of pose at index i+1: " << i+1 << std::endl;
                 nextState.position(0) = navigationPath[i+1].position(0);
                 nextState.position(1) = navigationPath[i+1].position(1);
                 nextState.angle = navigationPath[i+1].angle;
@@ -1282,7 +1282,7 @@ bool UnicyclePlanner::interpolateNewStepsFromPath(std::shared_ptr< FootPrint > l
             //save the pose
             PoseStamped ps {nextState, t};
             m_integratedPath.push_back(ps);
-            std::cout << "Pose time: "<< m_integratedPath.back().time << " X: " << m_integratedPath.back().pose.position(0) << " Y: " << m_integratedPath.back().pose.position(1) << " Angle: " << m_integratedPath.back().pose.angle << std::endl;
+            //std::cout << "Pose time: "<< m_integratedPath.back().time << " X: " << m_integratedPath.back().pose.position(0) << " Y: " << m_integratedPath.back().pose.position(1) << " Angle: " << m_integratedPath.back().pose.angle << std::endl;
         }
         prevTime = t;   //keep track of the latest time istant
         //check if we have passed the maximum time horizon
@@ -1320,12 +1320,12 @@ bool UnicyclePlanner::interpolateNewStepsFromPath(std::shared_ptr< FootPrint > l
             deltaAngle = std::abs(deltaAngle - 2* M_PI);
         }
 
-        std::cout << "Time: " << t << " deltaTime: " << deltaTime << " deltaAngle: " << deltaAngle << std::endl;
+        //std::cout << "Time: " << t << " deltaTime: " << deltaTime << " deltaAngle: " << deltaAngle << std::endl;
 
         if ((deltaTime >= m_minTime) && (t > (m_initTime + timeOffset))){ //The step is not too fast
             if (!(swingFoot->isTinyStep(unicycleState))){ //the step is not tiny
             
-            std::cout << "Step not Tiny" << std::endl;
+            //std::cout << "Step not Tiny" << std::endl;
 
                 deltaTime -= pauseTime; //deltaTime is the duration of a step. We remove the time in which the robot is simply standing still, otherwise the following condition could be triggered.
                 if ((deltaTime > m_maxTime) || (t == m_endTime)){ //If this condition is true, it means we just exited the feasible region for what concerns the time. Hence, we check if we found a feasible solutions
@@ -1404,11 +1404,11 @@ bool UnicyclePlanner::interpolateNewStepsFromPath(std::shared_ptr< FootPrint > l
                         std::cout << "Error while retrieving the relative position" << std::endl;
                         return false;
                     }
-                    std::cout<< "Getting rPl (0): " << rPl(0) << " (1): " << rPl(1) << " FROM: unicycleState X: " << 
-                    unicycleState.position(0) << " Y: " << unicycleState.position(1) << std::endl;
+                    //std::cout<< "Getting rPl (0): " << rPl(0) << " (1): " << rPl(1) << " FROM: unicycleState X: " << 
+                    //unicycleState.position(0) << " Y: " << unicycleState.position(1) << std::endl;
 
                     swingFoot->getFootPositionFromUnicycle(unicycleState, newFootPosition);
-                    std::cout<< "Getting newFootPosition (0): " << newFootPosition(0) << " (1): " << newFootPosition(1) << std::endl;
+                    //std::cout<< "Getting newFootPosition (0): " << newFootPosition(0) << " (1): " << newFootPosition(1) << std::endl;
 
                     //Update the latest stance foot
                     auto latestStanceFoot = m_swingLeft ? m_right : m_left;
@@ -1418,7 +1418,7 @@ bool UnicyclePlanner::interpolateNewStepsFromPath(std::shared_ptr< FootPrint > l
                         return false;
                     }
                     
-                    std::cout << "STANCE FOOT Last Step X: " << tmpStep.position(0) << " Y: " << tmpStep.position(1) << " Angle: " << tmpStep.angle << std::endl;
+                    //std::cout << "STANCE FOOT Last Step X: " << tmpStep.position(0) << " Y: " << tmpStep.position(1) << " Angle: " << tmpStep.angle << std::endl;
 
                     if ((deltaTime > 0) && checkConstraints(rPl, deltaAngle, deltaTime, newFootPosition, tmpStep.position))
                     {
