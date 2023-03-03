@@ -19,107 +19,44 @@
 #include <iostream>
 #include <memory>
 
-//the state here is [r_P_l_x; r_P_l_y; deltaAngle; deltaTime; newStepPosition_x; newStepPosition_y]
+//the state here is [r_P_l_x; r_P_l_y; deltaAngle; deltaTime; newStepPosition_x; newStepPosition_y; newStepRelativePosition_x, newStepRelativePosition_y]
 //The control is not used
 
 class MaxLength : public iDynTree::optimalcontrol::Constraint{
 public:
-    MaxLength()
-        :iDynTree::optimalcontrol::Constraint(1,"MaxLength")
-    {
-        m_upperBound.resize(1);
-        m_upperBound.zero();
-    }
+    MaxLength();
 
     bool evaluateConstraint(double , const iDynTree::VectorDynSize &state,
                             const iDynTree::VectorDynSize &,
-                            iDynTree::VectorDynSize &constraint){
-        if(state.size() != 6){
-            std::cerr << "Wrong state dimension." << std::endl;
-            return false;
-        }
-
-        constraint.resize(1);
-        constraint(0) = std::sqrt(std::pow(state(0), 2) + std::pow(state(1), 2));
-        return true;
-    }
+                            iDynTree::VectorDynSize &constraint);
 
     bool isFeasiblePoint(double time, const iDynTree::VectorDynSize &state,
-                         const iDynTree::VectorDynSize &control){
-        iDynTree::VectorDynSize constraint;
-        if (!evaluateConstraint(time, state, control, constraint))
-            return false;
-        if (!m_isUpperBounded || (constraint(0) < m_upperBound(0)))
-            return true;
-        return false;
-    }
+                         const iDynTree::VectorDynSize &control);
 };
 
 class MinWidth : public iDynTree::optimalcontrol::Constraint{
 public:
-    MinWidth()
-        :iDynTree::optimalcontrol::Constraint(1,"MinWidth")
-    {
-        m_lowerBound.resize(1);
-        m_lowerBound.zero();
-    }
+    MinWidth();
 
     bool evaluateConstraint(double , const iDynTree::VectorDynSize &state,
                             const iDynTree::VectorDynSize &,
-                            iDynTree::VectorDynSize &constraint){
-        if(state.size() != 6){
-            std::cerr << "Wrong state dimension." << std::endl;
-            return false;
-        }
-
-        constraint.resize(1);
-        constraint(0) = state(1);
-        return true;
-    }
+                            iDynTree::VectorDynSize &constraint);
 
     bool isFeasiblePoint(double time, const iDynTree::VectorDynSize &state,
-                         const iDynTree::VectorDynSize &control){
-        iDynTree::VectorDynSize constraint;
-        if (!evaluateConstraint(time, state, control, constraint))
-            return false;
-        if (!m_isLowerBounded || (constraint(0) > m_lowerBound(0)))
-            return true;
-        return false;
-    }
+                         const iDynTree::VectorDynSize &control);
 
 };
 
 class MaxAngle : public iDynTree::optimalcontrol::Constraint{
 public:
-    MaxAngle()
-        :iDynTree::optimalcontrol::Constraint(1,"MaxAngle")
-    {
-        m_upperBound.resize(1);
-        m_upperBound.zero();
-    }
+    MaxAngle();
 
     bool evaluateConstraint(double , const iDynTree::VectorDynSize &state,
                             const iDynTree::VectorDynSize &,
-                            iDynTree::VectorDynSize &constraint){
-        if(state.size() != 6){
-            std::cerr << "Wrong state dimension." << std::endl;
-            return false;
-        }
-
-        constraint.resize(1);
-        constraint(0) = std::abs(state(2));
-        return true;
-    }
+                            iDynTree::VectorDynSize &constraint);
 
     bool isFeasiblePoint(double time, const iDynTree::VectorDynSize &state,
-                         const iDynTree::VectorDynSize &control){
-        iDynTree::VectorDynSize constraint;
-        if (!evaluateConstraint(time, state, control, constraint))
-            return false;
-        if (!m_isUpperBounded || (constraint(0) < m_upperBound(0)))
-            return true;
-        return false;
-    }
+                         const iDynTree::VectorDynSize &control);
 };
 
 class StepInEllipsoid : public iDynTree::optimalcontrol::Constraint{
@@ -127,36 +64,25 @@ class StepInEllipsoid : public iDynTree::optimalcontrol::Constraint{
     FreeSpaceEllipse m_freeSpace;
 
 public:
-    StepInEllipsoid()
-        :iDynTree::optimalcontrol::Constraint(1,"StepInEllipsoid")
-    {
-        m_lowerBound.resize(1);
-        m_lowerBound(0) = 0.5;
-        this->setLowerBound(m_lowerBound);
-    }
+    StepInEllipsoid();
 
-    bool setFreeSpaceEllipse(const FreeSpaceEllipse& freeSpaceEllipse)
-    {
-        m_freeSpace = freeSpaceEllipse;
-        return true;
-    }
+    bool setFreeSpaceEllipse(const FreeSpaceEllipse& freeSpaceEllipse);
 
     bool evaluateConstraint(double , const iDynTree::VectorDynSize &state,
                             const iDynTree::VectorDynSize &,
-                            iDynTree::VectorDynSize &constraint){
-        if(state.size() != 6){
-            std::cerr << "Wrong state dimension." << std::endl;
-            return false;
-        }
+                            iDynTree::VectorDynSize &constraint);
+};
 
-        constraint.resize(1);
-        iDynTree::Vector2 newPosition;
-        newPosition(0) = state(4);
-        newPosition(1) = state(5);
+class MaxLengthBackward : public iDynTree::optimalcontrol::Constraint{
+public:
+    MaxLengthBackward();
 
-        constraint(0) = m_freeSpace.isPointInside(newPosition);
-        return true;
-    }
+    bool evaluateConstraint(double , const iDynTree::VectorDynSize &state,
+                            const iDynTree::VectorDynSize &,
+                            iDynTree::VectorDynSize &constraint);
+
+    bool isFeasiblePoint(double time, const iDynTree::VectorDynSize &state,
+                         const iDynTree::VectorDynSize &control);
 };
 
 class UnicycleCost : public iDynTree::optimalcontrol::Cost{
@@ -164,39 +90,14 @@ class UnicycleCost : public iDynTree::optimalcontrol::Cost{
     double m_positionWeight;
 public:
 
-    UnicycleCost()
-        :iDynTree::optimalcontrol::Cost("UnicycleCost")
-    {
-        m_timeWeight = 0;
-        m_positionWeight = 0;
-    }
+    UnicycleCost();
 
     bool costEvaluation(double time, const iDynTree::VectorDynSize &state,
-                        const iDynTree::VectorDynSize &control, double &costValue){
-        if(state.size() != 6)
-            return false;
+                        const iDynTree::VectorDynSize &control, double &costValue);
 
-        costValue = m_timeWeight * std::pow(1/state(3), 2) + m_positionWeight * (std::pow(state(0), 2) + std::pow(state(1), 2));
-        return true;
-    }
+    bool setPositionWeight(double positionWeight);
 
-    bool setPositionWeight(double positionWeight){
-        if (positionWeight < 0){
-            std::cerr << "The weight is supposed to be nonnegative" << std::endl;
-            return false;
-        }
-        m_positionWeight = positionWeight;
-        return true;
-    }
-
-    bool setTimeWeight(double timeWeight){
-        if (timeWeight < 0){
-            std::cerr << "The weight is supposed to be nonnegative" << std::endl;
-            return false;
-        }
-        m_timeWeight = timeWeight;
-        return true;
-    }
+    bool setTimeWeight(double timeWeight);
 
 };
 
@@ -206,14 +107,18 @@ class UnicycleOptimization{
     std::shared_ptr<MinWidth> m_widthConstraint;
     std::shared_ptr<MaxAngle> m_angleConstraint;
     std::shared_ptr<StepInEllipsoid> m_stepInEllipsoidConstraint;
+    std::shared_ptr<MaxLengthBackward> m_backwardLengthConstraint;
     std::shared_ptr<UnicycleCost> m_cost;
 
     iDynTree::VectorDynSize m_stateBuffer, m_emptyBuffer;
+
+    void updateState(const iDynTree::Vector2& rPl, double deltaAngle, double deltaTime, const iDynTree::Vector2 &newStepPosition, const iDynTree::Vector2 &newStepRelativePosition);
 
 public:
     UnicycleOptimization();
     //constraints setting
     bool setMaxLength(double maxLength);
+    bool setMaxLengthBackward(double maxLengthBackward);
     bool setMinWidth(double minWidth);
     bool setMaxAngleVariation(double maxAngle); //in radians!
     bool setFreeSpaceEllipse(const FreeSpaceEllipse& freeSpaceEllipse);
@@ -221,9 +126,9 @@ public:
     //cost setting
     bool setCostWeights(double positionWeight, double timeWeight);
 
-    bool getCostValue(const iDynTree::Vector2& rPl, double deltaAngle, double deltaTime, const iDynTree::Vector2 &newStepPosition, double& cost);
-    bool areConstraintsSatisfied(const iDynTree::Vector2& rPl, double deltaAngle, double deltaTime, const iDynTree::Vector2 &newStepPosition);
-    void printViolatedConstraints(const iDynTree::Vector2& rPl, double deltaAngle, double deltaTime, const iDynTree::Vector2 &newStepPosition);
+    bool getCostValue(const iDynTree::Vector2& rPl, double deltaAngle, double deltaTime, const iDynTree::Vector2 &newStepPosition, const iDynTree::Vector2 &newStepRelativePosition, double& cost);
+    bool areConstraintsSatisfied(const iDynTree::Vector2& rPl, double deltaAngle, double deltaTime, const iDynTree::Vector2 &newStepPosition, const iDynTree::Vector2 &newStepRelativePosition);
+    void printViolatedConstraints(const iDynTree::Vector2& rPl, double deltaAngle, double deltaTime, const iDynTree::Vector2 &newStepPosition, const iDynTree::Vector2 &newStepRelativePosition);
 };
 
 

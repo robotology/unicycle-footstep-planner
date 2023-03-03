@@ -200,7 +200,7 @@ bool UnicyclePlanner::initializePlanner(double initTime)
 
 bool UnicyclePlanner::get_rPl(const UnicycleState &unicycleState, iDynTree::Vector2& rPl)
 {
-    static iDynTree::MatrixDynSize rTranspose(2,2);
+    Eigen::Matrix<double, 2, 2, Eigen::RowMajor> rTranspose(2,2);
     iDynTree::Vector2 newPosition;
 
     Step prevStep;
@@ -219,7 +219,7 @@ bool UnicyclePlanner::get_rPl(const UnicycleState &unicycleState, iDynTree::Vect
         rTranspose(1,1) = c_theta;
 
         iDynTree::toEigen(rPl) =
-                iDynTree::toEigen(rTranspose)*(iDynTree::toEigen(newPosition) - iDynTree::toEigen(prevStep.position));
+                rTranspose*(iDynTree::toEigen(newPosition) - iDynTree::toEigen(prevStep.position));
     } else {
         if (!(m_left->getLastStep(prevStep)))
             return false;
@@ -235,8 +235,40 @@ bool UnicyclePlanner::get_rPl(const UnicycleState &unicycleState, iDynTree::Vect
         rTranspose(1,1) = c_theta;
 
         iDynTree::toEigen(rPl) =
-                iDynTree::toEigen(rTranspose)*(iDynTree::toEigen(prevStep.position) - iDynTree::toEigen(newPosition));
+                rTranspose*(iDynTree::toEigen(prevStep.position) - iDynTree::toEigen(newPosition));
     }
+    return true;
+}
+
+bool UnicyclePlanner::get_newStepRelativePosition(const UnicycleState &unicycleState, iDynTree::Vector2 &newStepRelativePosition)
+{
+    Eigen::Matrix<double, 2, 2, Eigen::RowMajor> rTranspose(2,2);
+    iDynTree::Vector2 newPosition;
+    Step prevStep;
+
+    if (m_swingLeft){
+        if (!(m_right->getLastStep(prevStep)))
+            return false;
+        if(!(m_left->getFootPositionFromUnicycle(unicycleState, newPosition)))
+            return false;
+    } else {
+        if (!(m_left->getLastStep(prevStep)))
+            return false;
+        if(!(m_right->getFootPositionFromUnicycle(unicycleState, newPosition)))
+            return false;
+    }
+
+    double c_theta = std::cos(prevStep.angle);
+    double s_theta = std::sin(prevStep.angle);
+
+    rTranspose(0,0) = c_theta;
+    rTranspose(1,0) = -s_theta;
+    rTranspose(0,1) = s_theta;
+    rTranspose(1,1) = c_theta;
+
+    iDynTree::toEigen(newStepRelativePosition) =
+            rTranspose*(iDynTree::toEigen(newPosition) - iDynTree::toEigen(prevStep.position));
+
     return true;
 }
 
@@ -273,9 +305,12 @@ bool UnicyclePlanner::addTerminalStep(const UnicycleState &lastUnicycleState)
 
     double prevUnicycleAngleFromStance = stanceFoot->getUnicycleAngleFromStep(prevStanceStep);
 
-    iDynTree::Vector2 rPl, plannedPosition;
+    iDynTree::Vector2 rPl, plannedPosition, relativePlannedPosition;
 
     if (!get_rPl(lastUnicycleState, rPl))
+        return false;
+
+    if (!get_newStepRelativePosition(lastUnicycleState, relativePlannedPosition))
         return false;
 
     swingFoot->getFootPositionFromUnicycle(lastUnicycleState, plannedPosition);
@@ -287,7 +322,7 @@ bool UnicyclePlanner::addTerminalStep(const UnicycleState &lastUnicycleState)
     bool isTinyForStance = stanceFoot->isTinyStep(lastUnicycleState); //two steps will be taken, first by the swing leg and then by the stance leg to make the two feet parallel.
                                                                       //Since the constraints on this second step are implicitly satisfied by the geometry of the unicycle,
                                                                       //we focus in avoiding that this second step break the "tiny step" constraint. The constraints are checked for the first step.
-    bool constraintsSatisfied = m_unicycleProblem.areConstraintsSatisfied(rPl, deltaAngleStance, deltaTime, plannedPosition);
+    bool constraintsSatisfied = m_unicycleProblem.areConstraintsSatisfied(rPl, deltaAngleStance, deltaTime, plannedPosition, relativePlannedPosition);
     bool isTinyForSwing = swingFoot->isTinyStep(lastUnicycleState);
 
     if (constraintsSatisfied && !isTinyForStance && !isTinyForSwing){
@@ -303,7 +338,7 @@ bool UnicyclePlanner::addTerminalStep(const UnicycleState &lastUnicycleState)
     } else {
         if (!constraintsSatisfied){
             std::cerr << "Unable to satisfy constraints on the last step. The following constraints are not satisfied:" << std::endl;
-            m_unicycleProblem.printViolatedConstraints(rPl, deltaAngleStance, deltaTime, plannedPosition);
+            m_unicycleProblem.printViolatedConstraints(rPl, deltaAngleStance, deltaTime, plannedPosition, relativePlannedPosition);
         }
 
         UnicycleState previousUnicycleStateFromStance;
@@ -340,6 +375,7 @@ UnicyclePlanner::UnicyclePlanner()
     ,m_minAngle(iDynTree::deg2rad(5))
     ,m_nominalWidth(0.14)
     ,m_maxLength(0.2)
+    ,m_maxLengthBackward(0.2)
     ,m_minLength(0.05)
     ,m_maxAngle(iDynTree::deg2rad(45))
     ,m_addTerminalStep(true)
@@ -501,11 +537,43 @@ bool UnicyclePlanner::setMaxStepLength(double maxLength)
 {
     std::lock_guard<std::mutex> guard(m_mutex);
 
-    if(m_unicycleProblem.setMaxLength(maxLength)){
-        m_maxLength = maxLength;
-        return true;
+    if(!m_unicycleProblem.setMaxLength(maxLength)){
+        return false;
     }
-    return false;
+    m_maxLength = maxLength;
+
+
+    if(!m_unicycleProblem.setMaxLengthBackward(maxLength)){
+        return false;
+    }
+    m_maxLengthBackward = maxLength;
+
+
+    return true;
+}
+
+bool UnicyclePlanner::setMaxStepLength(double maxLength, double backwardMultiplier)
+{
+    std::lock_guard<std::mutex> guard(m_mutex);
+
+    if (backwardMultiplier < 0)
+    {
+        std::cerr << "backwardMultiplier is expected to be non-negative." << std::endl;
+        return false;
+    }
+
+    if(!m_unicycleProblem.setMaxLength(maxLength)){
+        return false;
+    }
+    m_maxLength = maxLength;
+
+    double maxLengthBack = maxLength * backwardMultiplier;
+    if(!m_unicycleProblem.setMaxLengthBackward(maxLengthBack)){
+        return false;
+    }
+    m_maxLengthBackward = maxLengthBack;
+
+    return true;
 }
 
 bool UnicyclePlanner::setMaxAngleVariation(double maxAngleInRad)
@@ -664,6 +732,11 @@ bool UnicyclePlanner::computeNewSteps(std::shared_ptr< FootPrint > leftFoot, std
         return false;
     }
 
+    if (m_nominalWidth > m_maxLengthBackward){
+        std::cerr << "Error: the backwardMultiplier parameter seems to be too restrictive. Notice that it multiplies the cartesian distance between the two feet (width included)." <<std::endl;
+        return false;
+    }
+
     if (m_minAngle >= m_maxAngle) {
         std::cerr << "Error: the minAngle parameter is supposed to be lower than the maxAngle. Otherwise, when the feet start parallel, it would be impossible to rotate the swing foot." << std::endl;
         return false;
@@ -692,9 +765,10 @@ bool UnicyclePlanner::computeNewSteps(std::shared_ptr< FootPrint > leftFoot, std
     double cost, minCost = 1e10; //this big number is actually not necessary since there is a check on tOptim also
     double deltaTime = 0, pauseTime = 0;
     double deltaAngle = 0;
-    iDynTree::Vector2 rPl, newFootPosition;
+    iDynTree::Vector2 rPl, newFootPosition, relativePlannedPosition;
     rPl.zero();
     newFootPosition.zero();
+    relativePlannedPosition.zero();
 
     UnicycleState unicycleState;
     std::shared_ptr<UnicycleFoot> stanceFoot, swingFoot;
@@ -758,7 +832,7 @@ bool UnicyclePlanner::computeNewSteps(std::shared_ptr< FootPrint > leftFoot, std
 
                         std::cerr << "Unable to satisfy constraints given the specified maxStepTime. In the last evaluation of constraints, the following were not satisfied:" << std::endl;
 
-                        m_unicycleProblem.printViolatedConstraints(rPl, deltaAngle, deltaTime, newFootPosition);
+                        m_unicycleProblem.printViolatedConstraints(rPl, deltaAngle, deltaTime, newFootPosition, relativePlannedPosition);
 
                         if(!stanceFoot->getUnicycleStateFromStep(prevStep, unicycleState)){
                             return false;
@@ -794,6 +868,11 @@ bool UnicyclePlanner::computeNewSteps(std::shared_ptr< FootPrint > leftFoot, std
                 } else { //if ((deltaTime > m_maxTime) || (t == m_endTime)) //here I need to find the best solution
 
                     if(!get_rPl(unicycleState, rPl)){
+                        std::cerr << "Error while retrieving the relative position from right to left." << std::endl;
+                        return false;
+                    }
+
+                    if(!get_newStepRelativePosition(unicycleState, relativePlannedPosition)){
                         std::cerr << "Error while retrieving the relative position" << std::endl;
                         return false;
                     }
@@ -801,9 +880,9 @@ bool UnicyclePlanner::computeNewSteps(std::shared_ptr< FootPrint > leftFoot, std
                     swingFoot->getFootPositionFromUnicycle(unicycleState, newFootPosition);
 
 
-                    if((deltaTime > 0) && (m_unicycleProblem.areConstraintsSatisfied(rPl, deltaAngle, deltaTime, newFootPosition))){ //constraints are satisfied
+                    if((deltaTime > 0) && (m_unicycleProblem.areConstraintsSatisfied(rPl, deltaAngle, deltaTime, newFootPosition, relativePlannedPosition))){ //constraints are satisfied
 
-                        if(!m_unicycleProblem.getCostValue(rPl, deltaAngle, deltaTime, newFootPosition, cost)){
+                        if(!m_unicycleProblem.getCostValue(rPl, deltaAngle, deltaTime, newFootPosition, relativePlannedPosition, cost)){
                             std::cerr << "Error while evaluating the cost function." << std::endl;
                             return false;
                         }
