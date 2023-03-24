@@ -609,7 +609,7 @@ bool UnicyclePlanner::setWidthSetting(double minWidth, double nominalWidth)
     if (!m_unicycleProblem.setMinWidth(minWidth)){
         return false;
     }
-
+    m_minWidth = minWidth;
     m_nominalWidth = nominalWidth;
 
     return true;
@@ -1515,12 +1515,6 @@ bool UnicyclePlanner::interpolateNewStepsFromPath(std::shared_ptr< FootPrint > l
     return true;
 }
 
-/*
-double poseDistance (const UnicycleState &pose1, const UnicycleState &pose2){
-        return sqrt(pow(pose2.position(0) - pose1.position(0), 2) + pow(pose2.position(1) - pose1.position(1), 2));
-    }
-*/
-
 bool UnicyclePlanner::checkConstraints(iDynTree::Vector2 _rPl, double deltaAngle, double deltaTime, iDynTree::Vector2 newFootPosition, iDynTree::Vector2 prevStepPosition){
 
     bool result = true;
@@ -1541,16 +1535,8 @@ bool UnicyclePlanner::checkConstraints(iDynTree::Vector2 _rPl, double deltaAngle
         std::cout <<"[ERROR] Min time constraint not satisfied: " << deltaTime << std::endl;
         result = false;
     }
-    //c_theta = std::cos(rightSteps.front().angle);
-    //s_theta = std::sin(rightSteps.front().angle);
-    //rTranspose(0,0) = c_theta;
-    //rTranspose(1,0) = -s_theta;
-    //rTranspose(0,1) = s_theta;
-    //rTranspose(1,1) = c_theta;
-    //iDynTree::toEigen(rPl) =
-    //        iDynTree::toEigen(rTranspose)*(iDynTree::toEigen(leftSteps.front().position) - iDynTree::toEigen(rightSteps.front().position));
 
-    if (_rPl(1) < 0.10){    //minWidth -> TODO: use parameter from ini file
+    if (_rPl(1) < m_minWidth){
         std::cout <<"[ERROR] Width constraint not satisfied: " << _rPl(1) << std::endl;
         result = false;
     }
