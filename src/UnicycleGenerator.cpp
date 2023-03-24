@@ -386,7 +386,6 @@ bool UnicycleGenerator::generate(double initTime, double dT, double endTime)
 {
     {
         std::lock_guard<std::mutex> guard(m_pimpl->mutex);
-        std::cout << "calling UnicycleGenerator::generate" << std::endl;
 
         if (m_pimpl->navigationConfig == NavigationSetup::NavigationMode && m_pimpl->planner->m_currentController == UnicycleController::DIRECT)
         {
@@ -410,7 +409,6 @@ bool UnicycleGenerator::reGenerate(double initTime, double dT, double endTime)
 {
     {
         std::lock_guard<std::mutex> guard(m_pimpl->mutex);
-        std::cout << "calling UnicycleGenerator::reGenerate(double initTime, double dT, double endTime)" << std::endl;
 
         if (!(m_pimpl->leftFootPrint->keepOnlyPresentStep(initTime))){
             std::cerr << "[UnicycleGenerator::reGenerate] The initTime is not compatible with previous runs. Call a method generate instead." << std::endl;
@@ -460,7 +458,6 @@ bool UnicycleGenerator::reGenerate(double initTime, double dT, double endTime, c
 {
     {
         std::lock_guard<std::mutex> guard(m_pimpl->mutex);
-        std::cout << "calling UnicycleGenerator::reGenerate(double initTime, double dT, double endTime, const Step &measuredLeft, const Step &measuredRight)" << std::endl;
         Step previousL, previousR;
 
         if (!(m_pimpl->leftFootPrint->keepOnlyPresentStep(initTime))){
@@ -489,10 +486,6 @@ bool UnicycleGenerator::reGenerate(double initTime, double dT, double endTime, c
             return false;
         }
 
-        //if (!(m_pimpl->planner->computeNewSteps(m_pimpl->leftFootPrint, m_pimpl->rightFootPrint, initTime, endTime))) {
-        //    std::cerr << "[UnicycleGenerator::reGenerate] Unicycle planner failed to compute new steps." << std::endl;
-        //    return false;
-        //}
         if (m_pimpl->navigationConfig == NavigationSetup::ManualMode)
         {
             if (!(m_pimpl->planner->computeNewSteps(m_pimpl->leftFootPrint, m_pimpl->rightFootPrint, initTime, endTime))) {
@@ -538,7 +531,6 @@ bool UnicycleGenerator::reGenerate(double initTime, double dT, double endTime, b
 {
     {
         std::lock_guard<std::mutex> guard(m_pimpl->mutex);
-        std::cout << "calling UnicycleGenerator::reGenerate(double initTime, double dT, double endTime, bool correctLeft, const iDynTree::Vector2 &measuredPosition, double measuredAngle)" << std::endl;
         Step previousL, previousR, correctedStep;
 
         if (!(m_pimpl->leftFootPrint->keepOnlyPresentStep(initTime))){
@@ -563,10 +555,6 @@ bool UnicycleGenerator::reGenerate(double initTime, double dT, double endTime, b
             return false;
         }
 
-        //if (!(m_pimpl->planner->computeNewSteps(m_pimpl->leftFootPrint, m_pimpl->rightFootPrint, initTime, endTime))) {
-        //    std::cerr << "[UnicycleGenerator::reGenerate] Unicycle planner failed to compute new steps." << std::endl;
-        //    return false;
-        //}
         if (m_pimpl->navigationConfig == NavigationSetup::ManualMode)
         {
             if (!(m_pimpl->planner->computeNewSteps(m_pimpl->leftFootPrint, m_pimpl->rightFootPrint, initTime, endTime))) {
@@ -612,7 +600,6 @@ bool UnicycleGenerator::reGenerate(double initTime, double dT, double endTime, c
 {
     {
         std::lock_guard<std::mutex> guard(m_pimpl->mutex);
-        std::cout << "calling UnicycleGenerator::reGenerate(double initTime, double dT, double endTime, const iDynTree::Vector2 &measuredLeftPosition, double measuredLeftAngle, const iDynTree::Vector2 &measuredRightPosition, double measuredRightAngle)" << std::endl;
         Step previousL, previousR;
 
         if (!(m_pimpl->leftFootPrint->keepOnlyPresentStep(initTime))){
@@ -869,6 +856,7 @@ bool UnicycleGenerator::setNavigationPath(std::vector<UnicycleState> path)
 {
     if (!m_pimpl->planner->setInputPath(path))
     {
+        std::cerr << "[UnicycleGenerator::setNavigationPath] Unable to set navigation path." << std::endl;
         return false;
     }
     return true;

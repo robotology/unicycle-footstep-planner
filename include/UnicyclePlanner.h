@@ -34,7 +34,7 @@ enum class UnicycleController
 class UnicyclePlanner {
     std::shared_ptr<PersonFollowingController> m_personFollowingController;
     std::shared_ptr<UnicycleDirectController> m_directController;
-    //UnicycleController m_currentController;
+    //UnicycleController m_currentController; moved to public
     std::shared_ptr<ControlledUnicycle> m_unicycle;
     iDynTree::optimalcontrol::integrators::ForwardEuler m_integrator;
     UnicycleOptimization m_unicycleProblem;
