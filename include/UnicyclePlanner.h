@@ -54,8 +54,6 @@ class UnicyclePlanner {
         double time;
     };
 
-    std::vector<PoseStamped> m_integratedPath;
-
     //state
     bool m_swingLeft;
 

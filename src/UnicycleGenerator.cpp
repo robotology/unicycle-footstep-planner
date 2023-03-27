@@ -625,10 +625,6 @@ bool UnicycleGenerator::reGenerate(double initTime, double dT, double endTime, c
             return false;
         }
 
-        //if (!(m_pimpl->planner->computeNewSteps(m_pimpl->leftFootPrint, m_pimpl->rightFootPrint, initTime, endTime))) {
-        //    std::cerr << "[UnicycleGenerator::reGenerate] Unicycle planner failed to compute new steps." << std::endl;
-        //    return false;
-        //}
         if (m_pimpl->navigationConfig == NavigationSetup::ManualMode)
         {
             if (!(m_pimpl->planner->computeNewSteps(m_pimpl->leftFootPrint, m_pimpl->rightFootPrint, initTime, endTime))) {
