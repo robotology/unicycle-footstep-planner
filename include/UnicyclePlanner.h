@@ -38,7 +38,7 @@ class UnicyclePlanner {
     std::shared_ptr<ControlledUnicycle> m_unicycle;
     iDynTree::optimalcontrol::integrators::ForwardEuler m_integrator;
     UnicycleOptimization m_unicycleProblem;
-    double m_initTime, m_endTime, m_minTime, m_maxTime, m_nominalTime, m_dT, m_minAngle, m_nominalWidth, m_maxLength, m_minLength, m_maxAngle, m_minWidth;
+    double m_initTime, m_endTime, m_minTime, m_maxTime, m_nominalTime, m_dT, m_minAngle, m_nominalWidth, m_maxLength, m_maxLengthBackward, m_minLength, m_maxAngle, m_minWidth;
     bool m_addTerminalStep, m_startLeft, m_resetStartingFoot, m_firstStep;
     FreeSpaceEllipseMethod m_freeSpaceMethod;
     double m_leftYawOffset, m_rightYawOffset;
@@ -62,6 +62,8 @@ class UnicyclePlanner {
     bool initializePlanner(double initTime);
 
     bool get_rPl(const UnicycleState &unicycleState, iDynTree::Vector2 &rPl); //depending on left and right foot and on swing_left
+
+    bool get_newStepRelativePosition(const UnicycleState &unicycleState, iDynTree::Vector2 &newStepRelativePosition); //depending on left and right foot and on swing_left
 
     bool getIntegratorSolution(double time, UnicycleState &unicycleState) const;
 
@@ -118,6 +120,8 @@ public:
 
     //Constraints
     bool setMaxStepLength(double maxLength);
+
+    bool setMaxStepLength(double maxLength, double backwardMultiplier);
 
     bool setMaxAngleVariation(double maxAngleInRad); //in radians!
 
