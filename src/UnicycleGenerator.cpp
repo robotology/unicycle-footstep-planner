@@ -390,7 +390,7 @@ bool UnicycleGenerator::generate(double initTime, double dT, double endTime)
         if (m_pimpl->navigationConfig == NavigationSetup::NavigationMode && m_pimpl->planner->m_currentController == UnicycleController::DIRECT)
         {
             if (!(m_pimpl->planner->interpolateNewStepsFromPath(m_pimpl->leftFootPrint, m_pimpl->rightFootPrint, initTime, endTime))) {
-                std::cerr << "[UnicycleGenerator::generate] Failed to compute new steps." << std::endl;
+                std::cerr << "[UnicycleGenerator::generate] Failed to interpolate new steps from path." << std::endl;
                 return false;
             }
         }
