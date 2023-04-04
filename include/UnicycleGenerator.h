@@ -17,6 +17,11 @@
 #include <DCMTrajectoryGenerator.h>
 #include <memory>
 
+/**
+ * Enumerator for tracking the possible states of the navigation setup: manual -> classic original footstep planner for joystick use ; navigation -> path following based
+ */
+enum class NavigationSetup {ManualMode, NavigationMode, NotConfigured};
+
 class UnicycleGenerator {
     class UnicycleGeneratorImplementation;
    std::unique_ptr<UnicycleGeneratorImplementation> m_pimpl;
@@ -59,6 +64,9 @@ public:
 
     void disablePauseConditions();
 
+    bool setPlannerMode(NavigationSetup mode);
+
+    bool setNavigationPath(std::vector<UnicycleState> path);
 
     /**
      * Set the relative position of the merge point inside the double support phase.
