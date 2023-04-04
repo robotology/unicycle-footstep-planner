@@ -7,7 +7,9 @@
 
 #ifndef UNICYCLEPLANNER_H
 #define UNICYCLEPLANNER_H
-
+//Fix for compiling math constants
+#define _USE_MATH_DEFINES
+#include <math.h>
 #include "ControlledUnicycle.h"
 #include "PersonFollowingController.h"
 #include "UnicycleDirectController.h"
@@ -34,18 +36,25 @@ enum class UnicycleController
 class UnicyclePlanner {
     std::shared_ptr<PersonFollowingController> m_personFollowingController;
     std::shared_ptr<UnicycleDirectController> m_directController;
-    UnicycleController m_currentController;
+    //UnicycleController m_currentController; moved to public
     std::shared_ptr<ControlledUnicycle> m_unicycle;
     iDynTree::optimalcontrol::integrators::ForwardEuler m_integrator;
     UnicycleOptimization m_unicycleProblem;
-    double m_initTime, m_endTime, m_minTime, m_maxTime, m_nominalTime, m_dT, m_minAngle, m_nominalWidth, m_maxLength, m_minLength, m_maxAngle;
+    double m_initTime, m_endTime, m_minTime, m_maxTime, m_nominalTime, m_dT, m_minAngle, m_nominalWidth, m_maxLength, m_maxLengthBackward, m_minLength, m_maxAngle, m_minWidth;
     bool m_addTerminalStep, m_startLeft, m_resetStartingFoot, m_firstStep;
     FreeSpaceEllipseMethod m_freeSpaceMethod;
     double m_leftYawOffset, m_rightYawOffset;
     double m_linearVelocityConservativeFactor, m_angularVelocityConservativeFactor;
     std::mutex m_mutex;
+    std::vector<UnicycleState> m_inputPath;
 
     std::shared_ptr<UnicycleFoot> m_left, m_right;
+
+    struct PoseStamped
+    {
+        UnicycleState pose;
+        double time;
+    };
 
     //state
     bool m_swingLeft;
@@ -56,11 +65,17 @@ class UnicyclePlanner {
 
     bool get_rPl(const UnicycleState &unicycleState, iDynTree::Vector2 &rPl); //depending on left and right foot and on swing_left
 
+    bool get_newStepRelativePosition(const UnicycleState &unicycleState, iDynTree::Vector2 &newStepRelativePosition); //depending on left and right foot and on swing_left
+
     bool getIntegratorSolution(double time, UnicycleState &unicycleState) const;
 
     bool addTerminalStep(const UnicycleState &lastUnicycleState);
 
+    bool checkConstraints(iDynTree::Vector2 _rPl, double deltaAngle, double deltaTime, iDynTree::Vector2 newFootPosition, iDynTree::Vector2 prevStep);
+
 public:
+
+    UnicycleController m_currentController;
 
     UnicyclePlanner();
 
@@ -108,6 +123,8 @@ public:
     //Constraints
     bool setMaxStepLength(double maxLength);
 
+    bool setMaxStepLength(double maxLength, double backwardMultiplier);
+
     bool setMaxAngleVariation(double maxAngleInRad); //in radians!
 
     //Cost
@@ -151,6 +168,10 @@ public:
     bool setInnerFreeSpaceEllipseOffsets(double semiMajorAxisOffset, double semiMinorAxisOffset);
 
     bool setUnicycleController(UnicycleController controller);
+
+    bool interpolateNewStepsFromPath(std::shared_ptr< FootPrint > leftFoot, std::shared_ptr< FootPrint > rightFoot, double initTime, double endTime);
+
+    bool setInputPath (std::vector<UnicycleState> input);
 };
 
 #endif // UNICYCLEPLANNER_H

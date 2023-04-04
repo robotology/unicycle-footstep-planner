@@ -153,7 +153,7 @@ bool plannerTest(){
     iDynTree::assertTrue(planner.setDesiredPersonDistance(conf.dX, conf.dY));
     iDynTree::assertTrue(planner.setPersonFollowingControllerGain(conf.K));
     iDynTree::assertTrue(planner.setMaximumIntegratorStepSize(conf.dT));
-    iDynTree::assertTrue(planner.setMaxStepLength(conf.maxL));
+    iDynTree::assertTrue(planner.setMaxStepLength(conf.maxL, 0.8));
     iDynTree::assertTrue(planner.setWidthSetting(conf.minW, conf.nominalW));
     iDynTree::assertTrue(planner.setMaxAngleVariation(conf.maxAngle));
     iDynTree::assertTrue(planner.setCostWeights(conf.positionWeight, conf.timeWeight));
