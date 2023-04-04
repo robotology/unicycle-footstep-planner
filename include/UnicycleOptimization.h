@@ -126,7 +126,7 @@ public:
     //cost setting
     bool setCostWeights(double positionWeight, double timeWeight);
 
-        bool getCostValue(const iDynTree::Vector2& rPl, double deltaAngle, double deltaTime, const iDynTree::Vector2 &newStepPosition, const iDynTree::Vector2 &newStepRelativePosition, double& cost);
+    bool getCostValue(const iDynTree::Vector2& rPl, double deltaAngle, double deltaTime, const iDynTree::Vector2 &newStepPosition, const iDynTree::Vector2 &newStepRelativePosition, double& cost);
     bool areConstraintsSatisfied(const iDynTree::Vector2& rPl, double deltaAngle, double deltaTime, const iDynTree::Vector2 &newStepPosition, const iDynTree::Vector2 &newStepRelativePosition);
     void printViolatedConstraints(const iDynTree::Vector2& rPl, double deltaAngle, double deltaTime, const iDynTree::Vector2 &newStepPosition, const iDynTree::Vector2 &newStepRelativePosition);
 };
