@@ -7,7 +7,9 @@
 
 #ifndef UNICYCLEPLANNER_H
 #define UNICYCLEPLANNER_H
-
+//Fix for compiling math constants
+#define _USE_MATH_DEFINES
+#include <math.h>
 #include "ControlledUnicycle.h"
 #include "PersonFollowingController.h"
 #include "UnicycleDirectController.h"

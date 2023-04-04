@@ -10,9 +10,6 @@
 #include "Eigen/Core"
 #include "iDynTree/Core/EigenHelpers.h"
 #include <iostream>
-//Fix for compiling math constants
-#define _USE_MATH_DEFINES
-#include <math.h>
 
 bool UnicyclePlanner::getInitialStateFromFeet(double initTime)
 {
