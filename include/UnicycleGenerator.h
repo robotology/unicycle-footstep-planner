@@ -64,7 +64,7 @@ public:
 
     void disablePauseConditions();
 
-    bool setPlannerMode(NavigationSetup mode);
+    bool setPlannerMode(std::string mode);
 
     bool setNavigationPath(std::vector<UnicycleState> path);
 

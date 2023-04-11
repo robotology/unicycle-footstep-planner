@@ -842,9 +842,21 @@ std::shared_ptr<DCMTrajectoryGenerator> UnicycleGenerator::addDCMTrajectoryGener
     return m_pimpl->dcmTrajectoryGenerator;
 }
 
-bool UnicycleGenerator::setPlannerMode(NavigationSetup mode)
+bool UnicycleGenerator::setPlannerMode(std::string mode)
 {
-    m_pimpl->navigationConfig = mode;
+    if (mode == "navigation")
+    {
+        m_pimpl->navigationConfig = NavigationSetup::NavigationMode;
+    }
+    else if (mode == "manual")
+    {
+        m_pimpl->navigationConfig = NavigationSetup::ManualMode;
+    }
+    else
+    {
+        std::cerr << "[UnicycleGenerator::setNavigationPath] Unable to set planner mode: " << mode << std::endl;
+        return false;
+    }
     return true;
 }
 
