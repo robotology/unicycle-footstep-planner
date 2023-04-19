@@ -73,6 +73,8 @@ class UnicyclePlanner {
 
     bool checkConstraints(iDynTree::Vector2 _rPl, double deltaAngle, double deltaTime, iDynTree::Vector2 newFootPosition, iDynTree::Vector2 prevStep);
 
+    std::vector<UnicyclePlanner::PoseStamped> interpolatePath(std::vector<UnicycleState> &navigationPath, const double maxVelocity, const double maxLateralVelocity, const double maxAngVelocity);
+
 public:
 
     UnicycleController m_currentController;
