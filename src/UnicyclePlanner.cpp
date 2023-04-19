@@ -1049,7 +1049,7 @@ bool UnicyclePlanner::interpolateNewStepsFromPath(std::shared_ptr< FootPrint > l
 {
     std::lock_guard<std::mutex> guard(m_mutex);
     std::vector<UnicycleState> navigationPath = m_inputPath;    //input set externally fromm another method to m_inputPath
-    std::vector<UnicyclePlanner::PoseStamped> integratedPath;   //output of the integration
+    std::vector<UnicyclePlanner::PoseStamped> interpolatedPath;   //output of the integration
     
     // First consistency cheks
     if (!leftFoot || !rightFoot){
@@ -1144,7 +1144,7 @@ bool UnicyclePlanner::interpolateNewStepsFromPath(std::shared_ptr< FootPrint > l
     //Interpolation of the given path
     double prevTime = m_initTime;   //latest time istant of a pose in the path. It is initialized from the starting time, then will grow for each pose integrated
     PoseStamped initialPS {navigationPath[0], prevTime};
-    integratedPath.push_back(initialPS);  //the first pose of the path
+    interpolatedPath.push_back(initialPS);  //the first pose of the path
 
     for (size_t i = 0; i < navigationPath.size() - 1; ++i)
     {
@@ -1213,7 +1213,7 @@ bool UnicyclePlanner::interpolateNewStepsFromPath(std::shared_ptr< FootPrint > l
             {
                 t += m_dT;
                 iterationEndTime += m_dT;
-                shimState.angle = integratedPath.back().pose.angle + direction(2) * maxAngVelocity * m_dT;   
+                shimState.angle = interpolatedPath.back().pose.angle + direction(2) * maxAngVelocity * m_dT;   
                 //deal with angle periodicity
                 if (shimState.angle > M_PI) //overshoot in the positive domain
                 {
@@ -1226,7 +1226,7 @@ bool UnicyclePlanner::interpolateNewStepsFromPath(std::shared_ptr< FootPrint > l
                 
                 //save the pose
                 PoseStamped ps {shimState, t};
-                integratedPath.push_back(ps);
+                interpolatedPath.push_back(ps);
             }
             //now we have elapsedTimeAngular <= elapsedTimeLinear
             //so we add elapsedTimeLinear to the missing time
@@ -1268,12 +1268,12 @@ bool UnicyclePlanner::interpolateNewStepsFromPath(std::shared_ptr< FootPrint > l
             else
             {
                 //starting from the previous pose in the path, I add each passed increment on each component
-                nextState.position(0) = integratedPath.back().pose.position(0) + direction(0) * m_dT * (linearSpeed * cos_theta);    //the first part of the equation computes the number of iteration of dT passed untill this time istant.
+                nextState.position(0) = interpolatedPath.back().pose.position(0) + direction(0) * m_dT * (linearSpeed * cos_theta);    //the first part of the equation computes the number of iteration of dT passed untill this time istant.
                                                                                                                                     //the second part is the x component of the maximum speed
-                nextState.position(1) = integratedPath.back().pose.position(1) + direction(1) * m_dT * (linearSpeed * sin_theta);
+                nextState.position(1) = interpolatedPath.back().pose.position(1) + direction(1) * m_dT * (linearSpeed * sin_theta);
                 
                 double angleIncrement = m_dT * maxAngVelocity;
-                double next_angle = integratedPath.back().pose.angle + direction(2) * m_dT * maxAngVelocity;
+                double next_angle = interpolatedPath.back().pose.angle + direction(2) * m_dT * maxAngVelocity;
                 sweptAngle += angleIncrement;
                 
                 if (sweptAngle >= missingAngle)
@@ -1289,7 +1289,7 @@ bool UnicyclePlanner::interpolateNewStepsFromPath(std::shared_ptr< FootPrint > l
             
             //save the pose
             PoseStamped ps {nextState, t};
-            integratedPath.push_back(ps);
+            interpolatedPath.push_back(ps);
         }
         prevTime = t;   //keep track of the latest time istant
         //check if we have passed the maximum time horizon
@@ -1298,13 +1298,13 @@ bool UnicyclePlanner::interpolateNewStepsFromPath(std::shared_ptr< FootPrint > l
             break;  //exit for loop
         }
     }
-    //now we have everything on the integratedPath. Both time and poses for the whole time horizon
+    //now we have everything on the interpolatedPath. Both time and poses for the whole time horizon
 
     //Reset variables
     t = m_initTime;
     tOptim = -1.0;
     //EVALUATION LOOP
-    for (auto it = integratedPath.begin(); it != integratedPath.end(); ++it){
+    for (auto it = interpolatedPath.begin(); it != interpolatedPath.end(); ++it){
 
         t = it->time;
         deltaTime = t - prevStep.impactTime;
@@ -1326,8 +1326,8 @@ bool UnicyclePlanner::interpolateNewStepsFromPath(std::shared_ptr< FootPrint > l
                 if ((deltaTime > m_maxTime) || (t == m_endTime)){ //If this condition is true, it means we just exited the feasible region for what concerns the time. Hence, we check if we found a feasible solutions
                     if (tOptim > 0){  //a feasible point has been found
 
-                        auto bestMatch = std::find_if(integratedPath.begin(),
-                                                      integratedPath.end(),
+                        auto bestMatch = std::find_if(interpolatedPath.begin(),
+                                                      interpolatedPath.end(),
                                                       [&tOptim] (PoseStamped pS) {return (pS.time == tOptim);});
 
                         if(!swingFoot->addStepFromUnicycle(bestMatch->pose, tOptim)){
@@ -1439,8 +1439,8 @@ bool UnicyclePlanner::interpolateNewStepsFromPath(std::shared_ptr< FootPrint > l
     //Add the last parallel terminal step
     if (m_addTerminalStep){
 
-        auto bestMatch = std::find_if(integratedPath.begin(),
-                                      integratedPath.end(),
+        auto bestMatch = std::find_if(interpolatedPath.begin(),
+                                      interpolatedPath.end(),
                                       [=] (PoseStamped pS) {return (pS.time == m_endTime);});
 
         if(!addTerminalStep(bestMatch->pose)){
