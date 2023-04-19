@@ -44,7 +44,7 @@ class UnicyclePlanner {
     bool m_addTerminalStep, m_startLeft, m_resetStartingFoot, m_firstStep;
     FreeSpaceEllipseMethod m_freeSpaceMethod;
     double m_leftYawOffset, m_rightYawOffset;
-    double m_linearVelocityConservativeFactor, m_angularVelocityConservativeFactor;
+    double m_linearVelocityConservativeFactor, m_angularVelocityConservativeFactor, m_lateralVelocityConservaiveFactor;
     std::mutex m_mutex;
     std::vector<UnicycleState> m_inputPath;
 
@@ -174,6 +174,8 @@ public:
     bool interpolateNewStepsFromPath(std::shared_ptr< FootPrint > leftFoot, std::shared_ptr< FootPrint > rightFoot, double initTime, double endTime);
 
     bool setInputPath (std::vector<UnicycleState> input);
+
+    bool setLateralVelocityConservaiveFactor(double lateralVelocityConservaiveFactor);
 };
 
 #endif // UNICYCLEPLANNER_H

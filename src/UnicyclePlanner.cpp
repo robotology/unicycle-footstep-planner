@@ -390,6 +390,7 @@ UnicyclePlanner::UnicyclePlanner()
     ,m_swingLeft(true)
     , m_linearVelocityConservativeFactor(0.9)
     , m_angularVelocityConservativeFactor(0.7)
+    , m_lateralVelocityConservaiveFactor(0.2)
 {
     m_unicycle->setController(m_personFollowingController);
     m_integrator.setMaximumStepSize(0.01);
@@ -1041,6 +1042,22 @@ bool UnicyclePlanner::setUnicycleController(UnicycleController controller)
     return false;
 }
 
+bool UnicyclePlanner::setLateralVelocityConservaiveFactor(double lateralVelocityConservaiveFactor)
+{
+    std::lock_guard<std::mutex> guard(m_mutex);
+
+    if (lateralVelocityConservaiveFactor < 0.0 || lateralVelocityConservaiveFactor > 1.0)
+    {
+        std::cerr << " The parameter lateralVelocityConservaiveFactor is supposed to be between 0 and 1" << std::endl;
+        return false;
+    }
+    else
+    {
+        m_lateralVelocityConservaiveFactor = lateralVelocityConservaiveFactor;
+        return true;
+    }
+}
+
 bool UnicyclePlanner::interpolateNewStepsFromPath(std::shared_ptr< FootPrint > leftFoot, 
                                                   std::shared_ptr< FootPrint > rightFoot, 
                                                   double initTime, 
@@ -1080,7 +1097,7 @@ bool UnicyclePlanner::interpolateNewStepsFromPath(std::shared_ptr< FootPrint > l
     m_right.reset(new UnicycleFoot(rightFoot));
 
     double maxVelocity = std::sqrt(std::pow(m_maxLength,2) - std::pow(m_nominalWidth,2))/m_minTime * m_linearVelocityConservativeFactor;
-    double maxLateralVelocity = maxVelocity * 0.2;    //corrective factor equal to slowWhenSidewaysFactor - TODO: parameterize
+    double maxLateralVelocity = maxVelocity * m_lateralVelocityConservaiveFactor;    //corrective factor equal to slowWhenSidewaysFactor - TODO: parameterize 0.2
     double maxAngVelocity = m_maxAngle/m_minTime * m_angularVelocityConservativeFactor;
 
     // TODO are these saturations necessary?
