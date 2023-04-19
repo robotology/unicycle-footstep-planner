@@ -1326,7 +1326,7 @@ bool UnicyclePlanner::interpolateNewStepsFromPath(std::shared_ptr< FootPrint > l
     return true;
 }
 
-bool UnicyclePlanner::checkConstraints(iDynTree::Vector2 _rPl, double deltaAngle, double deltaTime, iDynTree::Vector2 newFootPosition, iDynTree::Vector2 prevStepPosition){
+bool UnicyclePlanner::checkConstraints(iDynTree::Vector2 rPl, double deltaAngle, double deltaTime, iDynTree::Vector2 newFootPosition, iDynTree::Vector2 prevStepPosition){
 
     bool result = true;
 
@@ -1347,8 +1347,8 @@ bool UnicyclePlanner::checkConstraints(iDynTree::Vector2 _rPl, double deltaAngle
         result = false;
     }
 
-    if (_rPl(1) < m_minWidth){
-        std::cout <<"[ERROR] Width constraint not satisfied: " << _rPl(1) << std::endl;
+    if (rPl(1) < m_minWidth){
+        std::cout <<"[ERROR] Width constraint not satisfied: " << rPl(1) << std::endl;
         result = false;
     }
 
