@@ -9,8 +9,9 @@
 
 
 PosesPairInterpolator::PosesPairInterpolator(UnicycleState &startPose, UnicycleState &nextPose, 
-                          double &maxVelocity, double &maxLateralVelocity, double &maxAngVelocity, double &timeIncrement)
-{
+                          const double &maxVelocity, const double &maxLateralVelocity, const double &maxAngVelocity, double &timeIncrement,
+                          double &startTime)
+{   
     m_maxVelocity = maxVelocity;
     m_maxLateralVelocity = maxLateralVelocity;
     m_maxAngVelocity = maxAngVelocity;
@@ -24,9 +25,7 @@ PosesPairInterpolator::PosesPairInterpolator(UnicycleState &startPose, UnicycleS
     {
         m_dT = 0.1; //default
     }
-    
-    
-    
+    m_startTime = startTime;
 }
 
 PosesPairInterpolator::~PosesPairInterpolator()
@@ -41,7 +40,6 @@ bool PosesPairInterpolator::computeMotionParameters()
         return true;
     }
     //Let's assume a linear uniform motion between two consecutive path poses at constant speed.
-    //we now calculate the future time istant of the next (i+1) pose in the path and the geometrical components
     m_distance = std::sqrt(pow(m_nextPose.position(0) - m_startPose.position(0), 2) +
                            pow(m_nextPose.position(1) - m_startPose.position(1), 2) 
                            );
@@ -141,9 +139,10 @@ std::vector<PosesPairInterpolator::PoseStamped> PosesPairInterpolator::shimContr
             PoseStamped ps {shimState, m_time};
             interpolatedSegment.push_back(ps);
         }
-        //now we have elapsedTimeAngular <= elapsedTimeLinear
-        //so we add the missing time
+        //now we have m_angularETA <= m_linearETA
+        //so we add the missing time to m_linearETA and subtract it to m_angularETA
         m_linearETA += shimTime;
+        m_angularETA -= shimTime;
     }
          
     return interpolatedSegment;
@@ -151,6 +150,50 @@ std::vector<PosesPairInterpolator::PoseStamped> PosesPairInterpolator::shimContr
 
 std::vector<PosesPairInterpolator::PoseStamped> PosesPairInterpolator::interpolate()
 {
-    
-    return std::vector<PoseStamped>();
+    std::vector<PosesPairInterpolator::PoseStamped> interpolatedSegment;   //output
+    double iterationEndTime = m_startTime + m_linearETA;    //add the time elapsed for all the previous poses in the path and the initial time (m_startTime)
+
+    //interpolate between two path poses
+    double sweptAngle = 0; //the cumulative angle which is being swept after each iter
+    double missingAngle = m_angularETA * m_maxAngVelocity;    //angle missing to achieve the desired orientation of m_nextPose
+        
+    while (m_time < iterationEndTime)
+    {
+        //compute the next interpolated point
+        m_time += m_dT;
+        UnicycleState nextState;
+        //check if we overshoot the final pose -> then we clamp it
+        if (m_time >= iterationEndTime)
+        {
+            nextState.position(0) = m_nextPose.position(0);
+            nextState.position(1) = m_nextPose.position(1);
+            nextState.angle = m_nextPose.angle;
+        }
+        else
+        {
+            //starting from the previous pose in the path, I add the increment on each motion component
+            nextState.position(0) = interpolatedSegment.back().pose.position(0) + m_localVersors(0) * m_dT * (m_linearSpeed * m_cos_theta);    //the first part of the equation computes the number of iteration of dT passed untill this time istant.
+                                                                                                                                //the second part is the x component of the maximum speed
+            nextState.position(1) = interpolatedSegment.back().pose.position(1) + m_localVersors(1) * m_dT * (m_linearSpeed * m_sin_theta);
+            
+            double angleIncrement = m_dT * m_maxAngVelocity;
+            double next_angle = interpolatedSegment.back().pose.angle + m_localVersors(2) * angleIncrement;
+            sweptAngle += angleIncrement;
+            
+            //overshoot check
+            if (sweptAngle >= missingAngle)
+            {
+                nextState.angle = m_nextPose.angle;
+            }
+            else
+            {
+                nextState.angle = next_angle;
+            }
+        }
+
+        //save the pose
+        PoseStamped ps {nextState, m_time};
+        interpolatedSegment.push_back(ps);
+    }
+    return interpolatedSegment;
 }

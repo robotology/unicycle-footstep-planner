@@ -17,12 +17,6 @@
 class PosesPairInterpolator
 {
 private:
-
-    struct PoseStamped
-    {
-        UnicycleState pose;
-        double time;
-    };
     //Constraints on the motion given externally
     double m_maxVelocity;
     double m_maxLateralVelocity;
@@ -44,12 +38,19 @@ private:
     double m_linearETA;
     double m_angularETA;
     double m_dT;        //time increment of the interpolation
-    double m_time;      //quantity that gets incremented bt m_dT until maxTime or the next pose is reached
+    double m_time;      //quantity that gets incremented by m_dT until maxTime or the next pose is reached
+    double m_startTime; //time istant from which we start interpolating
+    double m_endTime;   //time horizon after which we end the computation
 public:
     PosesPairInterpolator(UnicycleState &startPose, UnicycleState &nextPose, 
-                          double &maxVelocity, double &maxLateralVelocity, double &maxAngVelocity, double &timeIncrement);
+                          const double &maxVelocity, const double &maxLateralVelocity, const double &maxAngVelocity, double &timeIncrement,
+                          double &startTime);
     ~PosesPairInterpolator();
-
+    struct PoseStamped
+    {
+        UnicycleState pose;
+        double time;
+    };
     bool computeMotionParameters();
     bool ETA_Computation();
     std::vector<PoseStamped> shimController();
