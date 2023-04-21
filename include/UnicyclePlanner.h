@@ -16,6 +16,7 @@
 #include "UnicycleOptimization.h"
 #include "UnicycleFoot.h"
 #include "FreeSpaceEllipse.h"
+#include "PosesPairInterpolator.h"
 #include <iDynTree/Integrators/ForwardEuler.h>
 #include <memory>
 #include <mutex>
@@ -50,12 +51,6 @@ class UnicyclePlanner {
 
     std::shared_ptr<UnicycleFoot> m_left, m_right;
 
-    struct PoseStamped
-    {
-        UnicycleState pose;
-        double time;
-    };
-
     //state
     bool m_swingLeft;
 
@@ -73,7 +68,7 @@ class UnicyclePlanner {
 
     bool checkConstraints(iDynTree::Vector2 rPl, double deltaAngle, double deltaTime, iDynTree::Vector2 newFootPosition, iDynTree::Vector2 prevStep);
 
-    std::vector<UnicyclePlanner::PoseStamped> interpolatePath(std::vector<UnicycleState> &navigationPath, const double maxVelocity, const double maxLateralVelocity, const double maxAngVelocity);
+    std::vector<PosesPairInterpolator::PoseStamped> interpolatePath(std::vector<UnicycleState> &navigationPath, const double maxVelocity, const double maxLateralVelocity, const double maxAngVelocity);
 
 public:
 

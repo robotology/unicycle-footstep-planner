@@ -12,6 +12,7 @@
 #define _USE_MATH_DEFINES
 #include <math.h>
 #include "UnicycleFoot.h"
+#include <vector>
 
 //Computes the omnidirectional motion between two given poses
 class PosesPairInterpolator
@@ -42,9 +43,9 @@ private:
     double m_startTime; //time istant from which we start interpolating
     double m_endTime;   //time horizon after which we end the computation
 public:
-    PosesPairInterpolator(UnicycleState &startPose, UnicycleState &nextPose, 
-                          const double &maxVelocity, const double &maxLateralVelocity, const double &maxAngVelocity, double &timeIncrement,
-                          double &startTime);
+    PosesPairInterpolator(UnicycleState startPose, UnicycleState nextPose, 
+                          const double maxVelocity, const double maxLateralVelocity, const double maxAngVelocity, double timeIncrement,
+                          double startTime);
     ~PosesPairInterpolator();
     struct PoseStamped
     {
@@ -53,8 +54,8 @@ public:
     };
     bool computeMotionParameters();
     bool ETA_Computation();
-    std::vector<PoseStamped> shimController();
-    std::vector<PoseStamped> interpolate();
+    std::vector<PoseStamped> shimController(PosesPairInterpolator::PoseStamped startPose);
+    std::vector<PoseStamped> interpolate(PosesPairInterpolator::PoseStamped startPose);
 };
 
 

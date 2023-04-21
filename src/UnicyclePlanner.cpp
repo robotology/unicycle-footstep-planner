@@ -1088,7 +1088,7 @@ bool UnicyclePlanner::interpolateNewStepsFromPath(std::shared_ptr< FootPrint > l
     }
 
     std::vector<UnicycleState> navigationPath = m_inputPath;    //input set externally fromm another method to m_inputPath
-    std::vector<UnicyclePlanner::PoseStamped> interpolatedPath;   //output of the integration
+    std::vector<PosesPairInterpolator::PoseStamped> interpolatedPath;   //output of the integration
 
     m_initTime = initTime;
     m_endTime = endTime;
@@ -1159,17 +1159,18 @@ bool UnicyclePlanner::interpolateNewStepsFromPath(std::shared_ptr< FootPrint > l
         m_startLeft = true;
         return true;
     }
-
+    std::cout << "interpolatedPath = interpolatePath(navigationPath, maxVelocity, maxLateralVelocity, maxAngVelocity);" << std::endl;
     //Interpolation of the given path
     interpolatedPath = interpolatePath(navigationPath, maxVelocity, maxLateralVelocity, maxAngVelocity);
     //now we have everything on the interpolatedPath. Both time and poses for the whole time horizon
-
+    std::cout << "interpolatedPath.size() = " << interpolatedPath.size() << std::endl;
     //Reset variables
     t = m_initTime;
     tOptim = -1.0;
     //EVALUATION LOOP
     for (auto it = interpolatedPath.begin(); it != interpolatedPath.end(); ++it){
-
+        std::cout << "EVALUATION LOOP: Pose time: "<< it->time << " X: " << it->pose.position(0) 
+        << " Y: " << it->pose.position(1) << " Angle: " << it->pose.angle << std::endl;
         t = it->time;
         deltaTime = t - prevStep.impactTime;
 
@@ -1192,7 +1193,7 @@ bool UnicyclePlanner::interpolateNewStepsFromPath(std::shared_ptr< FootPrint > l
 
                         auto bestMatch = std::find_if(interpolatedPath.begin(),
                                                       interpolatedPath.end(),
-                                                      [&tOptim] (PoseStamped pS) {return (pS.time == tOptim);});
+                                                      [&tOptim] (PosesPairInterpolator::PoseStamped pS) {return (pS.time == tOptim);});
 
                         if(!swingFoot->addStepFromUnicycle(bestMatch->pose, tOptim)){
                             std::cout << "Error while inserting new step." << std::endl;
@@ -1249,7 +1250,8 @@ bool UnicyclePlanner::interpolateNewStepsFromPath(std::shared_ptr< FootPrint > l
                     }
 
                 } else { //if ((deltaTime > m_maxTime) || (t == m_endTime)) //here I need to find the best solution
-
+                    std::cout << "EVALUATING Pose time: "<< interpolatedPath.back().time << " X: " << interpolatedPath.back().pose.position(0) 
+                    << " Y: " << interpolatedPath.back().pose.position(1) << " Angle: " << interpolatedPath.back().pose.angle << std::endl;
                     if(!get_rPl(unicycleState, rPl)){
                         std::cerr << "Error while retrieving the relative position from right to left." << std::endl;
                         return false;
@@ -1276,6 +1278,10 @@ bool UnicyclePlanner::interpolateNewStepsFromPath(std::shared_ptr< FootPrint > l
                             std::cout << "Error while evaluating the cost function." << std::endl;
                             return false;
                         }
+
+                        std::cout<< "Evaluating best match: tOptim: " << tOptim << " minCost: " << minCost << 
+                        " optimalState X: " << unicycleState.position(0) << " optimalState Y: " << unicycleState.position(1) << 
+                        " optimalState Th: " << unicycleState.angle << std::endl;
 
                         if ((tOptim < 0) || (cost <= minCost)){ //no other feasible point has been found yet
                             tOptim = t;
@@ -1305,7 +1311,7 @@ bool UnicyclePlanner::interpolateNewStepsFromPath(std::shared_ptr< FootPrint > l
 
         auto bestMatch = std::find_if(interpolatedPath.begin(),
                                       interpolatedPath.end(),
-                                      [=] (PoseStamped pS) {return (pS.time == m_endTime);});
+                                      [=] (PosesPairInterpolator::PoseStamped pS) {return (pS.time == m_endTime);});
 
         if(!addTerminalStep(bestMatch->pose)){
             std::cout << "Error while adding the terminal step." << std::endl;
@@ -1340,6 +1346,22 @@ bool UnicyclePlanner::interpolateNewStepsFromPath(std::shared_ptr< FootPrint > l
         }
 
     }
+
+    std::cout << "Passing from: numberOfStepsLeft = " << numberOfStepsLeft << " to " << leftFoot->numberOfSteps() << " and " << 
+    "Passing from: numberOfStepsRight = " << numberOfStepsRight << " to " << rightFoot->numberOfSteps() << std::endl;
+    std::cout << "LEFT STEPS" << std::endl;
+    for (auto step : leftFoot->getSteps()){
+        std::cerr << "Position "<< step.position.toString() << std::endl;
+        std::cerr << "Angle "<< iDynTree::rad2deg(step.angle) << std::endl;
+        std::cerr << "Time  "<< step.impactTime << std::endl;
+    }
+    std::cout << std::endl << "RIGHT STEPS" << std::endl;
+    for (auto step : rightFoot->getSteps()){
+        std::cerr << "Position "<< step.position.toString() << std::endl;
+        std::cerr << "Angle "<< iDynTree::rad2deg(step.angle) << std::endl;
+        std::cerr << "Time  "<< step.impactTime << std::endl;
+    }
+
     return true;
 }
 
@@ -1381,6 +1403,7 @@ bool UnicyclePlanner::setInputPath (std::vector<UnicycleState> input)
     return true;
 }
 
+/*
 std::vector<UnicyclePlanner::PoseStamped> UnicyclePlanner::interpolatePath(std::vector<UnicycleState> &navigationPath, 
                                         const double maxVelocity, 
                                         const double maxLateralVelocity, 
@@ -1546,4 +1569,50 @@ std::vector<UnicyclePlanner::PoseStamped> UnicyclePlanner::interpolatePath(std::
         }
     }
     return interpolatedPath;
+}*/
+
+std::vector<PosesPairInterpolator::PoseStamped> UnicyclePlanner::interpolatePath(std::vector<UnicycleState> &navigationPath, 
+                                        const double maxVelocity, 
+                                        const double maxLateralVelocity, 
+                                        const double maxAngVelocity)
+{
+    std::vector<PosesPairInterpolator::PoseStamped> outputPath;   //output of the interpolation
+    double prevTime = m_initTime;   //latest time istant of a pose in the path. It is initialized from the starting time, then will grow for each pose integrated
+    PosesPairInterpolator::PoseStamped initialPS {navigationPath[0], prevTime};
+    outputPath.push_back(initialPS);  //the first pose of the path
+
+    for (size_t i = 0; i < navigationPath.size() - 1; ++i)
+    {
+        std::cout << "pairInterpolator" << std::endl;
+        PosesPairInterpolator pairInterpolator(navigationPath[i], navigationPath[i+1], maxVelocity, maxLateralVelocity, maxAngVelocity, m_dT, prevTime);
+        std::cout << "computeMotionParameters" << std::endl;
+        if(!pairInterpolator.computeMotionParameters())
+        {
+            return outputPath;
+        }
+        std::cout << "ETA_Computation" << std::endl;
+        if(!pairInterpolator.ETA_Computation())
+        {
+            return outputPath;
+        }
+        std::cout << "shimController" << std::endl;
+        std::vector<PosesPairInterpolator::PoseStamped> shimPart = pairInterpolator.shimController(outputPath.back());
+        if(!shimPart.empty())
+        {
+            //append the part to the path
+            outputPath.insert(outputPath.end(), shimPart.begin(), shimPart.end());
+        }
+        std::cout << "interpolationPart" << std::endl;
+        std::vector<PosesPairInterpolator::PoseStamped> interpolationPart = pairInterpolator.interpolate(outputPath.back());
+        //append
+        outputPath.insert(outputPath.end(), interpolationPart.begin(), interpolationPart.end());
+        prevTime = interpolationPart.back().time;   //keep track of the latest time istant
+        //check if we have passed the maximum time horizon
+        if (prevTime >= m_endTime)
+        {
+            break;  //exit for loop
+        }
+    }
+
+    return outputPath;
 }

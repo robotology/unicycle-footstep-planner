@@ -6,11 +6,11 @@
  */
 
 #include "PosesPairInterpolator.h"
+#include <iostream>
 
-
-PosesPairInterpolator::PosesPairInterpolator(UnicycleState &startPose, UnicycleState &nextPose, 
-                          const double &maxVelocity, const double &maxLateralVelocity, const double &maxAngVelocity, double &timeIncrement,
-                          double &startTime)
+PosesPairInterpolator::PosesPairInterpolator(UnicycleState startPose, UnicycleState nextPose, 
+                          const double maxVelocity, const double maxLateralVelocity, const double maxAngVelocity, double timeIncrement,
+                          double startTime)
 {   
     m_maxVelocity = maxVelocity;
     m_maxLateralVelocity = maxLateralVelocity;
@@ -105,9 +105,10 @@ bool PosesPairInterpolator::ETA_Computation()
     return true;
 }
 
-std::vector<PosesPairInterpolator::PoseStamped> PosesPairInterpolator::shimController()
+std::vector<PosesPairInterpolator::PoseStamped> PosesPairInterpolator::shimController(PosesPairInterpolator::PoseStamped startPose)
 {
     std::vector<PoseStamped> interpolatedSegment;   //output of the interpolation of the ShimController
+    interpolatedSegment.push_back(startPose);
     //SHIM CONTROLLER. rotation BEFORE linear movement if I have a too big deltaPosesAngle.
     // The robot will rotate in-place until the extra agle will be compensated, then it will roto-translate to the next pose.
     if (m_angularETA > m_linearETA)     
@@ -138,6 +139,9 @@ std::vector<PosesPairInterpolator::PoseStamped> PosesPairInterpolator::shimContr
             //save the pose
             PoseStamped ps {shimState, m_time};
             interpolatedSegment.push_back(ps);
+            std::cout << "Pose time: "<< interpolatedSegment.back().time << " X: " << interpolatedSegment.back().pose.position(0) 
+            << " Y: " << interpolatedSegment.back().pose.position(1) << " Angle: " << interpolatedSegment.back().pose.angle << std::endl;
+            
         }
         //now we have m_angularETA <= m_linearETA
         //so we add the missing time to m_linearETA and subtract it to m_angularETA
@@ -148,15 +152,18 @@ std::vector<PosesPairInterpolator::PoseStamped> PosesPairInterpolator::shimContr
     return interpolatedSegment;
 }
 
-std::vector<PosesPairInterpolator::PoseStamped> PosesPairInterpolator::interpolate()
+std::vector<PosesPairInterpolator::PoseStamped> PosesPairInterpolator::interpolate(PosesPairInterpolator::PoseStamped startPose)
 {
+    std::cout << "PosesPairInterpolator::interpolate()" << std::endl;
     std::vector<PosesPairInterpolator::PoseStamped> interpolatedSegment;   //output
+    interpolatedSegment.push_back(startPose);
     double iterationEndTime = m_startTime + m_linearETA;    //add the time elapsed for all the previous poses in the path and the initial time (m_startTime)
 
     //interpolate between two path poses
     double sweptAngle = 0; //the cumulative angle which is being swept after each iter
     double missingAngle = m_angularETA * m_maxAngVelocity;    //angle missing to achieve the desired orientation of m_nextPose
-        
+    std::cout << "while loop" << std::endl;
+
     while (m_time < iterationEndTime)
     {
         //compute the next interpolated point
@@ -194,6 +201,8 @@ std::vector<PosesPairInterpolator::PoseStamped> PosesPairInterpolator::interpola
         //save the pose
         PoseStamped ps {nextState, m_time};
         interpolatedSegment.push_back(ps);
+        std::cout << "Pose time: "<< interpolatedSegment.back().time << " X: " << interpolatedSegment.back().pose.position(0) 
+        << " Y: " << interpolatedSegment.back().pose.position(1) << " Angle: " << interpolatedSegment.back().pose.angle << std::endl;
     }
     return interpolatedSegment;
 }
