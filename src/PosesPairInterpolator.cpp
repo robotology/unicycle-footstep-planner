@@ -100,7 +100,7 @@ bool PosesPairInterpolator::ETA_Computation()
         deltaPosesAngle = std::abs(deltaPosesAngle - 2* M_PI);
     }
     m_angularETA = deltaPosesAngle / m_maxAngVelocity;   //Time required for moving from theta_i to theta_i+1
-
+    std::cout << "[ETA_Computation] m_linearETA: " << m_linearETA << " m_angularETA: " << m_angularETA << std::endl;
     m_ETAsComputed = true;
     return true;
 }
@@ -108,7 +108,7 @@ bool PosesPairInterpolator::ETA_Computation()
 std::vector<PosesPairInterpolator::PoseStamped> PosesPairInterpolator::shimController(PosesPairInterpolator::PoseStamped startPose)
 {
     std::vector<PoseStamped> interpolatedSegment;   //output of the interpolation of the ShimController
-    interpolatedSegment.push_back(startPose);
+    m_time = startPose.time;    //initialize the moment from which start the 
     //SHIM CONTROLLER. rotation BEFORE linear movement if I have a too big deltaPosesAngle.
     // The robot will rotate in-place until the extra agle will be compensated, then it will roto-translate to the next pose.
     if (m_angularETA > m_linearETA)     
@@ -125,7 +125,15 @@ std::vector<PosesPairInterpolator::PoseStamped> PosesPairInterpolator::shimContr
         {
             m_time += m_dT;
             shimTime += m_dT;
-            shimState.angle = interpolatedSegment.back().pose.angle + m_localVersors(2) * m_maxAngVelocity * m_dT;   
+            if (interpolatedSegment.empty())
+            {
+                shimState.angle = startPose.pose.angle + m_localVersors(2) * m_maxAngVelocity * m_dT;
+            }
+            else
+            {
+                shimState.angle = interpolatedSegment.back().pose.angle + m_localVersors(2) * m_maxAngVelocity * m_dT;
+            }
+
             //deal with angle periodicity
             if (shimState.angle > M_PI) //overshoot in the positive domain
             {
@@ -147,8 +155,9 @@ std::vector<PosesPairInterpolator::PoseStamped> PosesPairInterpolator::shimContr
         //so we add the missing time to m_linearETA and subtract it to m_angularETA
         m_linearETA += shimTime;
         m_angularETA -= shimTime;
+        std::cout << "[shimController] m_linearETA: " << m_linearETA << " m_angularETA: " << m_angularETA << std::endl;
     }
-         
+
     return interpolatedSegment;
 }
 
@@ -156,9 +165,7 @@ std::vector<PosesPairInterpolator::PoseStamped> PosesPairInterpolator::interpola
 {
     std::cout << "PosesPairInterpolator::interpolate()" << std::endl;
     std::vector<PosesPairInterpolator::PoseStamped> interpolatedSegment;   //output
-    interpolatedSegment.push_back(startPose);
     double iterationEndTime = m_startTime + m_linearETA;    //add the time elapsed for all the previous poses in the path and the initial time (m_startTime)
-
     //interpolate between two path poses
     double sweptAngle = 0; //the cumulative angle which is being swept after each iter
     double missingAngle = m_angularETA * m_maxAngVelocity;    //angle missing to achieve the desired orientation of m_nextPose
@@ -178,16 +185,26 @@ std::vector<PosesPairInterpolator::PoseStamped> PosesPairInterpolator::interpola
         }
         else
         {
-            //starting from the previous pose in the path, I add the increment on each motion component
-            nextState.position(0) = interpolatedSegment.back().pose.position(0) + m_localVersors(0) * m_dT * (m_linearSpeed * m_cos_theta);    //the first part of the equation computes the number of iteration of dT passed untill this time istant.
-                                                                                                                                //the second part is the x component of the maximum speed
-            nextState.position(1) = interpolatedSegment.back().pose.position(1) + m_localVersors(1) * m_dT * (m_linearSpeed * m_sin_theta);
-            
             double angleIncrement = m_dT * m_maxAngVelocity;
-            double next_angle = interpolatedSegment.back().pose.angle + m_localVersors(2) * angleIncrement;
+            double next_angle = 0;
+            if (interpolatedSegment.empty())
+            {
+                nextState.position(0) = startPose.pose.position(0) + m_localVersors(0) * m_dT * (m_linearSpeed * m_cos_theta);    //the first part of the equation computes the number of iteration of dT passed untill this time istant.
+                                                                                                                                  //the second part is the x component of the maximum speed
+                nextState.position(1) = startPose.pose.position(1) + m_localVersors(1) * m_dT * (m_linearSpeed * m_sin_theta);
+                next_angle = startPose.pose.angle + m_localVersors(2) * angleIncrement;
+            }
+            else
+            {
+                //starting from the previous pose in the path, I add the increment on each motion component
+                nextState.position(0) = interpolatedSegment.back().pose.position(0) + m_localVersors(0) * m_dT * (m_linearSpeed * m_cos_theta);    //the first part of the equation computes the number of iteration of dT passed untill this time istant.
+                                                                                                                                    //the second part is the x component of the maximum speed
+                nextState.position(1) = interpolatedSegment.back().pose.position(1) + m_localVersors(1) * m_dT * (m_linearSpeed * m_sin_theta);
+                next_angle = interpolatedSegment.back().pose.angle + m_localVersors(2) * angleIncrement;
+            }
             sweptAngle += angleIncrement;
-            
-            //overshoot check
+
+            //angle overshoot check
             if (sweptAngle >= missingAngle)
             {
                 nextState.angle = m_nextPose.angle;

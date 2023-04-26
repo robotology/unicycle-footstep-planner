@@ -1607,6 +1607,7 @@ std::vector<PosesPairInterpolator::PoseStamped> UnicyclePlanner::interpolatePath
         //append
         outputPath.insert(outputPath.end(), interpolationPart.begin(), interpolationPart.end());
         prevTime = interpolationPart.back().time;   //keep track of the latest time istant
+        std::cout << "prevTime: " << prevTime << std::endl;
         //check if we have passed the maximum time horizon
         if (prevTime >= m_endTime)
         {
