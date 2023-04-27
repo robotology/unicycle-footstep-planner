@@ -36,10 +36,10 @@ bool PosesPairInterpolator::computeMotionParameters()
 {
     if (m_motionParamComputed)
     {
-        //
+        //already computed, no need to repeat
         return true;
     }
-    //Let's assume a linear uniform motion between two consecutive path poses at constant speed.
+    //Let's assume a linear uniform motion between two consecutive path poses at constant (maximum) speed.
     m_distance = std::sqrt(pow(m_nextPose.position(0) - m_startPose.position(0), 2) +
                            pow(m_nextPose.position(1) - m_startPose.position(1), 2) 
                            );
@@ -86,16 +86,19 @@ bool PosesPairInterpolator::ETA_Computation()
     //Initial checks
     if (!m_motionParamComputed)
     {
+        //need to compute the motion parameters first!
+        std::cout << "[PosesPairInterpolator::ETA_Computation] Motion Parameters not computed. Call PosesPairInterpolator::computeMotionParameters() first" << std::endl;
         return false;
     }
     if (m_ETAsComputed)
     {
+        //already computed, no need to repeat
         return true;
     }
     //Computation
     m_linearETA = m_distance / m_linearSpeed;  //Time required for moving from (x_i, y_i) to (x_i+1, y_i+1)
     double deltaPosesAngle = std::abs(m_nextPose.angle - m_startPose.angle); //orientation difference between two consecutive path poses
-    if (deltaPosesAngle >= M_PI)    //take into account angle periodicity (-pi, pi]
+    if (deltaPosesAngle >= M_PI)    //takes into account angle periodicity (-pi, pi]
     {
         deltaPosesAngle = std::abs(deltaPosesAngle - 2* M_PI);
     }
@@ -112,14 +115,13 @@ std::vector<PosesPairInterpolator::PoseStamped> PosesPairInterpolator::shimContr
     // The robot will rotate in-place until the extra agle will be compensated, then it will roto-translate to the next pose.
     if (m_angularETA > m_linearETA)     
     {
-        double shimTime = 0;    //counter of how much time we take to complete the shim rotation
-        //compute the interpolation for the rotation of the unicycle on itself untill is aligned and add this time to the elapsedTimeLinear
-        //update also t for each dT passed
-        int missingIterations = std::ceil((m_angularETA - m_linearETA) / m_dT) ;    //round up by excess to calculate the number of iterations for fulling the time gap
+        double shimTime = 0;    //time counter of how much time we have taken to complete the shim rotation
+        int missingIterations = std::ceil((m_angularETA - m_linearETA) / m_dT) ;    //round up by excess to calculate the number of iterations for filling the time gap
         UnicycleState shimState;
         //Rotation in place -> X and Y don't change
         shimState.position(0) = m_startPose.position(0);
         shimState.position(1) = m_startPose.position(1);
+
         for (size_t i = 1; i < missingIterations; i++)
         {
             m_time += m_dT;
@@ -148,7 +150,7 @@ std::vector<PosesPairInterpolator::PoseStamped> PosesPairInterpolator::shimContr
             interpolatedSegment.push_back(ps);            
         }
         //now we have m_angularETA <= m_linearETA
-        //so we add the missing time to m_linearETA and subtract it to m_angularETA
+        //so we add the missing time (shimTime) to m_linearETA and subtract it to m_angularETA
         m_linearETA += shimTime;
         m_angularETA -= shimTime;
     }
@@ -159,14 +161,14 @@ std::vector<PosesPairInterpolator::PoseStamped> PosesPairInterpolator::shimContr
 std::vector<PosesPairInterpolator::PoseStamped> PosesPairInterpolator::interpolate(PosesPairInterpolator::PoseStamped startPose)
 {
     std::vector<PosesPairInterpolator::PoseStamped> interpolatedSegment;   //output
-    double iterationEndTime = m_startTime + m_linearETA;    //add the time elapsed for all the previous poses in the path and the initial time (m_startTime)
-    //interpolate between two path poses
-    double sweptAngle = 0; //the cumulative angle which is being swept after each iter
+    double iterationEndTime = m_startTime + m_linearETA;    //time when the interpolation is expected to end
+    double sweptAngle = 0;      //the cumulative angle which is being swept after each iteration
     double missingAngle = m_angularETA * m_maxAngVelocity;    //angle missing to achieve the desired orientation of m_nextPose
 
+    //we sample each state for each time step up until the final time
+    //the motion is a roto-translation at constant speed (both angular and linear are set at the maximum speed allowed)
     while (m_time < iterationEndTime)
     {
-        //compute the next interpolated point
         m_time += m_dT;
         UnicycleState nextState;
         //check if we overshoot the final pose -> then we clamp it
