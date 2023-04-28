@@ -7,6 +7,7 @@
 
 #include "PosesPairInterpolator.h"
 #include <iostream>
+#include <cmath>
 
 PosesPairInterpolator::PosesPairInterpolator(UnicycleState startPose, UnicycleState nextPose, 
                           const double maxVelocity, const double maxLateralVelocity, const double maxAngVelocity, double timeIncrement,
