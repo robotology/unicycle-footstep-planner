@@ -180,6 +180,7 @@ bool UnicycleNavigationController::setNavigationPath(std::vector<UnicycleState>&
 {
     m_navigationPath = path;    // TODO - add consistency check
     m_poseIndex = 1;    //reset pose index
+    computeMotionParameters();
     return true;
 }
 
