@@ -116,3 +116,11 @@ bool UnicycleBaseController::setSlowWhenSidewaysFactor(double slowWhenSidewaysFa
     m_slowWhenSidewaysFactor = slowWhenSidewaysFactor;
     return true;
 }
+
+bool UnicycleBaseController::getSaturationLimits(double& maxForwardSpeed, double& maxLateralVelocity, double& maxAngularVelocity)
+{
+    maxForwardSpeed = m_maxLinearVelocity;
+    maxLateralVelocity = m_maxLinearVelocity * m_slowWhenSidewaysFactor;
+    maxAngularVelocity = m_maxAngularVelocity;
+    return true;
+}

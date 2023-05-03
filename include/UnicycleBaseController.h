@@ -43,6 +43,7 @@ public:
 
     bool setSlowWhenSidewaysFactor(double slowWhenSidewaysFactor); //if >0 the unicycle progress more slowly when going backward. It is a multiplicative gain
 
+    bool getSaturationLimits(double& maxForwardSpeed, double& maxLateralVelocity, double& maxAngularVelocity);
 };
 
 #endif // UNICYCLEBASECONTROLLER_H
