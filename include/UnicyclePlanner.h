@@ -13,6 +13,7 @@
 #include "ControlledUnicycle.h"
 #include "PersonFollowingController.h"
 #include "UnicycleDirectController.h"
+#include "UnicycleNavigationController.h"
 #include "UnicycleOptimization.h"
 #include "UnicycleFoot.h"
 #include "FreeSpaceEllipse.h"
@@ -31,12 +32,14 @@ enum class FreeSpaceEllipseMethod
 enum class UnicycleController
 {
     PERSON_FOLLOWING,
-    DIRECT
+    DIRECT,
+    NAVIGATION
 };
 
 class UnicyclePlanner {
     std::shared_ptr<PersonFollowingController> m_personFollowingController;
     std::shared_ptr<UnicycleDirectController> m_directController;
+    std::shared_ptr<UnicycleNavigationController> m_navigationController;
     //UnicycleController m_currentController; moved to public
     std::shared_ptr<ControlledUnicycle> m_unicycle;
     iDynTree::optimalcontrol::integrators::ForwardEuler m_integrator;
