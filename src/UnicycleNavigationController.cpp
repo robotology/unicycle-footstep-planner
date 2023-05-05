@@ -7,6 +7,7 @@
 
 #include <UnicycleNavigationController.h>
 #include <cmath>
+#include <iostream>
 
 UnicycleNavigationController::UnicycleNavigationController()
     : m_desiredForwardSpeed(0.0)
@@ -21,7 +22,12 @@ UnicycleNavigationController::UnicycleNavigationController()
 
 bool UnicycleNavigationController::doUnicycleControl(double &forwardSpeed, double &angularVelocity, double &lateralVelocity)
 {
-
+    if (m_newPathReceived)
+    {
+        computeMotionParameters();
+        m_newPathReceived = false;
+    }
+    
     if (m_time < m_deactivationEndTime)
     {
         forwardSpeed = 0.0;
@@ -46,10 +52,14 @@ bool UnicycleNavigationController::doUnicycleControl(double &forwardSpeed, doubl
         }
         
         ++m_poseIndex;
-        computeMotionParameters();
+        std::cout << "Switching to pose: " << m_poseIndex << std::endl;
+        computeMotionParameters();  //each time I switch the next pose I have to recompute the motion
     }
     
     computeDesiredVelocities();
+
+    std::cout << "Setting Velocities: time: "<< m_time <<" m_desiredForwardSpeedX: " << m_desiredForwardSpeed << " m_desiredLateralVelocity: " << m_desiredLateralVelocity << " m_desiredAngularVelocity: " << m_desiredAngularVelocity  << std::endl;
+
 
     forwardSpeed = m_desiredForwardSpeed;
     angularVelocity = m_desiredAngularVelocity;
@@ -63,6 +73,7 @@ bool UnicycleNavigationController::setUnicycleStateFeedback(const double t, cons
     m_time = t;
     m_state.position = position;
     m_state.angle = angle;
+    std::cout << "Unicycle postion FEEDBACK: time: "<< t <<" X: " << position(0) << " Y: " << position(1) << " Angle: " << angle  << std::endl;
     return true;
 }
 
@@ -76,13 +87,32 @@ bool UnicycleNavigationController::computeMotionParameters()
     double slopeAngle = atan(slope);
     m_cosSlope = std::abs(cos(slopeAngle));    
     m_sinSlope = std::abs(sin(slopeAngle)); 
-
-    //if both poses aligned to the path = 0, if both poses aligned but not with the path > 0, if both poses perpendicular to the path = 1
-    double proprotionFactor = (std::abs(slopeAngle - m_navigationPath[m_poseIndex].angle) + 
-                               std::abs(slopeAngle - m_navigationPath[m_poseIndex - 1].angle)) 
-                               / 2 / M_PI_2 ;
-    //linear speed module that moves from pose i to pose i+1
-    m_linearSpeed = std::abs(1 - proprotionFactor) * m_maxVelocity + proprotionFactor * m_maxLateralVelocity;
+    const double computationalThreshold = 1E-6;
+    //Project each speed component on the segment connecting the two poses
+    //Let's find the linear speed on the connection of the two path poses
+    double x_projectionSpeed, y_projectionSpeed;
+    if (m_cosSlope < computationalThreshold)
+    {   //this means that we are moving purely sideways
+        m_linearSpeed = m_maxLateralVelocity;    
+    }
+    else if (m_sinSlope < computationalThreshold)
+    {   //this means that we are moving purely in front
+        m_linearSpeed = m_maxVelocity;
+    }
+    else
+    {   //diagonal motion
+        x_projectionSpeed = m_maxVelocity/m_cosSlope;
+        y_projectionSpeed = m_maxLateralVelocity/m_sinSlope;
+        //The smallest saturation gives the limit to the module of the linear speed
+        if (x_projectionSpeed < y_projectionSpeed)
+        {
+            m_linearSpeed = x_projectionSpeed;
+        }
+        else
+        {
+            m_linearSpeed = y_projectionSpeed;
+        }
+    }
 
     double angleDifference = m_navigationPath[m_poseIndex].angle - m_navigationPath[m_poseIndex - 1].angle;
     //ETAs computation
@@ -102,7 +132,7 @@ bool UnicycleNavigationController::computeMotionParameters()
     {
         m_ETA = m_linearETA + m_time;
     }
-
+    std::cout << "Computed ETAs - m_linearETA: " << m_linearETA << " angularETA: " << angularETA << " m_ETA: " << m_ETA << " Linear Speed: " << m_linearSpeed << std::endl;
     return true;
 }
 
@@ -111,9 +141,10 @@ bool UnicycleNavigationController::computeDesiredVelocities()
     iDynTree::Vector3 localVersors;
     //calculate the direction, on the plane, of the two consecutive poses on its components (x,y,theta)
     //(x, y, theta) direction sign components / versors
+    //should we use the current state? TODO
     localVersors(0) = (m_navigationPath[m_poseIndex].position(0) - m_navigationPath[m_poseIndex - 1].position(0) >= 0) ? 1 : -1;
     localVersors(1) = (m_navigationPath[m_poseIndex].position(1) - m_navigationPath[m_poseIndex - 1].position(1) >= 0) ? 1 : -1;
-    
+
     // angle difference from the 
     double relativeAngleDifference = m_navigationPath[m_poseIndex].angle - m_state.angle;
     //Since the angles vary between (-pi, pi]
@@ -141,6 +172,7 @@ bool UnicycleNavigationController::computeDesiredVelocities()
         absoluteAngleDifference = std::abs(absoluteAngleDifference - 2*M_PI);
     }
     double angularETA = absoluteAngleDifference / m_maxAngularVelocity;
+    
     if (angularETA > m_linearETA)   //Shim controller
     {
         //rotate in place
@@ -151,11 +183,28 @@ bool UnicycleNavigationController::computeDesiredVelocities()
     else
     {
         //roto-traslate
+        //TODO COMPENSATE FOR ROTATIONAL DRIFT
         m_desiredForwardSpeed = localVersors(0) * m_linearSpeed * m_cosSlope;
         m_desiredLateralVelocity = localVersors(1) * m_linearSpeed * m_sinSlope;
         m_desiredAngularVelocity = localVersors(2) * m_maxAngularVelocity;
+        //let's predict the next position, then compensate with the error of the desired position
+        //TODO
     }
-    
+
+    //clip velocities for small quantities, to avoid computational error accumulation/oscillations
+    //TODO - limits should be based on discrete time increment X speed
+    if (relativeAngleDifference<0.01)
+    {
+        m_desiredAngularVelocity = 0.0;
+    }
+    if (std::abs(m_desiredForwardSpeed) < 0.0001)
+    {
+        m_desiredForwardSpeed = 0.0;
+    }
+    if (std::abs(m_desiredLateralVelocity) < 0.0001)
+    {
+        m_desiredLateralVelocity = 0.0;
+    }
     return true;
 }
 
@@ -180,12 +229,13 @@ bool UnicycleNavigationController::setNavigationPath(std::vector<UnicycleState>&
 {
     m_navigationPath = path;    // TODO - add consistency check
     m_poseIndex = 1;    //reset pose index
-    computeMotionParameters();
+    m_newPathReceived = true;
     return true;
 }
 
 bool UnicycleNavigationController::setMaxVelocities(double & maxVelocity, double & maxLateralVelocity, double & maxAngularVelocity)
 {
+    std::cout << "Setting max velocities: maxVelocity: " << maxVelocity << " maxLateralVelocity: " << maxLateralVelocity << " maxAngularVelocity: " << maxAngularVelocity << std::endl;
     m_maxVelocity = maxVelocity;
     m_maxLateralVelocity = maxLateralVelocity;
     m_maxAngularVelocity = maxAngularVelocity;

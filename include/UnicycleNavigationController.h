@@ -18,6 +18,7 @@ private:
     double m_maxVelocity, m_maxLateralVelocity, m_maxAngularVelocity;   //saturation limits
     double m_desiredForwardSpeed, m_desiredAngularVelocity, m_desiredLateralVelocity;
     double m_time;
+    double m_dt = 0.01;
     double m_deactivationEndTime;
 
     std::vector<UnicycleState> m_navigationPath;
@@ -25,11 +26,13 @@ private:
     //
     int m_poseIndex;    //current next pose of the path yet to be reached
     double m_ETA;   //Time expected to reach the next pose in the path
+    bool m_newPathReceived;     //Flag expessing that a new path has been received
 
     //Motion Parameters
     double m_linearETA; //Relative Time needed to move in x, y
     double m_linearSpeed;   //Absolute speed on the segment connecting the two path poses
     double m_cosSlope, m_sinSlope;  //projection component of the conjunction of the two poses on the local frame
+    
 
     bool computeDesiredVelocities();
 
