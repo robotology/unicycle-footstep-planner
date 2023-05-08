@@ -84,9 +84,9 @@ bool UnicycleNavigationController::computeMotionParameters()
                            );   // faster than hypot but without overflow check
     double slope = (m_navigationPath[m_poseIndex].position(1) - m_navigationPath[m_poseIndex - 1].position(1)) / 
                    (m_navigationPath[m_poseIndex].position(0) - m_navigationPath[m_poseIndex - 1].position(0));
-    double slopeAngle = atan(slope);
-    m_cosSlope = std::abs(cos(slopeAngle));    
-    m_sinSlope = std::abs(sin(slopeAngle)); 
+    m_slopeAngle = atan(slope);
+    m_cosSlope = std::abs(cos(m_slopeAngle));    
+    m_sinSlope = std::abs(sin(m_slopeAngle)); 
     const double computationalThreshold = 1E-6;
     //Project each speed component on the segment connecting the two poses
     //Let's find the linear speed on the connection of the two path poses
@@ -184,9 +184,30 @@ bool UnicycleNavigationController::computeDesiredVelocities()
     {
         //roto-traslate
         //TODO COMPENSATE FOR ROTATIONAL DRIFT
-        m_desiredForwardSpeed = localVersors(0) * m_linearSpeed * m_cosSlope;
-        m_desiredLateralVelocity = localVersors(1) * m_linearSpeed * m_sinSlope;
-        m_desiredAngularVelocity = localVersors(2) * m_maxAngularVelocity;
+        if (relativeAngleDifference < 0.01)
+        {
+            m_desiredAngularVelocity = 0.0;
+            m_desiredForwardSpeed = localVersors(0) * m_linearSpeed * m_cosSlope;
+            m_desiredLateralVelocity = localVersors(1) * m_linearSpeed * m_sinSlope;
+        }
+        else
+        {
+            m_desiredAngularVelocity = localVersors(2) * m_maxAngularVelocity;      //w speed
+            double Vx_desired = localVersors(0) * m_linearSpeed * m_cosSlope;               //projection of the linear speed on its components
+            double Vy_desired = localVersors(1) * m_linearSpeed * m_sinSlope;
+            double dW = m_desiredAngularVelocity * m_dt;    //angle swept during an iteration
+            //std::cout << "Vx: " << Vx <<  " Vy: " << Vy << " dW: " << dW << std::endl;
+            //Compute directly in local frame
+            //m_desiredForwardSpeed = cos(m_slopeAngle - m_state.angle - dW) * (Vx_desired * cos(- dW) - Vy_desired * sin(- dW));
+            //m_desiredLateralVelocity = sin(m_slopeAngle - m_state.angle - dW) * (Vx_desired * sin(-dW) + Vy_desired * cos(-dW));
+            m_desiredForwardSpeed = Vx_desired;
+            m_desiredLateralVelocity = Vy_desired;
+            //double tmp_x = cos(m_slopeAngle - dW) * (Vx_desired * cos(- dW) - Vy_desired * sin(- dW));
+            //double tmp_y = sin(m_slopeAngle - dW) * (Vx_desired * sin(-dW) + Vy_desired * cos(-dW));
+            //Transform it in local frame
+            //m_desiredForwardSpeed = tmp_x * cos(-m_state.angle) - tmp_y * sin(-m_state.angle);
+            //m_desiredLateralVelocity = tmp_x * sin(-m_state.angle) + tmp_y * cos(-m_state.angle);
+        }
         //let's predict the next position, then compensate with the error of the desired position
         //TODO
     }
@@ -239,5 +260,12 @@ bool UnicycleNavigationController::setMaxVelocities(double & maxVelocity, double
     m_maxVelocity = maxVelocity;
     m_maxLateralVelocity = maxLateralVelocity;
     m_maxAngularVelocity = maxAngularVelocity;
+    return true;
+}
+
+bool UnicycleNavigationController::setTimeStep(double &dT)
+{
+    //TODO - add check
+    m_dt = dT;
     return true;
 }

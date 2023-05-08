@@ -409,6 +409,7 @@ UnicyclePlanner::UnicyclePlanner()
     , m_lateralVelocityConservaiveFactor(0.2)
 {
     m_unicycle->setController(m_personFollowingController);
+    m_unicycle->setNavigationMode(false);
     m_integrator.setMaximumStepSize(0.01);
     m_unicycleProblem.setMaxLength(0.20);
     m_unicycleProblem.setMinWidth(0.08);
@@ -842,6 +843,7 @@ bool UnicyclePlanner::computeNewSteps(std::shared_ptr< FootPrint > leftFoot, std
                 deltaTime -= pauseTime; //deltaTime is the duration of a step. We remove the time in which the robot is simply standing still, otherwise the following condition could be triggered.
                 std::cout << " delta time after pause: " << deltaTime << std::endl;
                 if ((deltaTime > m_maxTime) || (t == m_endTime)){ //If this condition is true, it means we just exited the feasible region for what concerns the time. Hence, we check if we found a feasible solutions
+                    std::cout << "Exited the feasible region for what concerns the time " << std::endl;
                     if (tOptim > 0){  //a feasible point has been found
 
                         if(!getIntegratorSolution(tOptim, unicycleState)){
@@ -924,6 +926,7 @@ bool UnicyclePlanner::computeNewSteps(std::shared_ptr< FootPrint > leftFoot, std
                             std::cerr << "Error while evaluating the cost function." << std::endl;
                             return false;
                         }
+                        std::cout << "Cost value of point: " << cost << std::endl;
 
                         if ((tOptim < 0) || (cost <= minCost)){ //no other feasible point has been found yet
                             tOptim = t;
@@ -1066,17 +1069,17 @@ bool UnicyclePlanner::setUnicycleController(UnicycleController controller)
     if (controller == UnicycleController::PERSON_FOLLOWING)
     {
         m_currentController = controller;
-        return m_unicycle->setController(m_personFollowingController);
+        return m_unicycle->setController(m_personFollowingController) && m_unicycle->setNavigationMode(false);
     }
     else if (controller == UnicycleController::DIRECT)
     {
         m_currentController = controller;
-        return m_unicycle->setController(m_directController);
+        return m_unicycle->setController(m_directController) && m_unicycle->setNavigationMode(false);
     }
     else if (controller == UnicycleController::NAVIGATION)
     {
         m_currentController = controller;
-        return m_unicycle->setController(m_navigationController);
+        return m_unicycle->setController(m_navigationController) && m_unicycle->setNavigationMode(true);
     }
 
     return false;

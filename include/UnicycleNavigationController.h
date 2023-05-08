@@ -29,9 +29,9 @@ private:
     bool m_newPathReceived;     //Flag expessing that a new path has been received
 
     //Motion Parameters
-    double m_linearETA; //Relative Time needed to move in x, y
+    double m_linearETA;     //Relative Time needed to move in x, y
     double m_linearSpeed;   //Absolute speed on the segment connecting the two path poses
-    double m_cosSlope, m_sinSlope;  //projection component of the conjunction of the two poses on the local frame
+    double m_cosSlope, m_sinSlope, m_slopeAngle;  //projection component of the conjunction of the two poses on the local frame
     
 
     bool computeDesiredVelocities();
@@ -55,6 +55,8 @@ public:
     bool setNavigationPath(std::vector<UnicycleState>& path);
 
     bool setMaxVelocities(double & maxVelocity, double & maxLateralVelocity, double & maxAngularVelocity);
+
+    bool setTimeStep(double &dT);
 
 };
 
