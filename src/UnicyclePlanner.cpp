@@ -409,7 +409,6 @@ UnicyclePlanner::UnicyclePlanner()
     , m_lateralVelocityConservaiveFactor(0.2)
 {
     m_unicycle->setController(m_personFollowingController);
-    m_unicycle->setNavigationMode(false);
     m_integrator.setMaximumStepSize(0.01);
     m_unicycleProblem.setMaxLength(0.20);
     m_unicycleProblem.setMinWidth(0.08);
@@ -1069,17 +1068,17 @@ bool UnicyclePlanner::setUnicycleController(UnicycleController controller)
     if (controller == UnicycleController::PERSON_FOLLOWING)
     {
         m_currentController = controller;
-        return m_unicycle->setController(m_personFollowingController) && m_unicycle->setNavigationMode(false);
+        return m_unicycle->setController(m_personFollowingController);
     }
     else if (controller == UnicycleController::DIRECT)
     {
         m_currentController = controller;
-        return m_unicycle->setController(m_directController) && m_unicycle->setNavigationMode(false);
+        return m_unicycle->setController(m_directController);
     }
     else if (controller == UnicycleController::NAVIGATION)
     {
         m_currentController = controller;
-        return m_unicycle->setController(m_navigationController) && m_unicycle->setNavigationMode(true);
+        return m_unicycle->setController(m_navigationController);
     }
 
     return false;

@@ -13,7 +13,6 @@
 ControlledUnicycle::ControlledUnicycle()
 :iDynTree::optimalcontrol::DynamicalSystem(3, 3)
 , m_controller_ptr(nullptr)
-, m_navigationMode(false)
 {
     m_initialState.resize(3);
     m_initialState.zero();
@@ -52,21 +51,10 @@ bool ControlledUnicycle::dynamics(const iDynTree::VectorDynSize &state, double t
     double theta = state(2);
     double c_theta = std::cos(theta);
     double s_theta = std::sin(theta);
-    if (m_navigationMode)
-    {
-        stateDynamics(0) = m_controllerOutput(0);
-        stateDynamics(1) = m_controllerOutput(2);
-        stateDynamics(2) = m_controllerOutput(1);
-    }
-    else
-    {
-        stateDynamics(0) = c_theta * m_controllerOutput(0) - s_theta * m_controllerOutput(2);
-        stateDynamics(1) = s_theta * m_controllerOutput(0) + c_theta * m_controllerOutput(2);
-        stateDynamics(2) = m_controllerOutput(1);
-    }
-    
-    
-    
+
+    stateDynamics(0) = c_theta * m_controllerOutput(0) - s_theta * m_controllerOutput(2);
+    stateDynamics(1) = s_theta * m_controllerOutput(0) + c_theta * m_controllerOutput(2);
+    stateDynamics(2) = m_controllerOutput(1);
 
     return true;
 }
@@ -93,11 +81,5 @@ bool ControlledUnicycle::setController(std::shared_ptr<iDynTree::optimalcontrol:
         return false;
     }
     m_controller_ptr = controller;
-    return true;
-}
-
-bool ControlledUnicycle::setNavigationMode(bool mode)
-{
-    m_navigationMode = mode;
     return true;
 }

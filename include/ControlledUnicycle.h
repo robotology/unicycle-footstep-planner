@@ -17,7 +17,6 @@
 class ControlledUnicycle : public iDynTree::optimalcontrol::DynamicalSystem{
     iDynTree::VectorDynSize m_controllerOutput, m_initialState;
     std::shared_ptr<iDynTree::optimalcontrol::Controller> m_controller_ptr;
-    bool m_navigationMode;
 public:
 
     ControlledUnicycle();
@@ -32,8 +31,7 @@ public:
     const iDynTree::VectorDynSize& initialState() const override;
 
     bool setController(std::shared_ptr<iDynTree::optimalcontrol::Controller> controller);
-
-    bool setNavigationMode(bool mode);
+    
 };
 
 
