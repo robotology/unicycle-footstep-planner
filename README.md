@@ -33,3 +33,8 @@ export DYLD_LIBRARY_PATH=$LD_LIBRARY_PATH:$UnicyclePlanner_DIR/lib
 
 ## Implementation
 <img src="https://user-images.githubusercontent.com/18591940/35742348-71071cb2-083a-11e8-97a7-3577d997df8f.gif">
+
+## Mantainers
+
+* Stefano Dafarra ([@S-Dafarra](https://github.com/S-Dafarra))
+* Giulio Romualdi ([@GiulioRomualdi](https://github.com/GiulioRomualdi))
