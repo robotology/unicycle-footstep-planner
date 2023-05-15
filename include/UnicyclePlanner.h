@@ -40,7 +40,7 @@ class UnicyclePlanner {
     std::shared_ptr<PersonFollowingController> m_personFollowingController;
     std::shared_ptr<UnicycleDirectController> m_directController;
     std::shared_ptr<UnicycleNavigationController> m_navigationController;
-    //UnicycleController m_currentController; moved to public
+    UnicycleController m_currentController;
     std::shared_ptr<ControlledUnicycle> m_unicycle;
     iDynTree::optimalcontrol::integrators::ForwardEuler m_integrator;
     UnicycleOptimization m_unicycleProblem;
@@ -48,9 +48,8 @@ class UnicyclePlanner {
     bool m_addTerminalStep, m_startLeft, m_resetStartingFoot, m_firstStep;
     FreeSpaceEllipseMethod m_freeSpaceMethod;
     double m_leftYawOffset, m_rightYawOffset;
-    double m_linearVelocityConservativeFactor, m_angularVelocityConservativeFactor, m_lateralVelocityConservaiveFactor;
+    double m_linearVelocityConservativeFactor, m_angularVelocityConservativeFactor;
     std::mutex m_mutex;
-    std::vector<UnicycleState> m_inputPath;
 
     std::shared_ptr<UnicycleFoot> m_left, m_right;
 
@@ -69,13 +68,7 @@ class UnicyclePlanner {
 
     bool addTerminalStep(const UnicycleState &lastUnicycleState);
 
-    bool checkConstraints(iDynTree::Vector2 rPl, double deltaAngle, double deltaTime, iDynTree::Vector2 newFootPosition, iDynTree::Vector2 prevStep);
-
-    std::vector<PosesPairInterpolator::PoseStamped> interpolatePath(std::vector<UnicycleState> &navigationPath, const double maxVelocity, const double maxLateralVelocity, const double maxAngVelocity);
-
 public:
-
-    UnicycleController m_currentController;
 
     UnicyclePlanner();
 
@@ -169,11 +162,8 @@ public:
 
     bool setUnicycleController(UnicycleController controller);
 
-    bool interpolateNewStepsFromPath(std::shared_ptr< FootPrint > leftFoot, std::shared_ptr< FootPrint > rightFoot, double initTime, double endTime);
-
     bool setInputPath (std::vector<UnicycleState> input);
 
-    bool setLateralVelocityConservaiveFactor(double lateralVelocityConservaiveFactor);
 };
 
 #endif // UNICYCLEPLANNER_H

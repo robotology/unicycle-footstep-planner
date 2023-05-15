@@ -34,8 +34,6 @@ public:
     double mergePointRatioBegin = 0.5;
     double mergePointRatioEnd = 0.5;
 
-    NavigationSetup navigationConfig{NavigationSetup::ManualMode};
-
     std::shared_ptr<FeetCubicSplineGenerator> feetSplineGenerator = nullptr;
     std::shared_ptr<FeetMinimumJerkGenerator> feetMinimumJerkGenerator = nullptr;
     std::shared_ptr<ZMPTrajectoryGenerator> zmpGenerator = nullptr;
@@ -387,19 +385,9 @@ bool UnicycleGenerator::generate(double initTime, double dT, double endTime)
     {
         std::lock_guard<std::mutex> guard(m_pimpl->mutex);
 
-        if (m_pimpl->navigationConfig == NavigationSetup::NavigationMode && m_pimpl->planner->m_currentController == UnicycleController::DIRECT)
-        {
-            if (!(m_pimpl->planner->interpolateNewStepsFromPath(m_pimpl->leftFootPrint, m_pimpl->rightFootPrint, initTime, endTime))) {
-                std::cerr << "[UnicycleGenerator::generate] Failed to interpolate new steps from path." << std::endl;
-                return false;
-            }
-        }
-        else
-        {
-            if (!(m_pimpl->planner->computeNewSteps(m_pimpl->leftFootPrint, m_pimpl->rightFootPrint, initTime, endTime))) {
-                std::cerr << "[UnicycleGenerator::generate] Failed to compute new steps." << std::endl;
-                return false;
-            }
+        if (!(m_pimpl->planner->computeNewSteps(m_pimpl->leftFootPrint, m_pimpl->rightFootPrint, initTime, endTime))) {
+            std::cerr << "[UnicycleGenerator::generate] Failed to compute new steps." << std::endl;
+            return false;
         }
     }
     return generateFromFootPrints(m_pimpl->leftFootPrint, m_pimpl->rightFootPrint, initTime, dT);
@@ -420,35 +408,11 @@ bool UnicycleGenerator::reGenerate(double initTime, double dT, double endTime)
             return false;
         }
 
-        if (m_pimpl->navigationConfig == NavigationSetup::ManualMode)
-        {
-            if (!(m_pimpl->planner->computeNewSteps(m_pimpl->leftFootPrint, m_pimpl->rightFootPrint, initTime, endTime))) {
-            std::cerr << "[UnicycleGenerator::reGenerate] Unicycle planner failed to compute new steps." << std::endl;
-            return false;
-            }
+        if (!(m_pimpl->planner->computeNewSteps(m_pimpl->leftFootPrint, m_pimpl->rightFootPrint, initTime, endTime))) {
+        std::cerr << "[UnicycleGenerator::reGenerate] Unicycle planner failed to compute new steps." << std::endl;
+        return false;
         }
-        else if (m_pimpl->navigationConfig == NavigationSetup::NavigationMode)
-        {
-            if (m_pimpl->planner->m_currentController == UnicycleController::PERSON_FOLLOWING)
-            {
-                if (!(m_pimpl->planner->computeNewSteps(m_pimpl->leftFootPrint, m_pimpl->rightFootPrint, initTime, endTime))) {
-                std::cerr << "[UnicycleGenerator::reGenerate] Unicycle planner failed to compute new steps." << std::endl;
-                return false;
-                }
-            }
-            else if (m_pimpl->planner->m_currentController == UnicycleController::DIRECT)
-            {
-                if (!(m_pimpl->planner->interpolateNewStepsFromPath(m_pimpl->leftFootPrint, m_pimpl->rightFootPrint, initTime, endTime))) {
-                std::cerr << "[UnicycleGenerator::reGenerate] Unicycle planner failed to compute new steps (interpolateNewStepsFromPath)." << std::endl;
-                return false;
-                }
-            }
-            else
-            {
-                std::cerr << "[UnicycleGenerator::reGenerate] Controller not configured." << std::endl;
-                return false;
-            }
-        }
+        
     }
 
     return generateFromFootPrints(m_pimpl->leftFootPrint, m_pimpl->rightFootPrint, initTime, dT);
@@ -486,34 +450,10 @@ bool UnicycleGenerator::reGenerate(double initTime, double dT, double endTime, c
             return false;
         }
 
-        if (m_pimpl->navigationConfig == NavigationSetup::ManualMode)
-        {
-            if (!(m_pimpl->planner->computeNewSteps(m_pimpl->leftFootPrint, m_pimpl->rightFootPrint, initTime, endTime))) {
-            std::cerr << "[UnicycleGenerator::reGenerate] Unicycle planner failed to compute new steps." << std::endl;
-            return false;
-            }
-        }
-        else if (m_pimpl->navigationConfig == NavigationSetup::NavigationMode)
-        {
-            if (m_pimpl->planner->m_currentController == UnicycleController::PERSON_FOLLOWING)
-            {
-                if (!(m_pimpl->planner->computeNewSteps(m_pimpl->leftFootPrint, m_pimpl->rightFootPrint, initTime, endTime))) {
-                std::cerr << "[UnicycleGenerator::reGenerate] Unicycle planner failed to compute new steps." << std::endl;
-                return false;
-                }
-            }
-            else if (m_pimpl->planner->m_currentController == UnicycleController::DIRECT)
-            {
-                if (!(m_pimpl->planner->interpolateNewStepsFromPath(m_pimpl->leftFootPrint, m_pimpl->rightFootPrint, initTime, endTime))) {
-                std::cerr << "[UnicycleGenerator::reGenerate] Unicycle planner failed to compute new steps (interpolateNewStepsFromPath)." << std::endl;
-                return false;
-                }
-            }
-            else
-            {
-                std::cerr << "[UnicycleGenerator::reGenerate] Controller not configured." << std::endl;
-                return false;
-            }
+
+        if (!(m_pimpl->planner->computeNewSteps(m_pimpl->leftFootPrint, m_pimpl->rightFootPrint, initTime, endTime))) {
+        std::cerr << "[UnicycleGenerator::reGenerate] Unicycle planner failed to compute new steps." << std::endl;
+        return false;
         }
 
         if (m_pimpl->zmpGenerator) {
@@ -555,34 +495,9 @@ bool UnicycleGenerator::reGenerate(double initTime, double dT, double endTime, b
             return false;
         }
 
-        if (m_pimpl->navigationConfig == NavigationSetup::ManualMode)
-        {
-            if (!(m_pimpl->planner->computeNewSteps(m_pimpl->leftFootPrint, m_pimpl->rightFootPrint, initTime, endTime))) {
-            std::cerr << "[UnicycleGenerator::reGenerate] Unicycle planner failed to compute new steps." << std::endl;
-            return false;
-            }
-        }
-        else if (m_pimpl->navigationConfig == NavigationSetup::NavigationMode)
-        {
-            if (m_pimpl->planner->m_currentController == UnicycleController::PERSON_FOLLOWING)
-            {
-                if (!(m_pimpl->planner->computeNewSteps(m_pimpl->leftFootPrint, m_pimpl->rightFootPrint, initTime, endTime))) {
-                std::cerr << "[UnicycleGenerator::reGenerate] Unicycle planner failed to compute new steps." << std::endl;
-                return false;
-                }
-            }
-            else if (m_pimpl->planner->m_currentController == UnicycleController::DIRECT)
-            {
-                if (!(m_pimpl->planner->interpolateNewStepsFromPath(m_pimpl->leftFootPrint, m_pimpl->rightFootPrint, initTime, endTime))) {
-                std::cerr << "[UnicycleGenerator::reGenerate] Unicycle planner failed to compute new steps (interpolateNewStepsFromPath)." << std::endl;
-                return false;
-                }
-            }
-            else
-            {
-                std::cerr << "[UnicycleGenerator::reGenerate] Controller not configured." << std::endl;
-                return false;
-            }
+        if (!(m_pimpl->planner->computeNewSteps(m_pimpl->leftFootPrint, m_pimpl->rightFootPrint, initTime, endTime))) {
+        std::cerr << "[UnicycleGenerator::reGenerate] Unicycle planner failed to compute new steps." << std::endl;
+        return false;
         }
 
         if (m_pimpl->zmpGenerator) {
@@ -625,34 +540,9 @@ bool UnicycleGenerator::reGenerate(double initTime, double dT, double endTime, c
             return false;
         }
 
-        if (m_pimpl->navigationConfig == NavigationSetup::ManualMode)
-        {
-            if (!(m_pimpl->planner->computeNewSteps(m_pimpl->leftFootPrint, m_pimpl->rightFootPrint, initTime, endTime))) {
-            std::cerr << "[UnicycleGenerator::reGenerate] Unicycle planner failed to compute new steps." << std::endl;
-            return false;
-            }
-        }
-        else if (m_pimpl->navigationConfig == NavigationSetup::NavigationMode)
-        {
-            if (m_pimpl->planner->m_currentController == UnicycleController::PERSON_FOLLOWING)
-            {
-                if (!(m_pimpl->planner->computeNewSteps(m_pimpl->leftFootPrint, m_pimpl->rightFootPrint, initTime, endTime))) {
-                std::cerr << "[UnicycleGenerator::reGenerate] Unicycle planner failed to compute new steps." << std::endl;
-                return false;
-                }
-            }
-            else if (m_pimpl->planner->m_currentController == UnicycleController::DIRECT)
-            {
-                if (!(m_pimpl->planner->interpolateNewStepsFromPath(m_pimpl->leftFootPrint, m_pimpl->rightFootPrint, initTime, endTime))) {
-                std::cerr << "[UnicycleGenerator::reGenerate] Unicycle planner failed to compute new steps (interpolateNewStepsFromPath)." << std::endl;
-                return false;
-                }
-            }
-            else
-            {
-                std::cerr << "[UnicycleGenerator::reGenerate] Controller not configured." << std::endl;
-                return false;
-            }
+        if (!(m_pimpl->planner->computeNewSteps(m_pimpl->leftFootPrint, m_pimpl->rightFootPrint, initTime, endTime))) {
+        std::cerr << "[UnicycleGenerator::reGenerate] Unicycle planner failed to compute new steps." << std::endl;
+        return false;
         }
 
         if (m_pimpl->zmpGenerator) {
@@ -840,24 +730,6 @@ std::shared_ptr<DCMTrajectoryGenerator> UnicycleGenerator::addDCMTrajectoryGener
     }
 
     return m_pimpl->dcmTrajectoryGenerator;
-}
-
-bool UnicycleGenerator::setPlannerMode(std::string mode)
-{
-    if (mode == "navigation")
-    {
-        m_pimpl->navigationConfig = NavigationSetup::NavigationMode;
-    }
-    else if (mode == "manual")
-    {
-        m_pimpl->navigationConfig = NavigationSetup::ManualMode;
-    }
-    else
-    {
-        std::cerr << "[UnicycleGenerator::setNavigationPath] Unable to set planner mode: " << mode << std::endl;
-        return false;
-    }
-    return true;
 }
 
 bool UnicycleGenerator::setNavigationPath(std::vector<UnicycleState> path)

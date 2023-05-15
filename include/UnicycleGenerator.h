@@ -20,7 +20,6 @@
 /**
  * Enumerator for tracking the possible states of the navigation setup: manual -> classic original footstep planner for joystick use ; navigation -> path following based
  */
-enum class NavigationSetup {ManualMode, NavigationMode, NotConfigured};
 
 class UnicycleGenerator {
     class UnicycleGeneratorImplementation;
@@ -63,8 +62,6 @@ public:
     void setPauseActive(bool isPauseActive);
 
     void disablePauseConditions();
-
-    bool setPlannerMode(std::string mode);
 
     bool setNavigationPath(std::vector<UnicycleState> path);
 
