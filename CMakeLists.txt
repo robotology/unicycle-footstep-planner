@@ -69,7 +69,6 @@ set(UCPLANNER_SOURCES src/ControlledUnicycle.cpp
                       src/DCMTrajectoryGeneratorHelper.cpp
                       src/FeetMinimumJerkGenerator.cpp
                       src/FreeSpaceEllipse.cpp
-                      src/PosesPairInterpolator.cpp
                       src/UnicycleNavigationController.cpp)
 
 set(UCPLANNER_HEADERS include/ControlledUnicycle.h
@@ -90,7 +89,6 @@ set(UCPLANNER_HEADERS include/ControlledUnicycle.h
                       include/DCMTrajectoryGeneratorHelper.h
                       include/FeetMinimumJerkGenerator.h
                       include/FreeSpaceEllipse.h
-                      include/PosesPairInterpolator.h
                       include/UnicycleState.h
                       include/UnicycleNavigationController.h)
 

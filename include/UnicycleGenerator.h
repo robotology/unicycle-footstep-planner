@@ -17,10 +17,6 @@
 #include <DCMTrajectoryGenerator.h>
 #include <memory>
 
-/**
- * Enumerator for tracking the possible states of the navigation setup: manual -> classic original footstep planner for joystick use ; navigation -> path following based
- */
-
 class UnicycleGenerator {
     class UnicycleGeneratorImplementation;
    std::unique_ptr<UnicycleGeneratorImplementation> m_pimpl;
