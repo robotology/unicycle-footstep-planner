@@ -36,8 +36,6 @@ private:
 
     bool computeDesiredVelocities();
 
-    bool computeMotionParameters();
-
 public:
 
     UnicycleNavigationController();
