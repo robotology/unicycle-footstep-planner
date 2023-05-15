@@ -17,7 +17,6 @@
 #include "UnicycleOptimization.h"
 #include "UnicycleFoot.h"
 #include "FreeSpaceEllipse.h"
-#include "PosesPairInterpolator.h"
 #include <iDynTree/Integrators/ForwardEuler.h>
 #include <memory>
 #include <mutex>
