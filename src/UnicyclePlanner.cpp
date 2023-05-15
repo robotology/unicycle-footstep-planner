@@ -983,6 +983,7 @@ bool UnicyclePlanner::computeNewSteps(std::shared_ptr< FootPrint > leftFoot, std
         }
 
     }
+    
     return true;
 }
 

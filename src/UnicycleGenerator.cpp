@@ -34,6 +34,7 @@ public:
     double mergePointRatioBegin = 0.5;
     double mergePointRatioEnd = 0.5;
 
+
     std::shared_ptr<FeetCubicSplineGenerator> feetSplineGenerator = nullptr;
     std::shared_ptr<FeetMinimumJerkGenerator> feetMinimumJerkGenerator = nullptr;
     std::shared_ptr<ZMPTrajectoryGenerator> zmpGenerator = nullptr;
@@ -409,8 +410,8 @@ bool UnicycleGenerator::reGenerate(double initTime, double dT, double endTime)
         }
 
         if (!(m_pimpl->planner->computeNewSteps(m_pimpl->leftFootPrint, m_pimpl->rightFootPrint, initTime, endTime))) {
-        std::cerr << "[UnicycleGenerator::reGenerate] Unicycle planner failed to compute new steps." << std::endl;
-        return false;
+            std::cerr << "[UnicycleGenerator::reGenerate] Unicycle planner failed to compute new steps." << std::endl;
+            return false;
         }
         
     }
@@ -422,6 +423,7 @@ bool UnicycleGenerator::reGenerate(double initTime, double dT, double endTime, c
 {
     {
         std::lock_guard<std::mutex> guard(m_pimpl->mutex);
+
         Step previousL, previousR;
 
         if (!(m_pimpl->leftFootPrint->keepOnlyPresentStep(initTime))){
@@ -450,10 +452,9 @@ bool UnicycleGenerator::reGenerate(double initTime, double dT, double endTime, c
             return false;
         }
 
-
         if (!(m_pimpl->planner->computeNewSteps(m_pimpl->leftFootPrint, m_pimpl->rightFootPrint, initTime, endTime))) {
-        std::cerr << "[UnicycleGenerator::reGenerate] Unicycle planner failed to compute new steps." << std::endl;
-        return false;
+            std::cerr << "[UnicycleGenerator::reGenerate] Unicycle planner failed to compute new steps." << std::endl;
+            return false;
         }
 
         if (m_pimpl->zmpGenerator) {
@@ -496,8 +497,8 @@ bool UnicycleGenerator::reGenerate(double initTime, double dT, double endTime, b
         }
 
         if (!(m_pimpl->planner->computeNewSteps(m_pimpl->leftFootPrint, m_pimpl->rightFootPrint, initTime, endTime))) {
-        std::cerr << "[UnicycleGenerator::reGenerate] Unicycle planner failed to compute new steps." << std::endl;
-        return false;
+            std::cerr << "[UnicycleGenerator::reGenerate] Unicycle planner failed to compute new steps." << std::endl;
+            return false;
         }
 
         if (m_pimpl->zmpGenerator) {
@@ -541,8 +542,8 @@ bool UnicycleGenerator::reGenerate(double initTime, double dT, double endTime, c
         }
 
         if (!(m_pimpl->planner->computeNewSteps(m_pimpl->leftFootPrint, m_pimpl->rightFootPrint, initTime, endTime))) {
-        std::cerr << "[UnicycleGenerator::reGenerate] Unicycle planner failed to compute new steps." << std::endl;
-        return false;
+            std::cerr << "[UnicycleGenerator::reGenerate] Unicycle planner failed to compute new steps." << std::endl;
+            return false;
         }
 
         if (m_pimpl->zmpGenerator) {
