@@ -413,7 +413,6 @@ bool UnicycleGenerator::reGenerate(double initTime, double dT, double endTime)
             std::cerr << "[UnicycleGenerator::reGenerate] Unicycle planner failed to compute new steps." << std::endl;
             return false;
         }
-        
     }
 
     return generateFromFootPrints(m_pimpl->leftFootPrint, m_pimpl->rightFootPrint, initTime, dT);
@@ -472,6 +471,7 @@ bool UnicycleGenerator::reGenerate(double initTime, double dT, double endTime, b
 {
     {
         std::lock_guard<std::mutex> guard(m_pimpl->mutex);
+
         Step previousL, previousR, correctedStep;
 
         if (!(m_pimpl->leftFootPrint->keepOnlyPresentStep(initTime))){
@@ -516,6 +516,7 @@ bool UnicycleGenerator::reGenerate(double initTime, double dT, double endTime, c
 {
     {
         std::lock_guard<std::mutex> guard(m_pimpl->mutex);
+
         Step previousL, previousR;
 
         if (!(m_pimpl->leftFootPrint->keepOnlyPresentStep(initTime))){
