@@ -56,6 +56,7 @@ bool UnicycleNavigationController::computeDesiredVelocities()
     //Next Pose Check: has to be done only when we don't have a new path received, otherwise we will skip the first pose
     if (!m_newPathReceived)
     {
+        //Skip this if I have just received a new path
         if (m_ETA < m_dt)
         {
             if (m_poseIndex == m_navigationPath.size() - 1)
@@ -82,39 +83,40 @@ bool UnicycleNavigationController::computeDesiredVelocities()
                            );   // faster than hypot but without overflow check
     double slope = (m_navigationPath[m_poseIndex].position(1) - m_state.position(1)) / 
                    (m_navigationPath[m_poseIndex].position(0) - m_state.position(0));
-    m_slopeAngle = atan(slope);
-    m_cosSlope = std::abs(cos(m_slopeAngle));    
-    m_sinSlope = std::abs(sin(m_slopeAngle)); 
-    const double computationalThreshold = 1E-6;
+    double slopeAngle = atan(slope);            //projection component of the conjunction of the two poses on the local frame
+    double cosSlope = std::abs(cos(slopeAngle));    
+    double sinSlope = std::abs(sin(slopeAngle)); 
+
     //Project each speed component on the segment connecting the two poses
     //Let's find the linear speed on the connection of the two path poses
     double x_projectionSpeed, y_projectionSpeed;
-    if (m_cosSlope < computationalThreshold)
+    double linearSpeed = 0.0;     //Absolute speed on the segment connecting the two path poses
+    if (cosSlope < m_zeroTolerance)
     {   //this means that we are moving purely sideways
-        m_linearSpeed = m_maxLateralVelocity;    
+        linearSpeed = m_maxLateralVelocity;    
     }
-    else if (m_sinSlope < computationalThreshold)
+    else if (sinSlope < m_zeroTolerance)
     {   //this means that we are moving purely in front
-        m_linearSpeed = m_maxVelocity;
+        linearSpeed = m_maxVelocity;
     }
     else
     {   //diagonal motion
-        x_projectionSpeed = m_maxVelocity/m_cosSlope;
-        y_projectionSpeed = m_maxLateralVelocity/m_sinSlope;
+        x_projectionSpeed = m_maxVelocity/cosSlope;
+        y_projectionSpeed = m_maxLateralVelocity/sinSlope;
         //The smallest saturation gives the limit to the module of the linear speed
         if (x_projectionSpeed < y_projectionSpeed)
         {
-            m_linearSpeed = x_projectionSpeed;
+            linearSpeed = x_projectionSpeed;
         }
         else
         {
-            m_linearSpeed = y_projectionSpeed;
+            linearSpeed = y_projectionSpeed;
         }
     }
 
     double angleDifference = m_navigationPath[m_poseIndex].angle - m_state.angle;
     //ETAs computation
-    m_linearETA = distance / m_linearSpeed;  //Time required for moving from (x_i, y_i) to (x_i+1, y_i+1)
+    double linearETA = distance / linearSpeed;  //Time required for moving from (x_i, y_i) to (x_i+1, y_i+1)
     double absoluteAngleDifference = std::abs(angleDifference); 
     if (absoluteAngleDifference >= M_PI)
     {
@@ -122,19 +124,18 @@ bool UnicycleNavigationController::computeDesiredVelocities()
     }
     double angularETA = absoluteAngleDifference / m_maxAngularVelocity;   //Time required for moving from theta_i to theta_i+1
 
-    if (angularETA > m_linearETA)
+    if (angularETA > linearETA)
     {
         m_ETA = angularETA;
     }
     else
     {
-        m_ETA = m_linearETA;
+        m_ETA = linearETA;
     }
     
     iDynTree::Vector3 localVersors;
     //calculate the direction, on the plane, of the two consecutive poses on its components (x,y,theta)
     //(x, y, theta) direction sign components / versors
-    //should we use the current state? TODO
     localVersors(0) = (m_navigationPath[m_poseIndex].position(0) - m_state.position(0) >= 0) ? 1 : -1;
     localVersors(1) = (m_navigationPath[m_poseIndex].position(1) - m_state.position(1) >= 0) ? 1 : -1;
     
@@ -159,7 +160,7 @@ bool UnicycleNavigationController::computeDesiredVelocities()
     //Speed computation 
     angularETA = absoluteAngleDifference / m_maxAngularVelocity;
     
-    if (angularETA > m_linearETA)   //Shim controller
+    if (angularETA > linearETA)   //Shim controller
     {
         //rotate in place
         m_desiredForwardSpeed = 0.0;
@@ -169,8 +170,8 @@ bool UnicycleNavigationController::computeDesiredVelocities()
     else
     {
         m_desiredAngularVelocity = localVersors(2) * m_maxAngularVelocity;      //w speed
-        double Vx_desired = localVersors(0) * m_linearSpeed * m_cosSlope;               //projection of the linear speed on its components
-        double Vy_desired = localVersors(1) * m_linearSpeed * m_sinSlope;
+        double Vx_desired = localVersors(0) * linearSpeed * cosSlope;               //projection of the linear speed on its components
+        double Vy_desired = localVersors(1) * linearSpeed * sinSlope;
         double angle = m_state.angle;
         //Tranform into local frame (inverse of rotation matrix in state dynamics)
         m_desiredForwardSpeed = Vx_desired * cos(angle) + Vy_desired * sin(angle);
@@ -187,16 +188,16 @@ bool UnicycleNavigationController::computeDesiredVelocities()
     }
 
     //clip velocities for small quantities, to avoid computational error accumulation/oscillations
-    //TODO - limits should be based on discrete time increment X speed
+    //TODO - check if limits should be based on discrete time increment for speed clipping
     //if (relativeAngleDifference< 1E-8)
     //{
     //    m_desiredAngularVelocity = 0.0;
     //}
-    if (std::abs(m_desiredForwardSpeed) < 1E-6)
+    if (std::abs(m_desiredForwardSpeed) < m_zeroTolerance)
     {
         m_desiredForwardSpeed = 0.0;
     }
-    if (std::abs(m_desiredLateralVelocity) < 1E-6)
+    if (std::abs(m_desiredLateralVelocity) < m_zeroTolerance)
     {
         m_desiredLateralVelocity = 0.0;
     }
@@ -212,7 +213,7 @@ void UnicycleNavigationController::setConstantControl(double forwardSpeed, doubl
 
 void UnicycleNavigationController::setInactiveUntil(double endTime)
 {
-    m_deactivationEndTime = endTime;
+    m_deactivationEndTime = std::abs(endTime);
 }
 
 double UnicycleNavigationController::getDesiredLateralVelocity() const
@@ -222,23 +223,48 @@ double UnicycleNavigationController::getDesiredLateralVelocity() const
 
 bool UnicycleNavigationController::setNavigationPath(std::vector<UnicycleState>& path)
 {
-    m_navigationPath = path;    // TODO - add consistency check
+    if (path.size() < 2)
+    {
+        std::cerr << "[UnicycleNavigationController::setNavigationPath] The path should have at least two poses in it" << std::endl;
+        return false;
+    }
+    
+    m_navigationPath = path;
     m_poseIndex = 1;            //reset pose index
-    m_newPathReceived = true;   
+    m_newPathReceived = true;
     return true;
 }
 
 bool UnicycleNavigationController::setMaxVelocities(double & maxVelocity, double & maxLateralVelocity, double & maxAngularVelocity)
 {
-    m_maxVelocity = maxVelocity;
-    m_maxLateralVelocity = maxLateralVelocity;
-    m_maxAngularVelocity = maxAngularVelocity;
+    if (maxVelocity < 0 || maxLateralVelocity < 0 || maxAngularVelocity < 0)
+    {
+        std::cout << "[WARNING] Setting negative Max Velocities, their module will be used instead." << std::endl;
+    }
+    if (std::abs(maxVelocity) < m_zeroTolerance || std::abs(maxLateralVelocity) < m_zeroTolerance || std::abs(maxAngularVelocity) < m_zeroTolerance)
+    {
+        std::cerr << "[UnicycleNavigationController::setMaxVelocities] Setting Max Velocities too small" << std::endl;
+        return false;
+    }
+    
+    m_maxVelocity = std::abs(maxVelocity);
+    m_maxLateralVelocity = std::abs(maxLateralVelocity);
+    m_maxAngularVelocity = std::abs(maxAngularVelocity);
     return true;
 }
 
 bool UnicycleNavigationController::setTimeStep(double &dT)
 {
-    //TODO - add check
-    m_dt = dT;
+    if (dT < 0)
+    {
+        std::cout << "[WARNING] Setting negative Time Step, the module will be used instead." << std::endl;
+    }
+    if (dT == 0)
+    {
+        std::cerr << "[UnicycleNavigationController::setTimeStep] Setting Time Step to 0 is forbidden. It will create an endless loop" << std::endl;
+        return false;
+    }
+    
+    m_dt = std::abs(dT);
     return true;
 }

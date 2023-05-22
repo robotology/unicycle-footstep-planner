@@ -15,24 +15,19 @@
 class UnicycleNavigationController : public UnicycleBaseController
 {
 private:
-    double m_maxVelocity, m_maxLateralVelocity, m_maxAngularVelocity;   //saturation limits
-    double m_desiredForwardSpeed, m_desiredAngularVelocity, m_desiredLateralVelocity;
-    double m_time;
-    double m_dt = 0.01;
-    double m_deactivationEndTime;
+    const double m_zeroTolerance = 1E-6;                                                //numerical threshold below which we clip velocities to zero
+    double m_maxVelocity, m_maxLateralVelocity, m_maxAngularVelocity;                   //saturation limits
+    double m_desiredForwardSpeed, m_desiredAngularVelocity, m_desiredLateralVelocity;   //controller outputs
+    double m_time;                                                                      //current time of the unicycle feedback
+    double m_dt = 0.01;                                                                 //time step of the integrator
+    double m_deactivationEndTime;                                                       //initial time that the unicycle stays still
 
-    std::vector<UnicycleState> m_navigationPath;
-    UnicycleState m_state;
-    //
-    int m_poseIndex;    //current next pose of the path yet to be reached
-    double m_ETA;   //Time expected to reach the next pose in the path
+    std::vector<UnicycleState> m_navigationPath;    //input path from the navigation stack
+    UnicycleState m_state;                          //state of the unicycle from feedback
+
+    int m_poseIndex;            //current next pose of the path that has to be reached
+    double m_ETA;               //Time expected to reach the next pose in the path
     bool m_newPathReceived;     //Flag expessing that a new path has been received
-
-    //Motion Parameters
-    double m_linearETA;     //Relative Time needed to move in x, y
-    double m_linearSpeed;   //Absolute speed on the segment connecting the two path poses
-    double m_cosSlope, m_sinSlope, m_slopeAngle;  //projection component of the conjunction of the two poses on the local frame
-    
 
     bool computeDesiredVelocities();
 
