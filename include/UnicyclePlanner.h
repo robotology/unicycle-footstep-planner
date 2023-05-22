@@ -7,9 +7,7 @@
 
 #ifndef UNICYCLEPLANNER_H
 #define UNICYCLEPLANNER_H
-//Fix for compiling math constants
-#define _USE_MATH_DEFINES
-#include <math.h>
+
 #include "ControlledUnicycle.h"
 #include "PersonFollowingController.h"
 #include "UnicycleDirectController.h"
@@ -43,7 +41,7 @@ class UnicyclePlanner {
     std::shared_ptr<ControlledUnicycle> m_unicycle;
     iDynTree::optimalcontrol::integrators::ForwardEuler m_integrator;
     UnicycleOptimization m_unicycleProblem;
-    double m_initTime, m_endTime, m_minTime, m_maxTime, m_nominalTime, m_dT, m_minAngle, m_nominalWidth, m_maxLength, m_maxLengthBackward, m_minLength, m_maxAngle, m_minWidth;
+    double m_initTime, m_endTime, m_minTime, m_maxTime, m_nominalTime, m_dT, m_minAngle, m_nominalWidth, m_maxLength, m_maxLengthBackward, m_minLength, m_maxAngle;
     bool m_addTerminalStep, m_startLeft, m_resetStartingFoot, m_firstStep;
     FreeSpaceEllipseMethod m_freeSpaceMethod;
     double m_leftYawOffset, m_rightYawOffset;

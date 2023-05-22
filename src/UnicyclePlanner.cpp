@@ -698,7 +698,6 @@ bool UnicyclePlanner::setWidthSetting(double minWidth, double nominalWidth)
     if (!m_unicycleProblem.setMinWidth(minWidth)){
         return false;
     }
-    m_minWidth = minWidth;
     m_nominalWidth = nominalWidth;
 
     return true;
