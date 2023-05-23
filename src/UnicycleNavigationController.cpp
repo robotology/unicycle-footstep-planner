@@ -44,9 +44,22 @@ bool UnicycleNavigationController::doUnicycleControl(double &forwardSpeed, doubl
 
 bool UnicycleNavigationController::setUnicycleStateFeedback(const double t, const iDynTree::Vector2 & position, double angle)
 {
+    std::cout << "Feedback: T: " << t << " X: " << position(0) << " Y: " << position(1) << " angle: " << angle << std::endl;
     m_time = t;
     m_state.position = position;
-    m_state.angle = angle;
+    //Handle angle periodicity for continuous angles bigger than 2pi
+    if (angle > (2*M_PI))
+    {
+        m_state.angle = angle - ((int)(angle/(2*M_PI))) * 2*M_PI; //use int truncation
+    }
+    else if(angle < -(2*M_PI))
+    {
+        m_state.angle = angle + ((int)(angle/(2*M_PI))) * 2*M_PI;
+    }
+    else
+    {
+        m_state.angle = angle;
+    }
     return true;
 }
 
@@ -83,26 +96,27 @@ bool UnicycleNavigationController::computeDesiredVelocities()
                            );   // faster than hypot but without overflow check
     double slope = (m_navigationPath[m_poseIndex].position(1) - m_state.position(1)) / 
                    (m_navigationPath[m_poseIndex].position(0) - m_state.position(0));
-    double slopeAngle = atan(slope);            //projection component of the conjunction of the two poses on the local frame
-    double cosSlope = std::abs(cos(slopeAngle));    
-    double sinSlope = std::abs(sin(slopeAngle)); 
+    double slopeAngle = atan2(m_navigationPath[m_poseIndex].position(1) - m_state.position(1), m_navigationPath[m_poseIndex].position(0) - m_state.position(0));            //projection component of the conjunction of the two poses on the local frame
+    std::cout << "atan: " << atan(slope) << " atan2: " << slopeAngle << std::endl;
+    double cosSlope = (cos(slopeAngle));    
+    double sinSlope = (sin(slopeAngle)); 
 
     //Project each speed component on the segment connecting the two poses
     //Let's find the linear speed on the connection of the two path poses
     double x_projectionSpeed, y_projectionSpeed;
     double linearSpeed = 0.0;     //Absolute speed on the segment connecting the two path poses
-    if (cosSlope < m_zeroTolerance)
+    if (std::abs(cosSlope) < m_zeroTolerance)
     {   //this means that we are moving purely sideways
         linearSpeed = m_maxLateralVelocity;    
     }
-    else if (sinSlope < m_zeroTolerance)
+    else if (std::abs(sinSlope) < m_zeroTolerance)
     {   //this means that we are moving purely in front
         linearSpeed = m_maxVelocity;
     }
     else
     {   //diagonal motion
-        x_projectionSpeed = m_maxVelocity/cosSlope;
-        y_projectionSpeed = m_maxLateralVelocity/sinSlope;
+        x_projectionSpeed = m_maxVelocity/std::abs(cosSlope);
+        y_projectionSpeed = m_maxLateralVelocity/std::abs(sinSlope);
         //The smallest saturation gives the limit to the module of the linear speed
         if (x_projectionSpeed < y_projectionSpeed)
         {
@@ -136,8 +150,8 @@ bool UnicycleNavigationController::computeDesiredVelocities()
     iDynTree::Vector3 localVersors;
     //calculate the direction, on the plane, of the two consecutive poses on its components (x,y,theta)
     //(x, y, theta) direction sign components / versors
-    localVersors(0) = (m_navigationPath[m_poseIndex].position(0) - m_state.position(0) >= 0) ? 1 : -1;
-    localVersors(1) = (m_navigationPath[m_poseIndex].position(1) - m_state.position(1) >= 0) ? 1 : -1;
+    //localVersors(0) = (m_navigationPath[m_poseIndex].position(0) - m_state.position(0) >= 0) ? 1 : -1;
+    //localVersors(1) = (m_navigationPath[m_poseIndex].position(1) - m_state.position(1) >= 0) ? 1 : -1;
     
     //Since the angles vary between (-pi, pi]
     if (angleDifference > M_PI)
@@ -170,8 +184,8 @@ bool UnicycleNavigationController::computeDesiredVelocities()
     else
     {
         m_desiredAngularVelocity = localVersors(2) * m_maxAngularVelocity;      //w speed
-        double Vx_desired = localVersors(0) * linearSpeed * cosSlope;               //projection of the linear speed on its components
-        double Vy_desired = localVersors(1) * linearSpeed * sinSlope;
+        double Vx_desired = linearSpeed * cosSlope;               //projection of the linear speed on its components
+        double Vy_desired = linearSpeed * sinSlope;
         double angle = m_state.angle;
         //Tranform into local frame (inverse of rotation matrix in state dynamics)
         m_desiredForwardSpeed = Vx_desired * cos(angle) + Vy_desired * sin(angle);
