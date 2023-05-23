@@ -823,32 +823,25 @@ bool UnicyclePlanner::computeNewSteps(std::shared_ptr< FootPrint > leftFoot, std
     } else {
         timeOffset = 0;
     }
-    std::cout << "EVALUATION LOOP" << std::endl;
-    std::cout << "Eval params: m_minTime: " << m_minTime << " m_nominalTime " << m_nominalTime << " m_maxTime " << m_maxTime << std::endl;
+
     while (t <= m_endTime){
         deltaTime = t - prevStep.impactTime;
-        std::cout << " delta time: " << deltaTime << std::endl;
+
         if(!getIntegratorSolution(t, unicycleState)){
             return false;
         }
-        std::cout << " Time: " << t << " Integrated state - x: " << unicycleState.position(0) << " y: " << unicycleState.position(1) << " angle: " << unicycleState.angle << std::endl;
 
         deltaAngle = std::abs(stanceFoot->getUnicycleAngleFromStep(prevStep) - unicycleState.angle);
 
         if ((deltaTime >= m_minTime) && (t > (m_initTime + timeOffset))){ //The step is not too fast
             if (!(swingFoot->isTinyStep(unicycleState))){ //the step is not tiny
                 deltaTime -= pauseTime; //deltaTime is the duration of a step. We remove the time in which the robot is simply standing still, otherwise the following condition could be triggered.
-                std::cout << " delta time after pause: " << deltaTime << std::endl;
                 if ((deltaTime > m_maxTime) || (t == m_endTime)){ //If this condition is true, it means we just exited the feasible region for what concerns the time. Hence, we check if we found a feasible solutions
-                    std::cout << "Exited the feasible region for what concerns the time " << std::endl;
                     if (tOptim > 0){  //a feasible point has been found
 
                         if(!getIntegratorSolution(tOptim, unicycleState)){
                             return false;
                         }
-
-                        std::cout << "\n FOUND BEST MATCH AT Time: " << t << " Integrated state - x: " << unicycleState.position(0) << " y: " << unicycleState.position(1) << " angle: " << unicycleState.angle << std::endl;
-
 
                         if(!swingFoot->addStepFromUnicycle(unicycleState, tOptim)){
                             std::cerr << "Error while inserting new step." << std::endl;
@@ -980,7 +973,6 @@ bool UnicyclePlanner::computeNewSteps(std::shared_ptr< FootPrint > leftFoot, std
                 m_startLeft = true;
             }
         }
-
     }
 
     return true;
@@ -1085,7 +1077,10 @@ bool UnicyclePlanner::setUnicycleController(UnicycleController controller)
 
 bool UnicyclePlanner::setInputPath (std::vector<UnicycleState> input)
 {
-    //TODO add sanity check
-    m_navigationController->setNavigationPath(input);
+    if(!m_navigationController->setNavigationPath(input))
+    {
+        std::cerr << "[UnicyclePlanner::setInputPath] Unable to set navigation path" << std::endl;
+        return false;
+    }
     return true;
 }
