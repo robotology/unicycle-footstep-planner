@@ -33,8 +33,6 @@ bool UnicycleNavigationController::doUnicycleControl(double &forwardSpeed, doubl
     
     computeDesiredVelocities();
 
-    //std::cout << "Setting Velocities: time: "<< m_time <<" m_desiredForwardSpeedX: " << m_desiredForwardSpeed << " m_desiredLateralVelocity: " << m_desiredLateralVelocity << " m_desiredAngularVelocity: " << m_desiredAngularVelocity  << std::endl;
-
     forwardSpeed = m_desiredForwardSpeed;
     angularVelocity = m_desiredAngularVelocity;
     lateralVelocity = m_desiredLateralVelocity;
@@ -44,13 +42,12 @@ bool UnicycleNavigationController::doUnicycleControl(double &forwardSpeed, doubl
 
 bool UnicycleNavigationController::setUnicycleStateFeedback(const double t, const iDynTree::Vector2 & position, double angle)
 {
-    std::cout << "Feedback: T: " << t << " X: " << position(0) << " Y: " << position(1) << " angle: " << angle << std::endl;
     m_time = t;
     m_state.position = position;
     //Handle angle periodicity for continuous angles bigger than 2pi
     if (angle > (2*M_PI))
     {
-        m_state.angle = angle - ((int)(angle/(2*M_PI))) * 2*M_PI; //use int truncation
+        m_state.angle = angle - ((int)(angle/(2*M_PI))) * 2*M_PI; //use int truncation towards 0
     }
     else if(angle < -(2*M_PI))
     {
@@ -63,7 +60,6 @@ bool UnicycleNavigationController::setUnicycleStateFeedback(const double t, cons
     return true;
 }
 
-//TODO pass in the output variables by reference
 bool UnicycleNavigationController::computeDesiredVelocities()
 {
     //Next Pose Check: has to be done only when we don't have a new path received, otherwise we will skip the first pose
@@ -77,12 +73,9 @@ bool UnicycleNavigationController::computeDesiredVelocities()
                 m_desiredForwardSpeed = 0.0;
                 m_desiredAngularVelocity = 0.0;
                 m_desiredLateralVelocity = 0.0;
-                std::cout << "Reached Final Pose: " << m_poseIndex << std::endl;
                 return true;
             }
-
             ++m_poseIndex;
-            std::cout << "Switching to pose: " << m_poseIndex << std::endl;
         }
     }
     else
@@ -96,8 +89,8 @@ bool UnicycleNavigationController::computeDesiredVelocities()
                            );   // faster than hypot but without overflow check
     double slopeAngle = atan2(m_navigationPath[m_poseIndex].position(1) - m_state.position(1), 
                         m_navigationPath[m_poseIndex].position(0) - m_state.position(0));            //projection component of the conjunction of the two poses on the local frame
-    double cosSlope = (cos(slopeAngle));    
-    double sinSlope = (sin(slopeAngle)); 
+    double cosSlope = cos(slopeAngle);    
+    double sinSlope = sin(slopeAngle); 
 
     //Project each speed component on the segment connecting the two poses
     //Let's find the linear speed on the connection of the two path poses
@@ -167,7 +160,7 @@ bool UnicycleNavigationController::computeDesiredVelocities()
 
     //Speed computation 
     angularETA = absoluteAngleDifference / m_maxAngularVelocity;
-    
+    //TODO use an optimal controller to decide whether to turn and how much instead of time quantities
     if (angularETA > linearETA)   //Shim controller
     {
         //rotate in place
@@ -185,14 +178,14 @@ bool UnicycleNavigationController::computeDesiredVelocities()
         m_desiredForwardSpeed = Vx_desired * cos(angle) + Vy_desired * sin(angle);
         m_desiredLateralVelocity = - Vx_desired * sin(angle) + Vy_desired * cos(angle);
         //Debug print
-        if (m_desiredForwardSpeed > m_maxVelocity)
-        {
-            std::cout << "FORWARD SPEED SATURATION" << std::endl;
-        }
-        if (m_desiredLateralVelocity > m_maxLateralVelocity)
-        {
-            std::cout << "LATERAL SPEED SATURATION" << std::endl;
-        }
+        //if (m_desiredForwardSpeed > m_maxVelocity)
+        //{
+        //    std::cout << "FORWARD SPEED SATURATION" << std::endl;
+        //}
+        //if (m_desiredLateralVelocity > m_maxLateralVelocity)
+        //{
+        //    std::cout << "LATERAL SPEED SATURATION" << std::endl;
+        //}
     }
 
     //clip velocities for small quantities, to avoid computational error accumulation/oscillations
