@@ -94,10 +94,8 @@ bool UnicycleNavigationController::computeDesiredVelocities()
     double distance = std::sqrt(pow(m_navigationPath[m_poseIndex].position(0) - m_state.position(0), 2) +
                            pow(m_navigationPath[m_poseIndex].position(1) - m_state.position(1), 2) 
                            );   // faster than hypot but without overflow check
-    double slope = (m_navigationPath[m_poseIndex].position(1) - m_state.position(1)) / 
-                   (m_navigationPath[m_poseIndex].position(0) - m_state.position(0));
-    double slopeAngle = atan2(m_navigationPath[m_poseIndex].position(1) - m_state.position(1), m_navigationPath[m_poseIndex].position(0) - m_state.position(0));            //projection component of the conjunction of the two poses on the local frame
-    std::cout << "atan: " << atan(slope) << " atan2: " << slopeAngle << std::endl;
+    double slopeAngle = atan2(m_navigationPath[m_poseIndex].position(1) - m_state.position(1), 
+                        m_navigationPath[m_poseIndex].position(0) - m_state.position(0));            //projection component of the conjunction of the two poses on the local frame
     double cosSlope = (cos(slopeAngle));    
     double sinSlope = (sin(slopeAngle)); 
 
@@ -147,28 +145,24 @@ bool UnicycleNavigationController::computeDesiredVelocities()
         m_ETA = linearETA;
     }
     
-    iDynTree::Vector3 localVersors;
-    //calculate the direction, on the plane, of the two consecutive poses on its components (x,y,theta)
-    //(x, y, theta) direction sign components / versors
-    //localVersors(0) = (m_navigationPath[m_poseIndex].position(0) - m_state.position(0) >= 0) ? 1 : -1;
-    //localVersors(1) = (m_navigationPath[m_poseIndex].position(1) - m_state.position(1) >= 0) ? 1 : -1;
+    int angleDirection;
     
     //Since the angles vary between (-pi, pi]
     if (angleDifference > M_PI)
     {
-        localVersors(2) = -1;
+        angleDirection = -1;
     }
     else if (angleDifference >= 0 && angleDifference <= M_PI)
     {
-        localVersors(2) = 1;
+        angleDirection = 1;
     }
     else if (angleDifference <0 && angleDifference >= -M_PI)
     {
-        localVersors(2) = -1;
+        angleDirection = -1;
     }
     else    // angleDifference < -M_PI
     {
-        localVersors(2) = 1;
+        angleDirection = 1;
     }
 
     //Speed computation 
@@ -179,11 +173,11 @@ bool UnicycleNavigationController::computeDesiredVelocities()
         //rotate in place
         m_desiredForwardSpeed = 0.0;
         m_desiredLateralVelocity = 0.0;
-        m_desiredAngularVelocity = localVersors(2) * m_maxAngularVelocity;
+        m_desiredAngularVelocity = angleDirection * m_maxAngularVelocity;
     }
     else
     {
-        m_desiredAngularVelocity = localVersors(2) * m_maxAngularVelocity;      //w speed
+        m_desiredAngularVelocity = angleDirection * m_maxAngularVelocity;      //w speed
         double Vx_desired = linearSpeed * cosSlope;               //projection of the linear speed on its components
         double Vy_desired = linearSpeed * sinSlope;
         double angle = m_state.angle;
