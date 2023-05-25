@@ -249,7 +249,7 @@ bool UnicycleNavigationController::setTimeStep(double &dT)
 {
     if (dT < 0)
     {
-        std::cout << "[WARNING] Setting negative Time Step, the module will be used instead." << std::endl;
+        std::cout << "[WARNING] Setting negative Time Step, its absolute value will be used instead." << std::endl;
     }
     if (dT == 0)
     {
