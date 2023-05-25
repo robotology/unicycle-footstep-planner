@@ -5,6 +5,9 @@
  *
  */
 
+//Fix for compiling math constants
+#define _USE_MATH_DEFINES
+#include <math.h>
 #include <UnicycleNavigationController.h>
 #include <cmath>
 #include <iostream>
@@ -84,13 +87,13 @@ bool UnicycleNavigationController::computeDesiredVelocities()
     }
 
     //Computing the direction towards the next pose
-    double distance = std::sqrt(pow(m_navigationPath[m_poseIndex].position(0) - m_state.position(0), 2) +
-                           pow(m_navigationPath[m_poseIndex].position(1) - m_state.position(1), 2) 
+    double distance = std::sqrt(std::pow(m_navigationPath[m_poseIndex].position(0) - m_state.position(0), 2) +
+                           std::pow(m_navigationPath[m_poseIndex].position(1) - m_state.position(1), 2) 
                            );   // faster than hypot but without overflow check
-    double slopeAngle = atan2(m_navigationPath[m_poseIndex].position(1) - m_state.position(1), 
+    double slopeAngle = std::atan2(m_navigationPath[m_poseIndex].position(1) - m_state.position(1), 
                         m_navigationPath[m_poseIndex].position(0) - m_state.position(0));            //projection component of the conjunction of the two poses on the local frame
-    double cosSlope = cos(slopeAngle);    
-    double sinSlope = sin(slopeAngle); 
+    double cosSlope = std::cos(slopeAngle);    
+    double sinSlope = std::sin(slopeAngle); 
 
     //Project each speed component on the segment connecting the two poses
     //Let's find the linear speed on the connection of the two path poses
@@ -177,23 +180,11 @@ bool UnicycleNavigationController::computeDesiredVelocities()
         //Tranform into local frame (inverse of rotation matrix in state dynamics)
         m_desiredForwardSpeed = Vx_desired * cos(angle) + Vy_desired * sin(angle);
         m_desiredLateralVelocity = - Vx_desired * sin(angle) + Vy_desired * cos(angle);
-        //Debug print
-        //if (m_desiredForwardSpeed > m_maxVelocity)
-        //{
-        //    std::cout << "FORWARD SPEED SATURATION" << std::endl;
-        //}
-        //if (m_desiredLateralVelocity > m_maxLateralVelocity)
-        //{
-        //    std::cout << "LATERAL SPEED SATURATION" << std::endl;
-        //}
     }
 
     //clip velocities for small quantities, to avoid computational error accumulation/oscillations
     //TODO - check if limits should be based on discrete time increment for speed clipping
-    //if (relativeAngleDifference< 1E-8)
-    //{
-    //    m_desiredAngularVelocity = 0.0;
-    //}
+    //See if is worth to clip angular speed
     if (std::abs(m_desiredForwardSpeed) < m_zeroTolerance)
     {
         m_desiredForwardSpeed = 0.0;

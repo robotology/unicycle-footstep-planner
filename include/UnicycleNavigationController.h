@@ -7,9 +7,7 @@
 
 #ifndef UNICYCLE_NAVIGATION_CONTROLLER_H
 #define UNICYCLE_NAVIGATION_CONTROLLER_H
-//Fix for compiling math constants
-#define _USE_MATH_DEFINES
-#include <math.h>
+
 #include "UnicycleBaseController.h"
 #include "UnicycleState.h"
 #include <vector>
