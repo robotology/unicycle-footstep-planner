@@ -1078,7 +1078,7 @@ bool UnicyclePlanner::setUnicycleController(UnicycleController controller)
     return false;
 }
 
-bool UnicyclePlanner::setInputPath (std::vector<UnicycleState> input)
+bool UnicyclePlanner::setNavigationPath(const std::vector<UnicycleState> &input)
 {
     if(!m_navigationController->setNavigationPath(input))
     {

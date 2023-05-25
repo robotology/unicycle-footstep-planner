@@ -222,7 +222,7 @@ double UnicycleNavigationController::getDesiredLateralVelocity() const
     return m_desiredLateralVelocity;
 }
 
-bool UnicycleNavigationController::setNavigationPath(std::vector<UnicycleState>& path)
+bool UnicycleNavigationController::setNavigationPath(const std::vector<UnicycleState>& path)
 {
     if (path.size() < 2)
     {

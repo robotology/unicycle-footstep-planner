@@ -59,7 +59,7 @@ public:
 
     void disablePauseConditions();
 
-    bool setNavigationPath(std::vector<UnicycleState> path);
+    bool setNavigationPath(const std::vector<UnicycleState> &path);
 
     /**
      * Set the relative position of the merge point inside the double support phase.

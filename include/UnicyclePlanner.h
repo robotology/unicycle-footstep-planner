@@ -159,7 +159,7 @@ public:
 
     bool setUnicycleController(UnicycleController controller);
 
-    bool setInputPath (std::vector<UnicycleState> input);
+    bool setNavigationPath(const std::vector<UnicycleState> &input);
 
 };
 

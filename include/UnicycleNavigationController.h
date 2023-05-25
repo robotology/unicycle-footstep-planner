@@ -47,7 +47,7 @@ public:
 
     double getDesiredLateralVelocity() const;
 
-    bool setNavigationPath(std::vector<UnicycleState>& path);
+    bool setNavigationPath(const std::vector<UnicycleState>& path);
 
     bool setMaxVelocities(double & maxVelocity, double & maxLateralVelocity, double & maxAngularVelocity);
 
