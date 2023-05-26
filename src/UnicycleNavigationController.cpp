@@ -7,7 +7,6 @@
 
 //Fix for compiling math constants
 #define _USE_MATH_DEFINES
-#include <math.h>
 #include <UnicycleNavigationController.h>
 #include <cmath>
 #include <iostream>

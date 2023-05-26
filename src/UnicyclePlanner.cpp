@@ -919,7 +919,6 @@ bool UnicyclePlanner::computeNewSteps(std::shared_ptr< FootPrint > leftFoot, std
                             std::cerr << "Error while evaluating the cost function." << std::endl;
                             return false;
                         }
-                        std::cout << "Cost value of point: " << cost << std::endl;
 
                         if ((tOptim < 0) || (cost <= minCost)){ //no other feasible point has been found yet
                             tOptim = t;

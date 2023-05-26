@@ -121,6 +121,6 @@ bool UnicycleBaseController::getSaturationLimits(double& maxForwardSpeed, double
 {
     maxForwardSpeed = m_maxLinearVelocity;
     maxLateralVelocity = m_maxLinearVelocity * m_slowWhenSidewaysFactor;
-    maxAngularVelocity = m_maxAngularVelocity;
+    maxAngularVelocity = m_maxAngularVelocity * m_slowWhenTurnGain;
     return true;
 }
