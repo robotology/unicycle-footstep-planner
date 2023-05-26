@@ -549,7 +549,12 @@ bool UnicyclePlanner::setSaturationsConservativeFactors(double linearVelocityCon
 bool UnicyclePlanner::setMaximumIntegratorStepSize(double dT)
 {
     std::lock_guard<std::mutex> guard(m_mutex);
-
+    if (! m_navigationController->setTimeStep(dT))
+    {
+        std::cerr << "[UnicyclePlanner::setMaximumIntegratorStepSize] unable to set the TimeStep to the navigation controller" << std::endl;
+        return false;
+    }
+    
     return m_integrator.setMaximumStepSize(dT);
 }
 
