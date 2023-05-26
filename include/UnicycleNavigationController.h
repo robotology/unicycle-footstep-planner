@@ -31,6 +31,8 @@ private:
 
     bool computeDesiredVelocities();
 
+    bool setMaxVelocities(double & maxVelocity, double & maxLateralVelocity, double & maxAngularVelocity);
+
 public:
 
     UnicycleNavigationController();
@@ -47,9 +49,9 @@ public:
 
     bool setNavigationPath(const std::vector<UnicycleState>& path);
 
-    bool setMaxVelocities(double & maxVelocity, double & maxLateralVelocity, double & maxAngularVelocity);
-
     bool setTimeStep(double &dT);
+
+    virtual bool setSaturations(double maxLinearVelocity, double maxAngularVelocity) override;
 
 };
 

@@ -35,7 +35,7 @@ public:
 
     bool setStateFeedback(const double t, const iDynTree::VectorDynSize &stateFeedback) final;
 
-    bool setSaturations(double maxLinearVelocity, double maxAngularVelocity);
+    virtual bool setSaturations(double maxLinearVelocity, double maxAngularVelocity);
 
     bool setSlowWhenTurnGain(double slowWhenTurnGain); //if >0 the unicycle progress more slowly when also turning.
 

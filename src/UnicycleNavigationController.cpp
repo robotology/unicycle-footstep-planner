@@ -259,3 +259,18 @@ bool UnicycleNavigationController::setTimeStep(double &dT)
     m_dt = std::abs(dT);
     return true;
 }
+
+bool UnicycleNavigationController::setSaturations(double maxLinearVelocity, double maxAngularVelocity)
+{
+    if(! UnicycleBaseController::setSaturations(maxLinearVelocity, maxAngularVelocity))
+        return false;
+    
+    double maxForwardSpeed, maxLateralSpeed, maxAngularSpeed;
+    if(!this->getSaturationLimits(maxForwardSpeed, maxLateralSpeed, maxAngularSpeed))
+        return false;
+
+    if(!this->setMaxVelocities(maxForwardSpeed, maxLateralSpeed, maxAngularSpeed))
+        return false;
+
+    return true;
+}

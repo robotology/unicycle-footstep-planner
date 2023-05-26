@@ -786,13 +786,6 @@ bool UnicyclePlanner::computeNewSteps(std::shared_ptr< FootPrint > leftFoot, std
     {
         if (!m_navigationController->setSaturations(maxVelocity, maxAngVelocity))
         return false;
-        
-        double maxForwardSpeed, maxLateralSpeed, maxAngularSpeed;
-        if(!m_navigationController->getSaturationLimits(maxForwardSpeed, maxLateralSpeed, maxAngularSpeed))
-            return false;
-
-        if(!m_navigationController->setMaxVelocities(maxForwardSpeed, maxLateralSpeed, maxAngularSpeed))
-            return false;
     }
 
     if (!initializePlanner(m_initTime)){
