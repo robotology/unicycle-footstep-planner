@@ -31,7 +31,7 @@ private:
 
     bool computeDesiredVelocities();
 
-    bool setMaxVelocities(double & maxVelocity, double & maxLateralVelocity, double & maxAngularVelocity);
+    bool setMaxVelocities(const double & maxVelocity, const double & maxLateralVelocity, const double & maxAngularVelocity);
 
 public:
 

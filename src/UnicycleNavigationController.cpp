@@ -5,8 +5,6 @@
  *
  */
 
-//Fix for compiling math constants
-#define _USE_MATH_DEFINES
 #include <UnicycleNavigationController.h>
 #include <cmath>
 #include <iostream>
@@ -226,7 +224,7 @@ bool UnicycleNavigationController::setNavigationPath(const std::vector<UnicycleS
     return true;
 }
 
-bool UnicycleNavigationController::setMaxVelocities(double & maxVelocity, double & maxLateralVelocity, double & maxAngularVelocity)
+bool UnicycleNavigationController::setMaxVelocities(const double & maxVelocity, const double & maxLateralVelocity, const double & maxAngularVelocity)
 {
     if (maxVelocity < 0 || maxLateralVelocity < 0 || maxAngularVelocity < 0)
     {

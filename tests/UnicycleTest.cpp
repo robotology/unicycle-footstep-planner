@@ -4,7 +4,6 @@
  * CopyPolicy: Released under the terms of the LGPLv2.1 or later, see LGPL.TXT
  *
  */
-#define _USE_MATH_DEFINES
 #include "UnicyclePlanner.h"
 #include <iDynTree/Core/TestUtils.h>
 #include <iDynTree/Core/Utils.h>
