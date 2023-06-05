@@ -12,6 +12,11 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_BINDIR}"
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_LIBDIR}")
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_LIBDIR}")
 
+if(WIN32)
+  # MSVC standard library doesn't include things like M_PI_2 without this
+  add_definitions(-D_USE_MATH_DEFINES)
+endif()
+
 # Build shared libs
 set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
 
@@ -68,7 +73,8 @@ set(UCPLANNER_SOURCES src/ControlledUnicycle.cpp
                       src/DCMTrajectoryGenerator.cpp
                       src/DCMTrajectoryGeneratorHelper.cpp
                       src/FeetMinimumJerkGenerator.cpp
-                      src/FreeSpaceEllipse.cpp)
+                      src/FreeSpaceEllipse.cpp
+                      src/UnicycleNavigationController.cpp)
 
 set(UCPLANNER_HEADERS include/ControlledUnicycle.h
                       include/UnicycleBaseController.h
@@ -87,7 +93,9 @@ set(UCPLANNER_HEADERS include/ControlledUnicycle.h
                       include/DCMTrajectoryGenerator.h
                       include/DCMTrajectoryGeneratorHelper.h
                       include/FeetMinimumJerkGenerator.h
-                      include/FreeSpaceEllipse.h)
+                      include/FreeSpaceEllipse.h
+                      include/UnicycleState.h
+                      include/UnicycleNavigationController.h)
 
 add_library(UnicyclePlanner ${UCPLANNER_HEADERS} ${UCPLANNER_SOURCES})
 target_include_directories(UnicyclePlanner PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>)

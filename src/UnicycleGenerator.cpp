@@ -733,3 +733,13 @@ std::shared_ptr<DCMTrajectoryGenerator> UnicycleGenerator::addDCMTrajectoryGener
 
     return m_pimpl->dcmTrajectoryGenerator;
 }
+
+bool UnicycleGenerator::setNavigationPath(const std::vector<UnicycleState> &path)
+{
+    if (!m_pimpl->planner->setNavigationPath(path))
+    {
+        std::cerr << "[UnicycleGenerator::setNavigationPath] Unable to set navigation path." << std::endl;
+        return false;
+    }
+    return true;
+}

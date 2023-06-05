@@ -32,11 +32,17 @@ bool UnicyclePlanner::getInitialStateFromFeet(double initTime)
             unicycleState.position(1) = unicycleState.position(1) - m_personFollowingController->getPersonDistance()(1);
             unicycleState.angle = 0;
         }
-        else
+        else if(m_currentController == UnicycleController::DIRECT)
         {
             unicycleState.position.zero();
             unicycleState.angle = 0.0;
         }
+        else    //NAVIGATION
+        {
+            unicycleState.position.zero();
+            unicycleState.angle = 0.0;
+        }
+        
 
         m_left->addStepFromUnicycle(unicycleState, initTime);
         m_right->addStepFromUnicycle(unicycleState, initTime);
@@ -132,6 +138,7 @@ bool UnicyclePlanner::getInitialStateFromFeet(double initTime)
             }
 
             m_directController->setInactiveUntil(initTime + m_nominalTime - m_minTime);
+            m_navigationController->setInactiveUntil(initTime + m_nominalTime - m_minTime); //Same as direct
         }
     }
 
@@ -146,6 +153,14 @@ bool UnicyclePlanner::getInitialStateFromFeet(double initTime)
     {
         //If we want to move right, use the right as first stepping foot
         m_swingLeft = m_directController->desiredLateralVelocity() > 0;
+    }
+
+    //Same for navigation: we change the first stepping foot based on the lateral velocity
+    if (m_firstStep && m_currentController == UnicycleController::NAVIGATION &&
+            std::abs(m_navigationController->getDesiredLateralVelocity()) > 0)
+    {
+        //If we want to move right, use the right as first stepping foot
+        m_swingLeft = m_navigationController->getDesiredLateralVelocity() > 0;
     }
 
     return true;
@@ -363,6 +378,7 @@ bool UnicyclePlanner::addTerminalStep(const UnicycleState &lastUnicycleState)
 UnicyclePlanner::UnicyclePlanner()
     :m_personFollowingController(std::make_shared<PersonFollowingController>())
     ,m_directController(std::make_shared<UnicycleDirectController>())
+    ,m_navigationController(std::make_shared<UnicycleNavigationController>())
     ,m_currentController(UnicycleController::PERSON_FOLLOWING)
     ,m_unicycle(std::make_shared<ControlledUnicycle>())
     ,m_integrator(m_unicycle)
@@ -423,7 +439,8 @@ bool UnicyclePlanner::setSlowWhenTurnGain(double slowWhenTurnGain)
     std::lock_guard<std::mutex> guard(m_mutex);
 
     return m_personFollowingController->setSlowWhenTurnGain(slowWhenTurnGain) &&
-            m_directController->setSlowWhenTurnGain(slowWhenTurnGain);
+            m_directController->setSlowWhenTurnGain(slowWhenTurnGain) && 
+            m_navigationController->setSlowWhenTurnGain(slowWhenTurnGain);
 }
 
 bool UnicyclePlanner::setSlowWhenBackwardFactor(double slowWhenBackwardFactor)
@@ -431,14 +448,17 @@ bool UnicyclePlanner::setSlowWhenBackwardFactor(double slowWhenBackwardFactor)
     std::lock_guard<std::mutex> guard(m_mutex);
 
     return m_personFollowingController->setSlowWhenBackwardFactor(slowWhenBackwardFactor) &&
-            m_directController->setSlowWhenBackwardFactor(slowWhenBackwardFactor);
+            m_directController->setSlowWhenBackwardFactor(slowWhenBackwardFactor) &&
+            m_navigationController->setSlowWhenBackwardFactor(slowWhenBackwardFactor);
 }
 
 bool UnicyclePlanner::setSlowWhenSidewaysFactor(double slowWhenSidewaysFactor)
 {
     std::lock_guard<std::mutex> guard(m_mutex);
 
-    return m_personFollowingController->setSlowWhenSidewaysFactor(slowWhenSidewaysFactor) && m_directController->setSlowWhenSidewaysFactor(slowWhenSidewaysFactor);
+    return m_personFollowingController->setSlowWhenSidewaysFactor(slowWhenSidewaysFactor) && 
+            m_directController->setSlowWhenSidewaysFactor(slowWhenSidewaysFactor) &&
+            m_navigationController->setSlowWhenSidewaysFactor(slowWhenSidewaysFactor);
 }
 
 bool UnicyclePlanner::addDesiredTrajectoryPoint(double initTime, const iDynTree::Vector2 &yDesired)
@@ -529,7 +549,12 @@ bool UnicyclePlanner::setSaturationsConservativeFactors(double linearVelocityCon
 bool UnicyclePlanner::setMaximumIntegratorStepSize(double dT)
 {
     std::lock_guard<std::mutex> guard(m_mutex);
-
+    if (! m_navigationController->setTimeStep(dT))
+    {
+        std::cerr << "[UnicyclePlanner::setMaximumIntegratorStepSize] unable to set the TimeStep to the navigation controller" << std::endl;
+        return false;
+    }
+    
     return m_integrator.setMaximumStepSize(dT);
 }
 
@@ -575,6 +600,7 @@ bool UnicyclePlanner::setMaxStepLength(double maxLength, double backwardMultipli
 
     return true;
 }
+
 
 bool UnicyclePlanner::setMaxAngleVariation(double maxAngleInRad)
 {
@@ -677,7 +703,6 @@ bool UnicyclePlanner::setWidthSetting(double minWidth, double nominalWidth)
     if (!m_unicycleProblem.setMinWidth(minWidth)){
         return false;
     }
-
     m_nominalWidth = nominalWidth;
 
     return true;
@@ -756,6 +781,12 @@ bool UnicyclePlanner::computeNewSteps(std::shared_ptr< FootPrint > leftFoot, std
 
     if (!m_directController->setSaturations(maxVelocity, maxAngVelocity))
         return false;
+
+    if (m_currentController == UnicycleController::NAVIGATION)
+    {
+        if (!m_navigationController->setSaturations(maxVelocity, maxAngVelocity))
+        return false;
+    }
 
     if (!initializePlanner(m_initTime)){
         std::cerr << "Error during planner initialization." <<std::endl;
@@ -942,7 +973,6 @@ bool UnicyclePlanner::computeNewSteps(std::shared_ptr< FootPrint > leftFoot, std
                 m_startLeft = true;
             }
         }
-
     }
 
     return true;
@@ -1031,14 +1061,26 @@ bool UnicyclePlanner::setUnicycleController(UnicycleController controller)
         m_currentController = controller;
         return m_unicycle->setController(m_personFollowingController);
     }
-
-    if (controller == UnicycleController::DIRECT)
+    else if (controller == UnicycleController::DIRECT)
     {
         m_currentController = controller;
         return m_unicycle->setController(m_directController);
+    }
+    else if (controller == UnicycleController::NAVIGATION)
+    {
+        m_currentController = controller;
+        return m_unicycle->setController(m_navigationController);
     }
 
     return false;
 }
 
-
+bool UnicyclePlanner::setNavigationPath(const std::vector<UnicycleState> &input)
+{
+    if(!m_navigationController->setNavigationPath(input))
+    {
+        std::cerr << "[UnicyclePlanner::setInputPath] Unable to set navigation path" << std::endl;
+        return false;
+    }
+    return true;
+}

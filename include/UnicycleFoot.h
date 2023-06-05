@@ -11,14 +11,9 @@
 #include <deque>
 #include <memory>
 #include "FootPrint.h"
+#include "UnicycleState.h"
 #include "iDynTree/Core/VectorFixSize.h"
 #include "iDynTree/Core/MatrixDynSize.h"
-
-struct UnicycleState
-{
-    iDynTree::Vector2 position;
-    double angle;
-};
 
 class UnicycleFoot {
     std::shared_ptr<FootPrint> m_steps_ptr;
