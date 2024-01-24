@@ -38,3 +38,7 @@ build/*
 Thumbs.db
 .kdev4/*
 .vscode/
+
+# Visual Studio
+.vs/*
+CMakeSettings.json
