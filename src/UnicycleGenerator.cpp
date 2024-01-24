@@ -195,8 +195,7 @@ public:
         stance->insert(stance->end(), switchSamples, StepPhase::SwitchOut);
         phaseShift.push_back(phaseShift.back() + switchSamples);
 
-        for (size_t m = phaseShift.back() - switchSamples; m < phaseShift.back(); ++m)
-            mergePoints.push_back(m);
+        mergePoints.push_back(phaseShift.back() - 1); //merge on the last
 
         lFootPhases->shrink_to_fit();
         rFootPhases->shrink_to_fit();
