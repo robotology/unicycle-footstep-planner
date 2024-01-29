@@ -895,16 +895,29 @@ bool DCMTrajectoryGeneratorHelper::addLastStep(const double &singleSupportStartT
     newSingleSupport = std::make_shared<SingleSupportTrajectory>(singleSupportStartTime, singleSupportEndTime,
                                                                  m_omega, ZMP, singleSupportBoundaryCondition);
 
+
+    const double lastStepPercentage = 0.90;
+    
     // instantiate position and velocity boundary conditions vectors
     DCMTrajectoryPoint doubleSupportInitBoundaryCondition;
     DCMTrajectoryPoint doubleSupportFinalBoundaryCondition;
 
-    doubleSupportInitBoundaryCondition.time = singleSupportEndTime;
-    doubleSupportFinalBoundaryCondition.time = doubleSupportEndTime;
+    // instantiate position and velocity boundary conditions vectors
+    DCMTrajectoryPoint finalDoubleSupportInitBoundaryCondition;
+    DCMTrajectoryPoint finalDoubleSupportFinalBoundaryCondition;
 
+    
+    doubleSupportInitBoundaryCondition.time = singleSupportEndTime;
+    doubleSupportFinalBoundaryCondition.time = singleSupportEndTime + (doubleSupportEndTime - singleSupportEndTime) * lastStepPercentage;
     doubleSupportInitBoundaryCondition.DCMPosition = singleSupportBoundaryCondition.DCMPosition;
     doubleSupportFinalBoundaryCondition.DCMPosition = doubleSupportEndPosition;
 
+    finalDoubleSupportInitBoundaryCondition.time = doubleSupportFinalBoundaryCondition.time;
+    finalDoubleSupportFinalBoundaryCondition.time = doubleSupportEndTime;
+    finalDoubleSupportInitBoundaryCondition.DCMPosition = doubleSupportEndPosition;
+    finalDoubleSupportFinalBoundaryCondition.DCMPosition = doubleSupportEndPosition;
+
+    
     if(!newSingleSupport->getDCMVelocity(doubleSupportInitBoundaryCondition.time,
                                          doubleSupportInitBoundaryCondition.DCMVelocity, true, m_dT/2)){
         std::cerr << "[DCMTrajectoryGeneratorHelper::addLastStep] Error when the velocity of the DCM in the next SS phase is evaluated." <<std::endl;
@@ -913,9 +926,20 @@ bool DCMTrajectoryGeneratorHelper::addLastStep(const double &singleSupportStartT
     // only for the last step the final velocity of the DCM is zero
     doubleSupportFinalBoundaryCondition.DCMVelocity.zero();
 
+    finalDoubleSupportFinalBoundaryCondition.DCMVelocity.zero();
+    finalDoubleSupportInitBoundaryCondition.DCMVelocity.zero();        
+
+
+    std::shared_ptr<DoubleSupportTrajectory> newFinalDoubleSupport = std::make_shared<DoubleSupportTrajectory>(finalDoubleSupportInitBoundaryCondition,
+													       finalDoubleSupportFinalBoundaryCondition,
+													       m_omega);
+    
     std::shared_ptr<DoubleSupportTrajectory> newDoubleSupport = std::make_shared<DoubleSupportTrajectory>(doubleSupportInitBoundaryCondition,
                                                                                                           doubleSupportFinalBoundaryCondition,
                                                                                                           m_omega);
+    
+    // add the final Double Support phase
+    m_trajectory.push_back(newFinalDoubleSupport);
     // add the new Double Support phase
     m_trajectory.push_back(newDoubleSupport);
 

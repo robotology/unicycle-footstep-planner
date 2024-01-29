@@ -128,6 +128,14 @@ bool DCMTrajectoryGenerator::setDCMInitialState(const DCMInitialState &initialSt
     return true;
 }
 
+const DCMInitialState & DCMTrajectoryGenerator::getDCMInitialState() const
+{
+
+    std::lock_guard<std::mutex> guard(m_pimpl->mutex);
+
+    return m_pimpl->initialState;
+}
+
 bool DCMTrajectoryGenerator::setOmega(const double &omega)
 {
     std::lock_guard<std::mutex> guard(m_pimpl->mutex);

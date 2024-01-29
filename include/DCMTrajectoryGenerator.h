@@ -57,6 +57,9 @@ public:
 
     bool setDCMInitialState(const DCMInitialState &initialState);
 
+
+    const DCMInitialState & getDCMInitialState() const;
+
     /**
      * Set the time constant of the 3D-LIPM.
      * @param omega is the time constant of the 3D-LIPM.

@@ -14,6 +14,8 @@
 #include <cstddef>
 #include <mutex>
 
+#include <iDynTree/Core/EigenHelpers.h>
+
 typedef StepList::const_iterator StepsIndex;
 
 class UnicycleGenerator::UnicycleGeneratorImplementation {
@@ -486,6 +488,19 @@ bool UnicycleGenerator::reGenerate(double initTime, double dT, double endTime, b
         m_pimpl->leftFootPrint->getLastStep(previousL);
         m_pimpl->rightFootPrint->getLastStep(previousR);
 
+
+	if (m_pimpl->dcmTrajectoryGenerator != nullptr
+	    && iDynTree::toEigen(m_pimpl->dcmTrajectoryGenerator->getDCMInitialState().initialVelocity).norm() < 1e-5)
+	{
+	    double max = std::max(previousL.impactTime, previousR.impactTime);
+	    previousL.impactTime = previousR.impactTime = max;
+
+	    m_pimpl->leftFootPrint->clearSteps();
+	    m_pimpl->rightFootPrint->clearSteps();
+	    m_pimpl->leftFootPrint->addStep(previousL);
+	    m_pimpl->rightFootPrint->addStep(previousR);	    
+	}
+       	
         std::shared_ptr<FootPrint> toBeCorrected = correctLeft ? m_pimpl->leftFootPrint : m_pimpl->rightFootPrint;
 
         correctedStep = correctLeft ? previousL : previousR;
