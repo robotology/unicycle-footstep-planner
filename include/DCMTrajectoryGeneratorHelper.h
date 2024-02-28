@@ -126,6 +126,7 @@ class DCMTrajectoryGeneratorHelper
     double m_dT; /**< Planner period. */
     double m_omega; /**< Time constant of the 3D-LIPM. */
     double m_alpha; /**< alpha is the parameter between zero and one for distributing the DS duration to SS phase. */
+    double m_stillnessPercentage; /**< Percentage of the last double support where the robot is completely still. */
     iDynTree::Vector2 m_leftZMPDelta; /**< Vector containing the desired left ZMP delta. */
     iDynTree::Vector2 m_rightZMPDelta; /**< Vector containing the desired left ZMP delta. */
     FirstDCMTrajectoryMode m_firstDCMTrajectoryMode{FirstDCMTrajectoryMode::ThirdOrderPoly}; /**< Mode of the first DS DCM trajectory */
@@ -245,6 +246,13 @@ class DCMTrajectoryGeneratorHelper
      * @return true / false in case of success / failure.
      */
     bool setAlpha(const double &alpha);
+
+    /**
+     * Set the percentage of the last double support where the robot is completely still.
+     * @param alpha is the percentage of the last double support where the robot is completely still.
+     * @return true / false in case of success / failure.
+     */
+    bool setStillnessPercentage(const double& stillnessPercentage);
 
     /**
      * Set the period of the Trajectory generator planner.

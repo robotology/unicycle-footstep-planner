@@ -710,7 +710,10 @@ DCMTrajectoryGeneratorHelper::DCMTrajectoryGeneratorHelper():
     m_dT(0.01),
     m_omega(9.81/0.5),
     m_alpha(0.5),
+    m_stillnessPercentage(0.1),
     m_lastStepDCMOffset(0),
+    m_maxDoubleSupportDuration(-1),
+    m_nominalDoubleSupportDuration(-1),
     m_pauseActive(false)
 {}
 
@@ -729,12 +732,24 @@ bool DCMTrajectoryGeneratorHelper::setOmega(const double &omega)
 bool DCMTrajectoryGeneratorHelper::setAlpha(const double &alpha)
 {
     if (alpha < 0 && alpha > 1){
-        std::cerr << "[DCMTrajectoryGeneratorHelper::setAlpha] The alpha sould be between zero and one."
+        std::cerr << "[DCMTrajectoryGeneratorHelper::setAlpha] The alpha should be between zero and one."
                   << std::endl;
         return false;
     }
 
     m_alpha = alpha;
+    return true;
+}
+
+bool DCMTrajectoryGeneratorHelper::setStillnessPercentage(const double& stillnessPercentage)
+{
+    if (stillnessPercentage < 0 && stillnessPercentage > 1) {
+        std::cerr << "[DCMTrajectoryGeneratorHelper::setStillnessPercentage] The stillnessPercentage should be between zero and one."
+                  << std::endl;
+        return false;
+    }
+
+    m_stillnessPercentage = stillnessPercentage;
     return true;
 }
 
@@ -896,8 +911,8 @@ bool DCMTrajectoryGeneratorHelper::addLastStep(const double &singleSupportStartT
                                                                  m_omega, ZMP, singleSupportBoundaryCondition);
 
 
-    const double lastStepPercentage = 0.90;
-    
+    double lastStepPercentage = 1.0 - m_stillnessPercentage;
+
     // instantiate position and velocity boundary conditions vectors
     DCMTrajectoryPoint doubleSupportInitBoundaryCondition;
     DCMTrajectoryPoint doubleSupportFinalBoundaryCondition;
@@ -906,7 +921,7 @@ bool DCMTrajectoryGeneratorHelper::addLastStep(const double &singleSupportStartT
     DCMTrajectoryPoint finalDoubleSupportInitBoundaryCondition;
     DCMTrajectoryPoint finalDoubleSupportFinalBoundaryCondition;
 
-    
+
     doubleSupportInitBoundaryCondition.time = singleSupportEndTime;
     doubleSupportFinalBoundaryCondition.time = singleSupportEndTime + (doubleSupportEndTime - singleSupportEndTime) * lastStepPercentage;
     doubleSupportInitBoundaryCondition.DCMPosition = singleSupportBoundaryCondition.DCMPosition;
@@ -917,7 +932,7 @@ bool DCMTrajectoryGeneratorHelper::addLastStep(const double &singleSupportStartT
     finalDoubleSupportInitBoundaryCondition.DCMPosition = doubleSupportEndPosition;
     finalDoubleSupportFinalBoundaryCondition.DCMPosition = doubleSupportEndPosition;
 
-    
+
     if(!newSingleSupport->getDCMVelocity(doubleSupportInitBoundaryCondition.time,
                                          doubleSupportInitBoundaryCondition.DCMVelocity, true, m_dT/2)){
         std::cerr << "[DCMTrajectoryGeneratorHelper::addLastStep] Error when the velocity of the DCM in the next SS phase is evaluated." <<std::endl;
@@ -927,17 +942,17 @@ bool DCMTrajectoryGeneratorHelper::addLastStep(const double &singleSupportStartT
     doubleSupportFinalBoundaryCondition.DCMVelocity.zero();
 
     finalDoubleSupportFinalBoundaryCondition.DCMVelocity.zero();
-    finalDoubleSupportInitBoundaryCondition.DCMVelocity.zero();        
+    finalDoubleSupportInitBoundaryCondition.DCMVelocity.zero();
 
 
     std::shared_ptr<DoubleSupportTrajectory> newFinalDoubleSupport = std::make_shared<DoubleSupportTrajectory>(finalDoubleSupportInitBoundaryCondition,
 													       finalDoubleSupportFinalBoundaryCondition,
 													       m_omega);
-    
+
     std::shared_ptr<DoubleSupportTrajectory> newDoubleSupport = std::make_shared<DoubleSupportTrajectory>(doubleSupportInitBoundaryCondition,
                                                                                                           doubleSupportFinalBoundaryCondition,
                                                                                                           m_omega);
-    
+
     // add the final Double Support phase
     m_trajectory.push_back(newFinalDoubleSupport);
     // add the new Double Support phase

@@ -157,6 +157,13 @@ bool DCMTrajectoryGenerator::setAlpha(const double &alpha)
     return m_pimpl->helper.setAlpha(alpha);
 }
 
+bool DCMTrajectoryGenerator::setStillnessPercentage(const double& stillnessPercentage)
+{
+    std::lock_guard<std::mutex> guard(m_pimpl->mutex);
+
+    return m_pimpl->helper.setStillnessPercentage(stillnessPercentage);
+}
+
 bool DCMTrajectoryGenerator::setLastStepDCMOffsetPercentage(const double &lastStepDCMOffset)
 {
     std::lock_guard<std::mutex> guard(m_pimpl->mutex);

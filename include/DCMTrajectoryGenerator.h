@@ -81,6 +81,13 @@ public:
     bool setAlpha(const double &alpha);
 
     /**
+     * Set the percentage of the last double support where the robot is completely still.
+     * @param alpha is the percentage of the last double support where the robot is completely still.
+     * @return true / false in case of success / failure.
+     */
+    bool setStillnessPercentage(const double& stillnessPercentage);
+
+    /**
      * Set the last step DCM offset
      * @param lastStepDCMOffset Number from 0 to 1 used to indicate the position of the DCM w.r.t. the last ZMP position.
      * If it is 0.5 the final DCM will be in the middle of the two footsteps;
