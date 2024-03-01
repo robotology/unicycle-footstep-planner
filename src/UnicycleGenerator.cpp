@@ -250,7 +250,7 @@ public:
         None
     };
 
-    bool computeNewStepsFromMeasuredSteps(double initTime, double dT, double endTime, const Step& measuredLeft, const Step& measuredRight, CorrectionType correction, bool useMeasuredImpactTimes)
+    bool computeNewStepsFromMeasuredSteps(double initTime, double dT, double endTime, const Step& measuredLeft, const Step& measuredRight, CorrectionType correction)
     {
         Step previousL, previousR;
 
@@ -275,7 +275,9 @@ public:
             Step editedStepLeft = editLeft? editStepFromMeasured(previousL, measuredLeft) : previousL;
             Step editedStepRight = editRight? editStepFromMeasured(previousR, measuredRight) : previousR;
 
-            if (!useMeasuredImpactTimes)
+            // If the input impact times are greater than the init time, it means that they are not valid.
+            // At the same time, if the correction type is None, they are already equal to the previous steps.
+            if (editedStepLeft.impactTime > initTime || editedStepRight.impactTime > initTime)
             {
                 editedStepLeft.impactTime = previousL.impactTime;
                 editedStepRight.impactTime = previousR.impactTime;
@@ -478,7 +480,7 @@ bool UnicycleGenerator::reGenerate(double initTime, double dT, double endTime)
     {
         std::lock_guard<std::mutex> guard(m_pimpl->mutex);
 
-        if (!m_pimpl->computeNewStepsFromMeasuredSteps(initTime, dT, endTime, Step(), Step(), UnicycleGeneratorImplementation::CorrectionType::None, false))
+        if (!m_pimpl->computeNewStepsFromMeasuredSteps(initTime, dT, endTime, Step(), Step(), UnicycleGeneratorImplementation::CorrectionType::None))
         {
             return false;
         }
@@ -492,7 +494,7 @@ bool UnicycleGenerator::reGenerate(double initTime, double dT, double endTime, c
     {
         std::lock_guard<std::mutex> guard(m_pimpl->mutex);
 
-        if (!m_pimpl->computeNewStepsFromMeasuredSteps(initTime, dT, endTime, measuredLeft, measuredRight, UnicycleGeneratorImplementation::CorrectionType::Both, true))
+        if (!m_pimpl->computeNewStepsFromMeasuredSteps(initTime, dT, endTime, measuredLeft, measuredRight, UnicycleGeneratorImplementation::CorrectionType::Both))
         {
             return false;
         }
@@ -507,20 +509,19 @@ bool UnicycleGenerator::reGenerate(double initTime, double dT, double endTime, b
         std::lock_guard<std::mutex> guard(m_pimpl->mutex);
 
         Step correctedLeft, correctedRight;
-        if (correctLeft) {
-            correctedLeft.angle = measuredAngle;
-            correctedLeft.position = measuredPosition;
-            correctedLeft.footName = m_pimpl->leftFootPrint->getFootName();
-        }
-        else {
-            correctedRight.angle = measuredAngle;
-            correctedRight.position = measuredPosition;
-            correctedRight.footName = m_pimpl->rightFootPrint->getFootName();
-        }
+        correctedLeft.angle = measuredAngle;
+        correctedLeft.position = measuredPosition;
+        correctedLeft.impactTime = initTime + 1.0; //to notify that the impact time is not valid
+        correctedLeft.footName = m_pimpl->leftFootPrint->getFootName();
+
+        correctedRight.angle = measuredAngle;
+        correctedRight.position = measuredPosition;
+        correctedRight.impactTime = initTime + 1.0; //to notify that the impact time is not valid
+        correctedRight.footName = m_pimpl->rightFootPrint->getFootName();
 
         UnicycleGeneratorImplementation::CorrectionType correction = correctLeft ? UnicycleGeneratorImplementation::CorrectionType::Left : UnicycleGeneratorImplementation::CorrectionType::Right;
 
-        if (!m_pimpl->computeNewStepsFromMeasuredSteps(initTime, dT, endTime, correctedLeft, correctedRight, correction, false))
+        if (!m_pimpl->computeNewStepsFromMeasuredSteps(initTime, dT, endTime, correctedLeft, correctedRight, correction))
         {
             return false;
         }
@@ -537,12 +538,14 @@ bool UnicycleGenerator::reGenerate(double initTime, double dT, double endTime, c
         Step correctedLeft, correctedRight;
         correctedLeft.angle = measuredLeftAngle;
         correctedLeft.position = measuredLeftPosition;
+        correctedLeft.impactTime = initTime + 1.0; //to notify that the impact time is not valid
         correctedLeft.footName = m_pimpl->leftFootPrint->getFootName();
         correctedRight.angle = measuredRightAngle;
         correctedRight.position = measuredRightPosition;
+        correctedRight.impactTime = initTime + 1.0; //to notify that the impact time is not valid
         correctedRight.footName = m_pimpl->rightFootPrint->getFootName();
 
-        if (!m_pimpl->computeNewStepsFromMeasuredSteps(initTime, dT, endTime, correctedLeft, correctedRight, UnicycleGeneratorImplementation::CorrectionType::Both, false))
+        if (!m_pimpl->computeNewStepsFromMeasuredSteps(initTime, dT, endTime, correctedLeft, correctedRight, UnicycleGeneratorImplementation::CorrectionType::Both))
         {
             return false;
         }
