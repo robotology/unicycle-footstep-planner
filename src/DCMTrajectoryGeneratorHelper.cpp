@@ -710,7 +710,10 @@ DCMTrajectoryGeneratorHelper::DCMTrajectoryGeneratorHelper():
     m_dT(0.01),
     m_omega(9.81/0.5),
     m_alpha(0.5),
+    m_stillnessPercentage(0.1),
     m_lastStepDCMOffset(0),
+    m_maxDoubleSupportDuration(-1),
+    m_nominalDoubleSupportDuration(-1),
     m_pauseActive(false)
 {}
 
@@ -729,12 +732,24 @@ bool DCMTrajectoryGeneratorHelper::setOmega(const double &omega)
 bool DCMTrajectoryGeneratorHelper::setAlpha(const double &alpha)
 {
     if (alpha < 0 && alpha > 1){
-        std::cerr << "[DCMTrajectoryGeneratorHelper::setAlpha] The alpha sould be between zero and one."
+        std::cerr << "[DCMTrajectoryGeneratorHelper::setAlpha] The alpha should be between zero and one."
                   << std::endl;
         return false;
     }
 
     m_alpha = alpha;
+    return true;
+}
+
+bool DCMTrajectoryGeneratorHelper::setStillnessPercentage(const double& stillnessPercentage)
+{
+    if (stillnessPercentage < 0 && stillnessPercentage > 1) {
+        std::cerr << "[DCMTrajectoryGeneratorHelper::setStillnessPercentage] The stillnessPercentage should be between zero and one."
+                  << std::endl;
+        return false;
+    }
+
+    m_stillnessPercentage = stillnessPercentage;
     return true;
 }
 
@@ -895,15 +910,28 @@ bool DCMTrajectoryGeneratorHelper::addLastStep(const double &singleSupportStartT
     newSingleSupport = std::make_shared<SingleSupportTrajectory>(singleSupportStartTime, singleSupportEndTime,
                                                                  m_omega, ZMP, singleSupportBoundaryCondition);
 
+
+    double lastStepPercentage = 1.0 - m_stillnessPercentage;
+
     // instantiate position and velocity boundary conditions vectors
     DCMTrajectoryPoint doubleSupportInitBoundaryCondition;
     DCMTrajectoryPoint doubleSupportFinalBoundaryCondition;
 
-    doubleSupportInitBoundaryCondition.time = singleSupportEndTime;
-    doubleSupportFinalBoundaryCondition.time = doubleSupportEndTime;
+    // instantiate position and velocity boundary conditions vectors
+    DCMTrajectoryPoint finalDoubleSupportInitBoundaryCondition;
+    DCMTrajectoryPoint finalDoubleSupportFinalBoundaryCondition;
 
+
+    doubleSupportInitBoundaryCondition.time = singleSupportEndTime;
+    doubleSupportFinalBoundaryCondition.time = singleSupportEndTime + (doubleSupportEndTime - singleSupportEndTime) * lastStepPercentage;
     doubleSupportInitBoundaryCondition.DCMPosition = singleSupportBoundaryCondition.DCMPosition;
     doubleSupportFinalBoundaryCondition.DCMPosition = doubleSupportEndPosition;
+
+    finalDoubleSupportInitBoundaryCondition.time = doubleSupportFinalBoundaryCondition.time;
+    finalDoubleSupportFinalBoundaryCondition.time = doubleSupportEndTime;
+    finalDoubleSupportInitBoundaryCondition.DCMPosition = doubleSupportEndPosition;
+    finalDoubleSupportFinalBoundaryCondition.DCMPosition = doubleSupportEndPosition;
+
 
     if(!newSingleSupport->getDCMVelocity(doubleSupportInitBoundaryCondition.time,
                                          doubleSupportInitBoundaryCondition.DCMVelocity, true, m_dT/2)){
@@ -913,9 +941,20 @@ bool DCMTrajectoryGeneratorHelper::addLastStep(const double &singleSupportStartT
     // only for the last step the final velocity of the DCM is zero
     doubleSupportFinalBoundaryCondition.DCMVelocity.zero();
 
+    finalDoubleSupportFinalBoundaryCondition.DCMVelocity.zero();
+    finalDoubleSupportInitBoundaryCondition.DCMVelocity.zero();
+
+
+    std::shared_ptr<DoubleSupportTrajectory> newFinalDoubleSupport = std::make_shared<DoubleSupportTrajectory>(finalDoubleSupportInitBoundaryCondition,
+													       finalDoubleSupportFinalBoundaryCondition,
+													       m_omega);
+
     std::shared_ptr<DoubleSupportTrajectory> newDoubleSupport = std::make_shared<DoubleSupportTrajectory>(doubleSupportInitBoundaryCondition,
                                                                                                           doubleSupportFinalBoundaryCondition,
                                                                                                           m_omega);
+
+    // add the final Double Support phase
+    m_trajectory.push_back(newFinalDoubleSupport);
     // add the new Double Support phase
     m_trajectory.push_back(newDoubleSupport);
 

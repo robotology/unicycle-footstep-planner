@@ -57,6 +57,9 @@ public:
 
     bool setDCMInitialState(const DCMInitialState &initialState);
 
+
+    const DCMInitialState & getDCMInitialState() const;
+
     /**
      * Set the time constant of the 3D-LIPM.
      * @param omega is the time constant of the 3D-LIPM.
@@ -76,6 +79,13 @@ public:
      * @return true / false in case of success / failure.
      */
     bool setAlpha(const double &alpha);
+
+    /**
+     * Set the percentage of the last double support where the robot is completely still.
+     * @param alpha is the percentage of the last double support where the robot is completely still.
+     * @return true / false in case of success / failure.
+     */
+    bool setStillnessPercentage(const double& stillnessPercentage);
 
     /**
      * Set the last step DCM offset

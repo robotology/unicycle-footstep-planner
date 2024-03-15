@@ -14,6 +14,8 @@
 #include <cstddef>
 #include <mutex>
 
+#include <iDynTree/Core/EigenHelpers.h>
+
 typedef StepList::const_iterator StepsIndex;
 
 class UnicycleGenerator::UnicycleGeneratorImplementation {
@@ -195,8 +197,7 @@ public:
         stance->insert(stance->end(), switchSamples, StepPhase::SwitchOut);
         phaseShift.push_back(phaseShift.back() + switchSamples);
 
-        for (size_t m = phaseShift.back() - switchSamples; m < phaseShift.back(); ++m)
-            mergePoints.push_back(m);
+        mergePoints.push_back(phaseShift.back() - 1); //merge on the last
 
         lFootPhases->shrink_to_fit();
         rFootPhases->shrink_to_fit();
@@ -222,7 +223,6 @@ public:
         }
     }
 
-
     void fillLeftFixedVector() {
         //NOTE this must be called after createPhasesTimings
         leftFixed.resize(lFootPhases->size());
@@ -232,17 +232,98 @@ public:
         }
     }
 
-    bool clearAndAddMeasuredStep(std::shared_ptr<FootPrint> foot, Step& previousStep, const iDynTree::Vector2 &measuredPosition, double measuredAngle) {
-        foot->clearSteps();
+    Step editStepFromMeasured(const Step& input, const Step& measured)
+    {
+        Step output = input;
+        output.impactTime = measured.impactTime;
+        output.position = measured.position;
+        iDynTree::Rotation initialRotation = iDynTree::Rotation::RotZ(input.angle);
+        iDynTree::Rotation measuredRotation = iDynTree::Rotation::RotZ(measured.angle);
+        output.angle = input.angle + (initialRotation.inverse() * measuredRotation).asRPY()(2);
+        return output;
+    }
 
-        Step correctedStep = previousStep;
+    enum class CorrectionType {
+        Left,
+        Right,
+        Both,
+        None
+    };
 
-        correctedStep.position = measuredPosition;
-        iDynTree::Rotation initialRotation = iDynTree::Rotation::RotZ(previousStep.angle);
-        iDynTree::Rotation measuredRotation = iDynTree::Rotation::RotZ(measuredAngle);
-        correctedStep.angle = previousStep.angle + (initialRotation.inverse()*measuredRotation).asRPY()(2);
+    bool computeNewStepsFromMeasuredSteps(double initTime, double dT, double endTime, const Step& measuredLeft, const Step& measuredRight, CorrectionType correction)
+    {
+        Step previousL, previousR;
 
-        return foot->addStep(correctedStep);
+        if (!(leftFootPrint->keepOnlyPresentStep(initTime))) {
+            std::cerr << "[UnicycleGenerator::reGenerate] The initTime is not compatible with previous runs. Call a method generate instead." << std::endl;
+            return false;
+        }
+
+        if (!(rightFootPrint->keepOnlyPresentStep(initTime))) {
+            std::cerr << "[UnicycleGenerator::reGenerate] The initTime is not compatible with previous runs. Call a method generate instead." << std::endl;
+            return false;
+        }
+
+        bool shouldResetTime = dcmTrajectoryGenerator && iDynTree::toEigen(dcmTrajectoryGenerator->getDCMInitialState().initialVelocity).norm() < 1e-5;
+        bool correctSteps = correction != CorrectionType::None || shouldResetTime;
+        if (correctSteps)
+        {
+            leftFootPrint->getLastStep(previousL);
+            rightFootPrint->getLastStep(previousR);
+            bool editLeft = correction == CorrectionType::Left || correction == CorrectionType::Both ;
+            bool editRight = correction == CorrectionType::Right || correction == CorrectionType::Both;
+            Step editedStepLeft = editLeft? editStepFromMeasured(previousL, measuredLeft) : previousL;
+            Step editedStepRight = editRight? editStepFromMeasured(previousR, measuredRight) : previousR;
+
+            // If the input impact times are greater than the init time, it means that they are not valid.
+            // At the same time, if the correction type is None, they are already equal to the previous steps.
+            if (editedStepLeft.impactTime > initTime || editedStepRight.impactTime > initTime)
+            {
+                editedStepLeft.impactTime = previousL.impactTime;
+                editedStepRight.impactTime = previousR.impactTime;
+            }
+
+            if (shouldResetTime)
+            {
+                double newTime = std::max(previousL.impactTime, previousR.impactTime);
+                editedStepLeft.impactTime = newTime;
+                editedStepRight.impactTime = newTime;
+                editLeft = true;
+                editRight = true;
+            }
+
+            if (editLeft) {
+                leftFootPrint->clearSteps();
+                if (!leftFootPrint->addStep(editedStepLeft)) {
+                    std::cerr << "[UnicycleGenerator::reGenerate] The measuredLeft step is invalid." << std::endl;
+                    return false;
+                }
+            }
+
+            if (editRight) {
+                rightFootPrint->clearSteps();
+                if (!rightFootPrint->addStep(editedStepRight)) {
+                    std::cerr << "[UnicycleGenerator::reGenerate] The measuredRight step is invalid." << std::endl;
+                    return false;
+                }
+            }
+        }
+
+        if (!(planner->computeNewSteps(leftFootPrint, rightFootPrint, initTime, endTime))) {
+            std::cerr << "[UnicycleGenerator::reGenerate] Unicycle planner failed to compute new steps." << std::endl;
+            return false;
+        }
+
+        if (correctSteps) {
+            if (zmpGenerator) {
+                if (!(zmpGenerator->setPreviousSteps(previousL, previousR))) {
+                    std::cerr << "[UnicycleGenerator::reGenerate] Failed to set the previous steps to the ZMP trajectory generator." << std::endl;
+                    return false;
+                }
+            }
+        }
+
+        return true;
     }
 
 
@@ -399,18 +480,8 @@ bool UnicycleGenerator::reGenerate(double initTime, double dT, double endTime)
     {
         std::lock_guard<std::mutex> guard(m_pimpl->mutex);
 
-        if (!(m_pimpl->leftFootPrint->keepOnlyPresentStep(initTime))){
-            std::cerr << "[UnicycleGenerator::reGenerate] The initTime is not compatible with previous runs. Call a method generate instead." << std::endl;
-            return false;
-        }
-
-        if (!(m_pimpl->rightFootPrint->keepOnlyPresentStep(initTime))){
-            std::cerr << "[UnicycleGenerator::reGenerate] The initTime is not compatible with previous runs. Call a method generate instead." << std::endl;
-            return false;
-        }
-
-        if (!(m_pimpl->planner->computeNewSteps(m_pimpl->leftFootPrint, m_pimpl->rightFootPrint, initTime, endTime))) {
-            std::cerr << "[UnicycleGenerator::reGenerate] Unicycle planner failed to compute new steps." << std::endl;
+        if (!m_pimpl->computeNewStepsFromMeasuredSteps(initTime, dT, endTime, Step(), Step(), UnicycleGeneratorImplementation::CorrectionType::None))
+        {
             return false;
         }
     }
@@ -423,44 +494,9 @@ bool UnicycleGenerator::reGenerate(double initTime, double dT, double endTime, c
     {
         std::lock_guard<std::mutex> guard(m_pimpl->mutex);
 
-        Step previousL, previousR;
-
-        if (!(m_pimpl->leftFootPrint->keepOnlyPresentStep(initTime))){
-            std::cerr << "[UnicycleGenerator::reGenerate] The initTime is not compatible with previous runs. Call a method generate instead." << std::endl;
+        if (!m_pimpl->computeNewStepsFromMeasuredSteps(initTime, dT, endTime, measuredLeft, measuredRight, UnicycleGeneratorImplementation::CorrectionType::Both))
+        {
             return false;
-        }
-
-        if (!(m_pimpl->rightFootPrint->keepOnlyPresentStep(initTime))){
-            std::cerr << "[UnicycleGenerator::reGenerate] The initTime is not compatible with previous runs. Call a method generate instead." << std::endl;
-            return false;
-        }
-
-        m_pimpl->leftFootPrint->getLastStep(previousL);
-        m_pimpl->rightFootPrint->getLastStep(previousR);
-
-        m_pimpl->leftFootPrint->clearSteps();
-        m_pimpl->rightFootPrint->clearSteps();
-
-        if (!(m_pimpl->leftFootPrint->addStep(measuredLeft))){
-            std::cerr << "[UnicycleGenerator::reGenerate] The measuredLeft step is invalid." << std::endl;
-            return false;
-        }
-
-        if (!(m_pimpl->rightFootPrint->addStep(measuredRight))){
-            std::cerr << "[UnicycleGenerator::reGenerate] The measuredRight step is invalid." << std::endl;
-            return false;
-        }
-
-        if (!(m_pimpl->planner->computeNewSteps(m_pimpl->leftFootPrint, m_pimpl->rightFootPrint, initTime, endTime))) {
-            std::cerr << "[UnicycleGenerator::reGenerate] Unicycle planner failed to compute new steps." << std::endl;
-            return false;
-        }
-
-        if (m_pimpl->zmpGenerator) {
-            if (!(m_pimpl->zmpGenerator->setPreviousSteps(previousL, previousR))) {
-                std::cerr << "[UnicycleGenerator::reGenerate] Failed to set the previous steps to the ZMP trajectory generator." << std::endl;
-                return false;
-            }
         }
     }
 
@@ -472,40 +508,22 @@ bool UnicycleGenerator::reGenerate(double initTime, double dT, double endTime, b
     {
         std::lock_guard<std::mutex> guard(m_pimpl->mutex);
 
-        Step previousL, previousR, correctedStep;
+        Step correctedLeft, correctedRight;
+        correctedLeft.angle = measuredAngle;
+        correctedLeft.position = measuredPosition;
+        correctedLeft.impactTime = initTime + 1.0; //to notify that the impact time is not valid
+        correctedLeft.footName = m_pimpl->leftFootPrint->getFootName();
 
-        if (!(m_pimpl->leftFootPrint->keepOnlyPresentStep(initTime))){
-            std::cerr << "[UnicycleGenerator::reGenerate] The initTime is not compatible with previous runs. Call a method generate instead." << std::endl;
+        correctedRight.angle = measuredAngle;
+        correctedRight.position = measuredPosition;
+        correctedRight.impactTime = initTime + 1.0; //to notify that the impact time is not valid
+        correctedRight.footName = m_pimpl->rightFootPrint->getFootName();
+
+        UnicycleGeneratorImplementation::CorrectionType correction = correctLeft ? UnicycleGeneratorImplementation::CorrectionType::Left : UnicycleGeneratorImplementation::CorrectionType::Right;
+
+        if (!m_pimpl->computeNewStepsFromMeasuredSteps(initTime, dT, endTime, correctedLeft, correctedRight, correction))
+        {
             return false;
-        }
-
-        if (!(m_pimpl->rightFootPrint->keepOnlyPresentStep(initTime))){
-            std::cerr << "[UnicycleGenerator::reGenerate] The initTime is not compatible with previous runs. Call a method generate instead." << std::endl;
-            return false;
-        }
-
-        m_pimpl->leftFootPrint->getLastStep(previousL);
-        m_pimpl->rightFootPrint->getLastStep(previousR);
-
-        std::shared_ptr<FootPrint> toBeCorrected = correctLeft ? m_pimpl->leftFootPrint : m_pimpl->rightFootPrint;
-
-        correctedStep = correctLeft ? previousL : previousR;
-
-        if (!(m_pimpl->clearAndAddMeasuredStep(toBeCorrected, correctedStep, measuredPosition, measuredAngle))){
-            std::cerr << "[UnicycleGenerator::reGenerate] Failed to update the steps using the measured value." << std::endl;
-            return false;
-        }
-
-        if (!(m_pimpl->planner->computeNewSteps(m_pimpl->leftFootPrint, m_pimpl->rightFootPrint, initTime, endTime))) {
-            std::cerr << "[UnicycleGenerator::reGenerate] Unicycle planner failed to compute new steps." << std::endl;
-            return false;
-        }
-
-        if (m_pimpl->zmpGenerator) {
-            if (!(m_pimpl->zmpGenerator->setPreviousSteps(previousL, previousR))) {
-                std::cerr << "[UnicycleGenerator::reGenerate] Failed to set the previous steps to the ZMP trajectory generator." << std::endl;
-                return false;
-            }
         }
     }
 
@@ -517,41 +535,19 @@ bool UnicycleGenerator::reGenerate(double initTime, double dT, double endTime, c
     {
         std::lock_guard<std::mutex> guard(m_pimpl->mutex);
 
-        Step previousL, previousR;
+        Step correctedLeft, correctedRight;
+        correctedLeft.angle = measuredLeftAngle;
+        correctedLeft.position = measuredLeftPosition;
+        correctedLeft.impactTime = initTime + 1.0; //to notify that the impact time is not valid
+        correctedLeft.footName = m_pimpl->leftFootPrint->getFootName();
+        correctedRight.angle = measuredRightAngle;
+        correctedRight.position = measuredRightPosition;
+        correctedRight.impactTime = initTime + 1.0; //to notify that the impact time is not valid
+        correctedRight.footName = m_pimpl->rightFootPrint->getFootName();
 
-        if (!(m_pimpl->leftFootPrint->keepOnlyPresentStep(initTime))){
-            std::cerr << "[UnicycleGenerator::reGenerate] The initTime is not compatible with previous runs. Call a method generate instead." << std::endl;
+        if (!m_pimpl->computeNewStepsFromMeasuredSteps(initTime, dT, endTime, correctedLeft, correctedRight, UnicycleGeneratorImplementation::CorrectionType::Both))
+        {
             return false;
-        }
-
-        if (!(m_pimpl->rightFootPrint->keepOnlyPresentStep(initTime))){
-            std::cerr << "[UnicycleGenerator::reGenerate] The initTime is not compatible with previous runs. Call a method generate instead." << std::endl;
-            return false;
-        }
-
-        m_pimpl->leftFootPrint->getLastStep(previousL);
-        m_pimpl->rightFootPrint->getLastStep(previousR);
-
-        if (!m_pimpl->clearAndAddMeasuredStep(m_pimpl->leftFootPrint, previousL, measuredLeftPosition, measuredLeftAngle)){
-            std::cerr << "[UnicycleGenerator::reGenerate] Failed to update the left steps using the measured value." << std::endl;
-            return false;
-        }
-
-        if (!m_pimpl->clearAndAddMeasuredStep(m_pimpl->rightFootPrint, previousR, measuredRightPosition, measuredRightAngle)){
-            std::cerr << "[UnicycleGenerator::reGenerate] Failed to update the right steps using the measured value." << std::endl;
-            return false;
-        }
-
-        if (!(m_pimpl->planner->computeNewSteps(m_pimpl->leftFootPrint, m_pimpl->rightFootPrint, initTime, endTime))) {
-            std::cerr << "[UnicycleGenerator::reGenerate] Unicycle planner failed to compute new steps." << std::endl;
-            return false;
-        }
-
-        if (m_pimpl->zmpGenerator) {
-            if (!(m_pimpl->zmpGenerator->setPreviousSteps(previousL, previousR))) {
-                std::cerr << "[UnicycleGenerator::reGenerate] Failed to set the previous steps to the ZMP trajectory generator." << std::endl;
-                return false;
-            }
         }
     }
 

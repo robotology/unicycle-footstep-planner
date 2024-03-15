@@ -42,7 +42,7 @@ bool UnicyclePlanner::getInitialStateFromFeet(double initTime)
             unicycleState.position.zero();
             unicycleState.angle = 0.0;
         }
-        
+
 
         m_left->addStepFromUnicycle(unicycleState, initTime);
         m_right->addStepFromUnicycle(unicycleState, initTime);
@@ -439,7 +439,7 @@ bool UnicyclePlanner::setSlowWhenTurnGain(double slowWhenTurnGain)
     std::lock_guard<std::mutex> guard(m_mutex);
 
     return m_personFollowingController->setSlowWhenTurnGain(slowWhenTurnGain) &&
-            m_directController->setSlowWhenTurnGain(slowWhenTurnGain) && 
+            m_directController->setSlowWhenTurnGain(slowWhenTurnGain) &&
             m_navigationController->setSlowWhenTurnGain(slowWhenTurnGain);
 }
 
@@ -456,7 +456,7 @@ bool UnicyclePlanner::setSlowWhenSidewaysFactor(double slowWhenSidewaysFactor)
 {
     std::lock_guard<std::mutex> guard(m_mutex);
 
-    return m_personFollowingController->setSlowWhenSidewaysFactor(slowWhenSidewaysFactor) && 
+    return m_personFollowingController->setSlowWhenSidewaysFactor(slowWhenSidewaysFactor) &&
             m_directController->setSlowWhenSidewaysFactor(slowWhenSidewaysFactor) &&
             m_navigationController->setSlowWhenSidewaysFactor(slowWhenSidewaysFactor);
 }
@@ -554,7 +554,7 @@ bool UnicyclePlanner::setMaximumIntegratorStepSize(double dT)
         std::cerr << "[UnicyclePlanner::setMaximumIntegratorStepSize] unable to set the TimeStep to the navigation controller" << std::endl;
         return false;
     }
-    
+
     return m_integrator.setMaximumStepSize(dT);
 }
 
