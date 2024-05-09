@@ -30,7 +30,7 @@ bool UnicycleNavigationController::doUnicycleControl(double &forwardSpeed, doubl
 
         return true;
     }
-    
+
     computeDesiredVelocities();
 
     forwardSpeed = m_desiredForwardSpeed;
@@ -44,14 +44,16 @@ bool UnicycleNavigationController::setUnicycleStateFeedback(const double t, cons
 {
     m_time = t;
     m_state.position = position;
+    m_state.angle = angle;
     //Handle angle periodicity for continuous angles bigger than 2pi
-    if (angle > (2*M_PI))
+    // TODO - Changing periodicity between PI and PI
+    if (angle > (M_PI))
     {
-        m_state.angle = angle - ((int)(angle/(2*M_PI))) * 2*M_PI; //use int truncation towards 0
+        m_state.angle = angle - 2 * M_PI;
     }
-    else if(angle < -(2*M_PI))
+    else if(angle < -(M_PI))
     {
-        m_state.angle = angle + ((int)(angle/(2*M_PI))) * 2*M_PI;
+        m_state.angle = angle + 2 * M_PI;
     }
     else
     {
@@ -122,12 +124,17 @@ bool UnicycleNavigationController::computeDesiredVelocities()
     double angleDifference = m_navigationPath[m_poseIndex].angle - m_state.angle;
     //ETAs computation
     double linearETA = distance / linearSpeed;  //Time required for moving from (x_i, y_i) to (x_i+1, y_i+1)
-    double absoluteAngleDifference = std::abs(angleDifference); 
-    if (absoluteAngleDifference >= M_PI)
+
+    if (angleDifference > M_PI)
     {
-        absoluteAngleDifference = std::abs(absoluteAngleDifference - 2*M_PI);
+        angleDifference = angleDifference - 2*M_PI;
     }
-    double angularETA = absoluteAngleDifference / m_maxAngularVelocity;   //Time required for moving from theta_i to theta_i+1
+    else if (angleDifference < -M_PI)
+    {
+        angleDifference = angleDifference + 2*M_PI;
+    }
+
+    double angularETA = std::abs(angleDifference) / m_maxAngularVelocity;   //Time required for moving from theta_i to theta_i+1
 
     if (angularETA > linearETA)
     {
@@ -137,29 +144,19 @@ bool UnicycleNavigationController::computeDesiredVelocities()
     {
         m_ETA = linearETA;
     }
-    
+
     int angleDirection;
-    
-    //Since the angles vary between (-pi, pi]
-    if (angleDifference > M_PI)
-    {
-        angleDirection = -1;
-    }
-    else if (angleDifference >= 0 && angleDifference <= M_PI)
+
+    if (angleDifference >= 0)
     {
         angleDirection = 1;
     }
-    else if (angleDifference <0 && angleDifference >= -M_PI)
+    else if (angleDifference <0)
     {
         angleDirection = -1;
-    }
-    else    // angleDifference < -M_PI
-    {
-        angleDirection = 1;
     }
 
     //Speed computation 
-    angularETA = absoluteAngleDifference / m_maxAngularVelocity;
     //TODO use an optimal controller to decide whether to turn and how much instead of time quantities
     if (angularETA > linearETA)   //Shim controller
     {
@@ -181,7 +178,6 @@ bool UnicycleNavigationController::computeDesiredVelocities()
 
     //clip velocities for small quantities, to avoid computational error accumulation/oscillations
     //TODO - check if limits should be based on discrete time increment for speed clipping
-    //See if is worth to clip angular speed
     if (std::abs(m_desiredForwardSpeed) < m_zeroTolerance)
     {
         m_desiredForwardSpeed = 0.0;

@@ -13,7 +13,6 @@
 
 bool UnicyclePlanner::getInitialStateFromFeet(double initTime)
 {
-
     UnicycleState unicycleState;
     iDynTree::Vector2 dummyVector;
     dummyVector.zero();
