@@ -59,6 +59,7 @@ public:
 
     void disablePauseConditions();
 
+    [[deprecated("Use unicyclePlanner()->setNavigationPath(path) instead")]]
     bool setNavigationPath(const std::vector<UnicycleState> &path);
 
     /**
