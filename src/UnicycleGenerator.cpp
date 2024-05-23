@@ -29,7 +29,7 @@ public:
     std::vector<size_t> mergePoints; //it stores the indeces from which is convenient to merge a new trajectory. The last element is the dimension of m_lFootPhases, i.e. merge after the end
     std::vector<bool> lFootContact, rFootContact, leftFixed;
 
-    double switchPercentage = 0.5, dT = 0.01, endSwitch = 0.0, initTime = 0.0;
+    double switchPercentage = 0.5, dT = 0.01, endSwitch = 1.0, initTime = 0.0;
     double nominalSwitchTime = 1.0;
     double maxStepTime = 10.0, nominalStepTime = 2.0;
     bool pauseActive = true;
@@ -564,8 +564,8 @@ bool UnicycleGenerator::setTerminalHalfSwitchTime(double lastHalfSwitchTime)
 {
     std::lock_guard<std::mutex> guard(m_pimpl->mutex);
 
-    if (lastHalfSwitchTime < 0){
-        std::cerr << "[UnicycleGenerator::setTerminalHalfSwitchTime] The lastHalfSwitchTime cannot be negative." << std::endl;
+    if (lastHalfSwitchTime <= 0){
+        std::cerr << "[UnicycleGenerator::setTerminalHalfSwitchTime] The lastHalfSwitchTime has to be strictly positive." << std::endl;
         return false;
     }
 
