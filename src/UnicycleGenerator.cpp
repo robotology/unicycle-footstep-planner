@@ -427,7 +427,7 @@ bool UnicycleGenerator::generateFromFootPrints(std::shared_ptr<FootPrint> left, 
     }
 
     if (m_pimpl->zmpGenerator) {
-        if (!(m_pimpl->zmpGenerator->computeNewTrajectories(initTime, dT, m_pimpl->switchPercentage, m_pimpl->maxStepTime,
+        if (!(m_pimpl->zmpGenerator->computeNewTrajectories(initTime, dT, m_pimpl->switchPercentage, m_pimpl->maxStepTime, m_pimpl->endSwitch,
                                                             m_pimpl->nominalStepTime, m_pimpl->pauseActive, m_pimpl->mergePoints,
                                                             *left, *right, m_pimpl->orderedSteps, *(m_pimpl->lFootPhases),
                                                             *(m_pimpl->rFootPhases), m_pimpl->phaseShift))) {
