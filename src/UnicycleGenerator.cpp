@@ -118,7 +118,7 @@ public:
         lFootPhases->reserve(trajectoryDimension); // Notice that this dimension may not be the final dimension, due to rounding errors!!!
         rFootPhases->reserve(trajectoryDimension);
 
-        double stepTime, switchTime, pauseTime;
+        double stepTime, switchTime;
         size_t stepSamples, switchSamples, swingSamples;
 
         const StepList& leftList = lFootPrint.getSteps();
@@ -126,6 +126,7 @@ public:
         size_t orderedStepIndex = 2, leftIndex = 1, rightIndex = 1;
         const Step* nextStep;
         double previouStepTime = initTime;
+        double nominalSwingTime = nominalStepTime - nominalSwitchTime;
 
         while (orderedStepIndex < orderedSteps.size()){
             nextStep = orderedSteps[orderedStepIndex];
@@ -139,14 +140,11 @@ public:
             if ((orderedStepIndex == 2) && (lFootPrint.getSteps().front().impactTime != rFootPrint.getSteps().front().impactTime)) { //first half step
                 //Timings
                 switchTime = (switchPercentage/(1 - (switchPercentage/2.0)) * stepTime)/2.0; //half switch
-            } else { //general case
-                switchTime = switchPercentage * stepTime; //full switch
+            } else if(pauseActive && (stepTime > maxStepTime)) { //switch with pause
+                switchTime = stepTime - nominalSwingTime;
             }
-
-            bool pause = pauseActive && (stepTime > maxStepTime); //if true, it will pause in the middle
-            if (pause){
-                pauseTime = stepTime - nominalStepTime;
-                switchTime = nominalSwitchTime + pauseTime;
+            else { //general case
+                switchTime = switchPercentage * stepTime; //full switch
             }
 
             //Samples
@@ -173,13 +171,8 @@ public:
 
             if (orderedStepIndex != 2){ //add no merge point in the first half switch
                 size_t initialMergePoint, finalMergePoint;
-                if (pause){
-                    initialMergePoint = phaseShift.back() - static_cast<size_t>(std::round(nominalSwitchTime * (1 - mergePointRatioBegin)/(dT)));
-                    finalMergePoint = phaseShift.back() - static_cast<size_t>(std::round(nominalSwitchTime * (1 - mergePointRatioEnd)/(dT)));
-                } else {
-                    initialMergePoint = phaseShift.back() - static_cast<size_t>(std::round(switchTime * (1 - mergePointRatioBegin)/(dT)));
-                    finalMergePoint = phaseShift.back() - static_cast<size_t>(std::round(switchTime * (1 - mergePointRatioEnd)/(dT)));
-                }
+                initialMergePoint = phaseShift.back() - static_cast<size_t>(std::round(switchTime * (1 - mergePointRatioBegin)/(dT)));
+                finalMergePoint = phaseShift.back() - static_cast<size_t>(std::round(switchTime * (1 - mergePointRatioEnd)/(dT)));
 
                 for (size_t m = initialMergePoint; m <= finalMergePoint; ++m)
                     mergePoints.push_back(m);
@@ -444,9 +437,9 @@ bool UnicycleGenerator::generateFromFootPrints(std::shared_ptr<FootPrint> left, 
     }
 
     if (m_pimpl->dcmTrajectoryGenerator) {
-        if (!(m_pimpl->dcmTrajectoryGenerator->computeNewTrajectories(initTime, dT, m_pimpl->switchPercentage, m_pimpl->maxStepTime, m_pimpl->nominalStepTime,
-                                                                      m_pimpl->pauseActive, m_pimpl->orderedSteps, m_pimpl->phaseShift, *(m_pimpl->lFootPhases),
-                                                                      *left, *right))) {
+        if (!(m_pimpl->dcmTrajectoryGenerator->computeNewTrajectories(initTime, dT, m_pimpl->switchPercentage, m_pimpl->maxStepTime, m_pimpl->endSwitch,
+                                                                      m_pimpl->nominalStepTime, m_pimpl->pauseActive, m_pimpl->orderedSteps, m_pimpl->phaseShift,
+                                                                      *(m_pimpl->lFootPhases), *left, *right))) {
             std::cerr << "[UnicycleGenerator::generate] Failed while computing new DCM trajectories." << std::endl;
             return false;
         }
