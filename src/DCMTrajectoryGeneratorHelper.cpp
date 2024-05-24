@@ -1467,9 +1467,15 @@ bool DCMTrajectoryGeneratorHelper::setPauseConditions(bool pauseActive, const do
             return false;
         }
 
-        if (nominalDoubleSupportDuration + endSwitchTime > maxDoubleSupportDuration){
-            std::cerr << "[DCMTrajectoryGeneratorHelper::setPauseConditions] Warning: the sum of nominalDoubleSupportDuration and endSwitchTime is greater than maxDoubleSupportDuration. ";
-            std::cerr << "The robot might not be able to pause in the middle of the stance phase." << std::endl;
+        if (nominalDoubleSupportDuration + endSwitchTime > maxDoubleSupportDuration) {
+            if (!m_timingWarningPrinted) {
+                std::cerr << "[DCMTrajectoryGeneratorHelper::setPauseConditions] Warning: the sum of nominalDoubleSupportDuration and endSwitchTime is greater than maxDoubleSupportDuration. ";
+                std::cerr << "The robot might not be able to pause in the middle of the stance phase." << std::endl;
+                m_timingWarningPrinted = true;
+            }
+        }
+        else {
+            m_timingWarningPrinted = false;
         }
     }
     m_nominalDoubleSupportDuration = nominalDoubleSupportDuration;

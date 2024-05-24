@@ -34,6 +34,7 @@ public:
     std::vector<iDynTree::Vector2> leftZMPAcceleration, rightZMPAcceleration, worldZMPAcceleration;
 
     bool initialWeightSpecified = false, previousStepsSpecified = false;
+    bool timingWarningPrinted = false;
 
     std::mutex mutex;
 
@@ -519,8 +520,14 @@ bool ZMPTrajectoryGenerator::computeNewTrajectories(double initTime, double dT, 
     m_pimpl->endSwitchTime = endSwitchTime;
 
     if (m_pimpl->nominalSwitchTime + endSwitchTime > m_pimpl->maxSwitchTime) {
-        std::cerr << "[ZMPTrajectoryGenerator::computeNewTrajectories] Warning: the sum of nominalSwitchTime and endSwitchTime is greater than maxSwitchTime. ";
-        std::cerr << "The robot might not be able to pause in the middle of the stance phase." << std::endl;
+        if (!m_pimpl->timingWarningPrinted) {
+            std::cerr << "[ZMPTrajectoryGenerator::computeNewTrajectories] Warning: the sum of nominalSwitchTime and endSwitchTime is greater than maxSwitchTime. ";
+            std::cerr << "The robot might not be able to pause in the middle of the stance phase." << std::endl;
+            m_pimpl->timingWarningPrinted = true;
+        }
+    }
+    else {
+        m_pimpl->timingWarningPrinted = false;
     }
 
     if (!(m_pimpl->initialWeightSpecified)) {

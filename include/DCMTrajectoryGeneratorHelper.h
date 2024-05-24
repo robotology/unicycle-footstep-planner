@@ -153,6 +153,8 @@ class DCMTrajectoryGeneratorHelper
     std::vector<iDynTree::Vector2> m_ZMPPosition; /**< Vector containing the position of the ZMP. */
     std::vector<double> m_weightInLeft, m_weightInRight; /**< Vectors containing the percentage of weight carried by the foot. */
 
+    bool m_timingWarningPrinted{false}; /**< Flag used to print a warning message about the timings only once. */
+
 
     /**
      * Add the last Single and Double support phases.
