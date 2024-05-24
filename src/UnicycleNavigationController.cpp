@@ -45,8 +45,7 @@ bool UnicycleNavigationController::setUnicycleStateFeedback(const double t, cons
     m_time = t;
     m_state.position = position;
     m_state.angle = angle;
-    //Handle angle periodicity for continuous angles bigger than 2pi
-    // TODO - Changing periodicity between PI and PI
+    //Handle angle periodicity to (-pi, pi]
     if (angle > (M_PI))
     {
         m_state.angle = angle - 2 * M_PI;
@@ -122,8 +121,6 @@ bool UnicycleNavigationController::computeDesiredVelocities()
     }
 
     double angleDifference = m_navigationPath[m_poseIndex].angle - m_state.angle;
-    //ETAs computation
-    double linearETA = distance / linearSpeed;  //Time required for moving from (x_i, y_i) to (x_i+1, y_i+1)
 
     if (angleDifference > M_PI)
     {
@@ -134,6 +131,8 @@ bool UnicycleNavigationController::computeDesiredVelocities()
         angleDifference = angleDifference + 2*M_PI;
     }
 
+    //ETAs computation
+    double linearETA = distance / linearSpeed;  //Time required for moving from (x_i, y_i) to (x_i+1, y_i+1)
     double angularETA = std::abs(angleDifference) / m_maxAngularVelocity;   //Time required for moving from theta_i to theta_i+1
 
     if (angularETA > linearETA)
@@ -146,7 +145,6 @@ bool UnicycleNavigationController::computeDesiredVelocities()
     }
 
     int angleDirection;
-
     if (angleDifference >= 0)
     {
         angleDirection = 1;
