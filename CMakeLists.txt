@@ -54,7 +54,7 @@ if(NOT CMAKE_CONFIGURATION_TYPES)
   endif()
 endif()
 
-find_package(iDynTree 4.3.0 REQUIRED)
+find_package(iDynTree 10.0.0 REQUIRED)
 find_package(Eigen3 REQUIRED)
 
 set(UCPLANNER_SOURCES src/ControlledUnicycle.cpp
