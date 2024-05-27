@@ -6,10 +6,10 @@
  */
 
 #include <ZMPTrajectoryGenerator.h>
-#include <iDynTree/Core/VectorDynSize.h>
-#include <iDynTree/Core/CubicSpline.h>
-#include <iDynTree/Core/Position.h>
-#include <iDynTree/Core/Transform.h>
+#include <iDynTree/VectorDynSize.h>
+#include <iDynTree/CubicSpline.h>
+#include <iDynTree/Position.h>
+#include <iDynTree/Transform.h>
 #include <cassert>
 #include <iostream>
 #include <cmath>

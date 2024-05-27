@@ -10,8 +10,8 @@
 #include <mutex>
 
 #include <CoMHeightTrajectoryGenerator.h>
-#include <iDynTree/Core/VectorDynSize.h>
-#include <iDynTree/Core/CubicSpline.h>
+#include <iDynTree/VectorDynSize.h>
+#include <iDynTree/CubicSpline.h>
 
 
 class CoMHeightTrajectoryGenerator::CoMHeightTrajectoryGeneratorImplementation {

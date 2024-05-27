@@ -7,7 +7,7 @@
 
 #include "UnicycleFoot.h"
 #include "Eigen/Core"
-#include "iDynTree/Core/EigenHelpers.h"
+#include "iDynTree/EigenHelpers.h"
 #include <cmath>
 #include <iostream>
 

@@ -5,11 +5,11 @@
  *
  */
 #include "UnicyclePlanner.h"
-#include <iDynTree/Core/TestUtils.h>
-#include <iDynTree/Core/Utils.h>
+#include <iDynTree/TestUtils.h>
+#include <iDynTree/Utils.h>
 #include <Eigen/Core>
-#include "iDynTree/Core/EigenHelpers.h"
-#include "iDynTree/Core/MatrixDynSize.h"
+#include "iDynTree/EigenHelpers.h"
+#include "iDynTree/MatrixDynSize.h"
 #include <cmath>
 #include <memory>
 #include <iostream>

@@ -14,7 +14,7 @@
 #include <cstddef>
 #include <mutex>
 
-#include <iDynTree/Core/EigenHelpers.h>
+#include <iDynTree/EigenHelpers.h>
 
 typedef StepList::const_iterator StepsIndex;
 

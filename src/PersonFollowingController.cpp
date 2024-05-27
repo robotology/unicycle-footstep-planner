@@ -6,7 +6,7 @@
  */
 
 #include "PersonFollowingController.h"
-#include "iDynTree/Core/EigenHelpers.h"
+#include "iDynTree/EigenHelpers.h"
 #include "Eigen/Core"
 #include <iostream>
 #include <cmath>

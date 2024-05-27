@@ -6,11 +6,11 @@
  */
 
 #include <FeetMinimumJerkGenerator.h>
-#include <iDynTree/Core/VectorDynSize.h>
-#include <iDynTree/Core/CubicSpline.h>
-#include <iDynTree/Core/EigenHelpers.h>
-#include <iDynTree/Core/Twist.h>
-#include <iDynTree/Core/SpatialAcc.h>
+#include <iDynTree/VectorDynSize.h>
+#include <iDynTree/CubicSpline.h>
+#include <iDynTree/EigenHelpers.h>
+#include <iDynTree/Twist.h>
+#include <iDynTree/SpatialAcc.h>
 #include <cassert>
 #include <mutex>
 

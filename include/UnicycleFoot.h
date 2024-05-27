@@ -12,8 +12,8 @@
 #include <memory>
 #include "FootPrint.h"
 #include "UnicycleState.h"
-#include "iDynTree/Core/VectorFixSize.h"
-#include "iDynTree/Core/MatrixDynSize.h"
+#include "iDynTree/VectorFixSize.h"
+#include "iDynTree/MatrixDynSize.h"
 
 class UnicycleFoot {
     std::shared_ptr<FootPrint> m_steps_ptr;

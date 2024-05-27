@@ -6,7 +6,7 @@
  */
 
 #include "UnicycleOptimization.h"
-#include "iDynTree/Core/VectorFixSize.h"
+#include "iDynTree/VectorFixSize.h"
 
 void UnicycleOptimization::updateState(const iDynTree::Vector2 &rPl, double deltaAngle, double deltaTime, const iDynTree::Vector2 &newStepPosition, const iDynTree::Vector2 &newStepRelativePosition)
 {

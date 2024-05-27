@@ -9,8 +9,8 @@
 #define UNICYCLEBASECONTROLLER_H
 
 #include <iDynTree/Controller.h>
-#include <iDynTree/Core/VectorFixSize.h>
-#include <iDynTree/Core/VectorDynSize.h>
+#include <iDynTree/VectorFixSize.h>
+#include <iDynTree/VectorDynSize.h>
 
 class UnicycleBaseController : public iDynTree::optimalcontrol::Controller{
 

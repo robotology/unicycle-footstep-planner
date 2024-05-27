@@ -10,7 +10,7 @@
 
 #include <deque>
 #include <memory>
-#include "iDynTree/Core/VectorFixSize.h"
+#include "iDynTree/VectorFixSize.h"
 
 struct Step{
     iDynTree::Vector2 position;
