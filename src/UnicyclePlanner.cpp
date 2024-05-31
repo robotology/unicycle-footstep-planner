@@ -6,9 +6,9 @@
  */
 
 #include "UnicyclePlanner.h"
-#include "iDynTree/Core/Utils.h"
+#include "iDynTree/Utils.h"
 #include "Eigen/Core"
-#include "iDynTree/Core/EigenHelpers.h"
+#include "iDynTree/EigenHelpers.h"
 #include <iostream>
 
 bool UnicyclePlanner::getInitialStateFromFeet(double initTime)

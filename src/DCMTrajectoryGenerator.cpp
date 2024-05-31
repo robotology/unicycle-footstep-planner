@@ -7,7 +7,7 @@
 
 #include <DCMTrajectoryGenerator.h>
 #include <DCMTrajectoryGeneratorHelper.h>
-#include <iDynTree/Core/EigenHelpers.h>
+#include <iDynTree/EigenHelpers.h>
 #include <cassert>
 #include <iostream>
 #include <cmath>

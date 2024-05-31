@@ -11,9 +11,9 @@
 #include "FreeSpaceEllipse.h"
 #include "UnicycleBaseController.h"
 #include <iDynTree/TimeRange.h>
-#include <iDynTree/Core/VectorFixSize.h>
-#include <iDynTree/Core/VectorDynSize.h>
-#include <iDynTree/Core/MatrixDynSize.h>
+#include <iDynTree/VectorFixSize.h>
+#include <iDynTree/VectorDynSize.h>
+#include <iDynTree/MatrixDynSize.h>
 #include <deque>
 
 typedef struct{

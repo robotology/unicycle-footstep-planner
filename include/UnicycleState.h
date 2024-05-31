@@ -7,7 +7,7 @@
 
 #ifndef UNICYCLE_STATE_H
 #define UNICYCLE_STATE_H
-#include "iDynTree/Core/VectorFixSize.h"
+#include "iDynTree/VectorFixSize.h"
 
 struct UnicycleState
 {

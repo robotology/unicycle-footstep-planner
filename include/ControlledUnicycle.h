@@ -10,8 +10,8 @@
 
 #include <iDynTree/DynamicalSystem.h>
 #include <iDynTree/Controller.h>
-#include <iDynTree/Core/VectorDynSize.h>
-#include <iDynTree/Core/VectorFixSize.h>
+#include <iDynTree/VectorDynSize.h>
+#include <iDynTree/VectorFixSize.h>
 #include <memory>
 
 class ControlledUnicycle : public iDynTree::optimalcontrol::DynamicalSystem{

@@ -13,9 +13,9 @@
 #include <ctime>
 
 // iDynTree
-#include <iDynTree/Core/VectorDynSize.h>
-#include <iDynTree/Core/VectorFixSize.h>
-#include <iDynTree/Core/TestUtils.h>
+#include <iDynTree/VectorDynSize.h>
+#include <iDynTree/VectorFixSize.h>
+#include <iDynTree/TestUtils.h>
 
 #include "utils.h"
 #include <UnicycleGenerator.h>

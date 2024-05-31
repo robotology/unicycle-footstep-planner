@@ -9,7 +9,7 @@
 
 #include <StepPhase.h>
 #include <FootPrint.h>
-#include <iDynTree/Core/VectorFixSize.h>
+#include <iDynTree/VectorFixSize.h>
 
 #include <vector>
 #include <memory>

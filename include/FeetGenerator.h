@@ -10,7 +10,7 @@
 #include <StepPhase.h>
 #include <FootPrint.h>
 
-#include <iDynTree/Core/Transform.h>
+#include <iDynTree/Transform.h>
 
 #include <vector>
 

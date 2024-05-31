@@ -6,12 +6,12 @@
  */
 
 #include "UnicycleGenerator.h"
-#include "iDynTree/Core/TestUtils.h"
+#include "iDynTree/TestUtils.h"
 #include <memory>
-#include "iDynTree/Core/VectorDynSize.h"
-#include "iDynTree/Core/VectorFixSize.h"
-#include "iDynTree/Core/Twist.h"
-#include "iDynTree/Core/SpatialAcc.h"
+#include "iDynTree/VectorDynSize.h"
+#include "iDynTree/VectorFixSize.h"
+#include "iDynTree/Twist.h"
+#include "iDynTree/SpatialAcc.h"
 #include <fstream>
 #include <ctime>
 

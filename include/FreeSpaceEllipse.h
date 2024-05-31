@@ -8,8 +8,8 @@
 #ifndef FREESPACEELLIPSE_H
 #define FREESPACEELLIPSE_H
 
-#include <iDynTree/Core/MatrixFixSize.h>
-#include <iDynTree/Core/VectorFixSize.h>
+#include <iDynTree/MatrixFixSize.h>
+#include <iDynTree/VectorFixSize.h>
 
 class FreeSpaceEllipse
 {

@@ -11,7 +11,7 @@
 #include <FootPrint.h>
 #include <FeetGenerator.h>
 
-#include <iDynTree/Core/Transform.h>
+#include <iDynTree/Transform.h>
 
 #include <vector>
 #include <memory>

@@ -18,8 +18,8 @@
 #include <Eigen/Dense>
 
 // iDynTree
-#include <iDynTree/Core/VectorFixSize.h>
-#include <iDynTree/Core/EigenHelpers.h>
+#include <iDynTree/VectorFixSize.h>
+#include <iDynTree/EigenHelpers.h>
 
 //--------General Support Trajectory definition
 

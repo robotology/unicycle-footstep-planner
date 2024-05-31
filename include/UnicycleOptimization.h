@@ -12,8 +12,8 @@
 #include <iDynTree/Constraint.h>
 #include <iDynTree/Cost.h>
 #include <iDynTree/OptimalControlProblem.h>
-#include <iDynTree/Core/VectorDynSize.h>
-#include <iDynTree/Core/VectorFixSize.h>
+#include <iDynTree/VectorDynSize.h>
+#include <iDynTree/VectorFixSize.h>
 #include <cmath>
 #include <string>
 #include <iostream>

@@ -6,7 +6,7 @@
  */
 
 #include <Eigen/Core>
-#include <iDynTree/Core/EigenHelpers.h>
+#include <iDynTree/EigenHelpers.h>
 #include <FreeSpaceEllipse.h>
 #include <cassert>
 #include <iostream>

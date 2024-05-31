@@ -17,7 +17,7 @@
 #include <Eigen/Dense>
 
 // iDynTree
-#include <iDynTree/Core/VectorFixSize.h>
+#include <iDynTree/VectorFixSize.h>
 
 #include <FootPrint.h>
 #include <StepPhase.h>
