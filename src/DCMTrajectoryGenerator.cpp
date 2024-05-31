@@ -38,7 +38,7 @@ DCMTrajectoryGenerator::DCMTrajectoryGenerator()
 
 }
 
-bool DCMTrajectoryGenerator::computeNewTrajectories(double initTime, double dT, double switchPercentage, double maxStepTime,
+bool DCMTrajectoryGenerator::computeNewTrajectories(double initTime, double dT, double switchPercentage, double maxStepTime, double endSwitchTime,
                                                     double nominalStepTime, bool pauseActive, const std::vector<const Step *> &orderedSteps,
                                                     const std::vector<size_t> &phaseShift, const std::vector<StepPhase> &lFootPhases,
                                                     const FootPrint &left, const FootPrint &right)
@@ -91,7 +91,7 @@ bool DCMTrajectoryGenerator::computeNewTrajectories(double initTime, double dT, 
     double maxSwitchTime = switchPercentage * maxStepTime;
     double nominalSwitchTime = switchPercentage * nominalStepTime;
 
-    if (!m_pimpl->helper.setPauseConditions(pauseActive, maxSwitchTime, nominalSwitchTime)) {
+    if (!m_pimpl->helper.setPauseConditions(pauseActive, maxSwitchTime, nominalSwitchTime, endSwitchTime)) {
         std::cerr << "[DCMTrajectoryGenerator::interpolateDCM] Failed to set pause conditions." << std::endl;
         return false;
     }

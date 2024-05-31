@@ -25,7 +25,7 @@ class ZMPTrajectoryGenerator {
     class ZMPTrajectoryGeneratorImplementation;
     std::unique_ptr<ZMPTrajectoryGeneratorImplementation> m_pimpl;
 
-    bool computeNewTrajectories(double initTime, double dT, double switchPercentage, double maxStepTime,
+    bool computeNewTrajectories(double initTime, double dT, double switchPercentage, double maxStepTime, double endSwitchTime,
                                 double nominalStepTime, bool pauseActive, const std::vector<size_t> &mergePoints,
                                 const FootPrint &left, const FootPrint &right,
                                 const std::vector<const Step*>& orderedSteps,

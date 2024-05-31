@@ -142,6 +142,7 @@ class DCMTrajectoryGeneratorHelper
 
     double m_maxDoubleSupportDuration; /**< Max duration of a DS phase. */
     double m_nominalDoubleSupportDuration; /**< Nominal duration of a DS phase. */
+    double m_endSwitchTime; /**< Duration of the switch time to get to a stop. */
     bool m_pauseActive; /**< True if the pause feature is activate. */
 
     std::vector<std::shared_ptr<GeneralSupportTrajectory>> m_trajectory; /**< Vector containing pointer of every trajectory phase. */
@@ -151,6 +152,8 @@ class DCMTrajectoryGeneratorHelper
     std::vector<iDynTree::Vector2> m_DCMVelocity; /**< Vector containing the velocity of the DCM. */
     std::vector<iDynTree::Vector2> m_ZMPPosition; /**< Vector containing the position of the ZMP. */
     std::vector<double> m_weightInLeft, m_weightInRight; /**< Vectors containing the percentage of weight carried by the foot. */
+
+    bool m_timingWarningPrinted{false}; /**< Flag used to print a warning message about the timings only once. */
 
 
     /**
@@ -279,11 +282,14 @@ class DCMTrajectoryGeneratorHelper
 
     /**
      * Set the pause condition.
+     * @param pauseActive is a flag used to activate the pause feature;
      * @param maxDoubleSupportDuration is the maximum duration of a DS phase;
      * @param nominalDoubleSupportDuration is the nominal duration of a DS phase.
+     * @param endSwitchTime is the duration of the switch time to get to a stop.
      * @return true if the pause conditions are set, false otherwise.
      */
-    bool setPauseConditions(bool pauseActive, const double &maxDoubleSupportDuration, const double &nominalDoubleSupportDuration);
+    bool setPauseConditions(bool pauseActive, const double &maxDoubleSupportDuration,
+                            const double &nominalDoubleSupportDuration, const double& endSwitchTime);
 
     /**
      * Set the last step DCM offset

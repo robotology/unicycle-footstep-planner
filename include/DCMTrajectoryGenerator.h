@@ -46,7 +46,7 @@ class DCMTrajectoryGenerator {
      * @param right Right Steps
      * @return True in case of success.
      */
-    bool computeNewTrajectories(double initTime, double dT, double switchPercentage, double maxStepTime,
+    bool computeNewTrajectories(double initTime, double dT, double switchPercentage, double maxStepTime, double endSwitchTime,
                                 double nominalStepTime, bool pauseActive, const std::vector<const Step *> &orderedSteps,
                                 const std::vector<size_t> &phaseShift, const std::vector<StepPhase> &lFootPhases,
                                 const FootPrint &left, const FootPrint &right);

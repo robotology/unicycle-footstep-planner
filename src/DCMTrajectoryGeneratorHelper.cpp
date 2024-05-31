@@ -328,19 +328,6 @@ public:
      * double support trajectory
      * @param finalBoundaryCondition desired final position and velocity of the
      * double support trajectory
-     * @param omega time constant of the 3D-LIPM
-     * @note the  desired initial acceleration and jerk are set to zero.
-     */
-    DoubleSupportTrajectoryMinJerk(const DCMTrajectoryPoint &initBoundaryCondition,
-                                   const DCMTrajectoryPoint &finalBoundaryCondition,
-                                   const double& omega);
-
-    /**
-     * Constructor.
-     * @param initBoundaryCondition desired init position and velocity of the
-     * double support trajectory
-     * @param finalBoundaryCondition desired final position and velocity of the
-     * double support trajectory
      * @param initialAcceleration desired initial acceleration
      * @param initialJerk desired initial jerk
      * @param omega time constant of the 3D-LIPM
@@ -714,6 +701,7 @@ DCMTrajectoryGeneratorHelper::DCMTrajectoryGeneratorHelper():
     m_lastStepDCMOffset(0),
     m_maxDoubleSupportDuration(-1),
     m_nominalDoubleSupportDuration(-1),
+    m_endSwitchTime(-1),
     m_pauseActive(false)
 {}
 
@@ -1015,9 +1003,11 @@ bool DCMTrajectoryGeneratorHelper::addNewStep(const double &singleSupportStartTi
     // evaluate the new Double Support phase
     std::shared_ptr<GeneralSupportTrajectory> newDoubleSupport = nullptr;
 
+    double doubleSupportDuration = doubleSupportFinalBoundaryCondition.time - doubleSupportInitBoundaryCondition.time;
+
     // check if pause features is active and if it is needed
     if (m_pauseActive &&
-            (doubleSupportFinalBoundaryCondition.time - doubleSupportInitBoundaryCondition.time > m_maxDoubleSupportDuration)){
+            (doubleSupportDuration > std::max(m_maxDoubleSupportDuration, m_endSwitchTime + m_nominalDoubleSupportDuration))){
         // in this case the DS phase is splitted in three DS phase
         // In the first one the DCM of the robot has to reach the center of the feet convex hull
         // In the second one the robot has to stop (stance phase)
@@ -1035,8 +1025,8 @@ bool DCMTrajectoryGeneratorHelper::addNewStep(const double &singleSupportStartTi
         // the constraints at the beginning and at the end of the double support stance phases are equal except for the times
         doubleSupportStanceFinalBoundaryCondition = doubleSupportStanceInitBoundaryCondition;
 
-        doubleSupportStanceInitBoundaryCondition.time = doubleSupportInitBoundaryCondition.time + m_nominalDoubleSupportDuration / 2;
-        doubleSupportStanceFinalBoundaryCondition.time = doubleSupportFinalBoundaryCondition.time - m_nominalDoubleSupportDuration / 2;
+        doubleSupportStanceInitBoundaryCondition.time = doubleSupportInitBoundaryCondition.time + m_endSwitchTime;
+        doubleSupportStanceFinalBoundaryCondition.time = doubleSupportFinalBoundaryCondition.time - m_nominalDoubleSupportDuration;
 
         // add the 3-th part of the Double Support phase
         newDoubleSupport = std::make_shared<DoubleSupportTrajectory>(doubleSupportStanceFinalBoundaryCondition,
@@ -1101,9 +1091,11 @@ bool DCMTrajectoryGeneratorHelper::addFirstDoubleSupportPhase(const DCMTrajector
     // evaluate the new Double Support phase
     std::shared_ptr<GeneralSupportTrajectory> newDoubleSupport = nullptr;
 
+    double doubleSupportDuration = doubleSupportFinalBoundaryCondition.time - doubleSupportInitBoundaryCondition.time;
+
     // check if pause features is active and if it is needed
     if (m_pauseActive &&
-            (doubleSupportFinalBoundaryCondition.time - doubleSupportInitBoundaryCondition.time > m_maxDoubleSupportDuration)){
+        (doubleSupportDuration > std::max(m_maxDoubleSupportDuration, m_endSwitchTime + m_nominalDoubleSupportDuration))) {
         // in this case the DS phase is splitted in three DS phase
         // In the first one the DCM of the robot has to reach the center of the feet convex hull
         // In the second one the robot has to stop (stance phase)
@@ -1128,8 +1120,8 @@ bool DCMTrajectoryGeneratorHelper::addFirstDoubleSupportPhase(const DCMTrajector
         // the constraints at the beginning and at the end of the double support stance phases are equal except for the times
         doubleSupportStanceFinalBoundaryCondition = doubleSupportStanceInitBoundaryCondition;
 
-        doubleSupportStanceInitBoundaryCondition.time = doubleSupportInitBoundaryCondition.time + m_nominalDoubleSupportDuration / 2;
-        doubleSupportStanceFinalBoundaryCondition.time = doubleSupportFinalBoundaryCondition.time - m_nominalDoubleSupportDuration / 2;
+        doubleSupportStanceInitBoundaryCondition.time = doubleSupportInitBoundaryCondition.time + m_endSwitchTime;
+        doubleSupportStanceFinalBoundaryCondition.time = doubleSupportFinalBoundaryCondition.time - m_nominalDoubleSupportDuration;
 
         // add the 3-th part of the Double Support phase
         newDoubleSupport = std::make_shared<DoubleSupportTrajectory>(doubleSupportStanceFinalBoundaryCondition,
@@ -1450,7 +1442,8 @@ void DCMTrajectoryGeneratorHelper::getWeightPercentage(std::vector<double> &weig
     weightInRight = m_weightInRight;
 }
 
-bool DCMTrajectoryGeneratorHelper::setPauseConditions(bool pauseActive, const double &maxDoubleSupportDuration, const double &nominalDoubleSupportDuration)
+bool DCMTrajectoryGeneratorHelper::setPauseConditions(bool pauseActive, const double &maxDoubleSupportDuration,
+                                                      const double &nominalDoubleSupportDuration, const double& endSwitchTime)
 {
     if (maxDoubleSupportDuration < 0){
         std::cerr << "[DCMTrajectoryGeneratorHelper::setPauseConditions] If the maxDoubleSupportDuration is negative, the robot won't pause in middle stance." << std::endl;
@@ -1468,13 +1461,25 @@ bool DCMTrajectoryGeneratorHelper::setPauseConditions(bool pauseActive, const do
             return false;
         }
 
-        if (nominalDoubleSupportDuration > maxDoubleSupportDuration){
-            std::cerr << "[DCMTrajectoryGeneratorHelper::setPauseConditions] The nominalDoubleSupportDuration cannot be greater than maxDoubleSupportDuration." << std::endl;
+        if (endSwitchTime < 0) {
+            std::cerr << "[DCMTrajectoryGeneratorHelper::setPauseConditions] The endSwitchTime is supposed to be positive." << std::endl;
             m_pauseActive = false;
             return false;
         }
+
+        if (nominalDoubleSupportDuration + endSwitchTime > maxDoubleSupportDuration) {
+            if (!m_timingWarningPrinted) {
+                std::cerr << "[DCMTrajectoryGeneratorHelper::setPauseConditions] Warning: the sum of nominalDoubleSupportDuration and endSwitchTime is greater than maxDoubleSupportDuration. ";
+                std::cerr << "The robot might not be able to pause in the middle of the stance phase." << std::endl;
+                m_timingWarningPrinted = true;
+            }
+        }
+        else {
+            m_timingWarningPrinted = false;
+        }
     }
     m_nominalDoubleSupportDuration = nominalDoubleSupportDuration;
+    m_endSwitchTime = endSwitchTime;
 
     return true;
 }

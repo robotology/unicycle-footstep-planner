@@ -21,7 +21,7 @@ public:
     std::vector<InitialState> initStates;
 
 
-    double nominalSwitchTime, maxSwitchTime, maxSwingTime, nominalSwingTime;
+    double nominalSwitchTime, maxSwitchTime, maxSwingTime, nominalSwingTime, endSwitchTime;
     iDynTree::Vector2 leftStanceZMP, leftSwitchZMP, rightStanceZMP, rightSwitchZMP;
 
     Step previousLeft, previousRight;
@@ -34,6 +34,7 @@ public:
     std::vector<iDynTree::Vector2> leftZMPAcceleration, rightZMPAcceleration, worldZMPAcceleration;
 
     bool initialWeightSpecified = false, previousStepsSpecified = false;
+    bool timingWarningPrinted = false;
 
     std::mutex mutex;
 
@@ -98,8 +99,7 @@ public:
             } else if ((stepPhase[instant] == StepPhase::SwitchIn)||(stepPhase[instant] == StepPhase::SwitchOut)){
 
                 switchLength = (endOfPhase-instant) * dT;
-                bool pause = pauseActive && (switchLength > maxSwitchTime); //if true, it will pause in the middle
-
+                bool pause = pauseActive && (switchLength > std::max(maxSwitchTime, endSwitchTime + nominalSwitchTime)); //if true, it will pause in the middle
                 if (phase == 1){ //first half switch
                     m_buffer(0) = initialState.initialPosition;
                     m_spline.setInitialConditions(initialState.initialVelocity, initialState.initialAcceleration);
@@ -112,14 +112,14 @@ public:
                 if (pause){
                     m_buffer(1) = 0.5; //pause in the middle
                     m_spline.setFinalConditions(0.0, 0.0);
-                    m_timesBuffer(1) = nominalSwitchTime/2;
+                    m_timesBuffer(1) = endSwitchTime;
 
                     if (!m_spline.setData(m_timesBuffer, m_buffer)){
                         std::cerr << "[ZMPTrajectoryGenerator::computeNewTrajectories] Failed to initialize the spline for the weight portion during pause." << std::endl;
                         return false;
                     }
                     initialSwitchInstant = instant;
-                    while (instant < (initialSwitchInstant + std::round(nominalSwitchTime/(2.0 * dT)))){
+                    while (instant < (initialSwitchInstant + std::round(endSwitchTime / dT))){
                         switchInstant = (instant - initialSwitchInstant)*dT;
                         output[instant] = m_spline.evaluatePoint(switchInstant, outputVelocity[instant], outputAcceleration[instant]);
 
@@ -135,7 +135,7 @@ public:
                         ++instant;
                     }
 
-                    while (instant < (endOfPhase - std::round(nominalSwitchTime/(2.0 * dT)))){
+                    while (instant < (endOfPhase - std::round(nominalSwitchTime/ dT))){
                         output[instant] = 0.5;
                         outputVelocity[instant] = 0.0;
                         outputAcceleration[instant] = 0.0;
@@ -300,7 +300,7 @@ public:
                     }
                 } else {
                     switchLength = (endOfPhase-instant) * dT;
-                    bool pause = pauseActive && (switchLength > maxSwitchTime); //if true, it will pause in the middle
+                    bool pause = pauseActive && (switchLength > std::max(maxSwitchTime,endSwitchTime + nominalSwitchTime)); //if true, it will pause in the middle
 
                     m_xBuffer(0) = switchZmpInitPosition(0);
                     m_yBuffer(0) = switchZmpInitPosition(1);
@@ -311,7 +311,7 @@ public:
                     m_xBuffer(1) = stanceZmpPosition(0); //bring the ZMP back to the stance position
                     m_yBuffer(1) = stanceZmpPosition(1);
                     if (pause){
-                        m_timesBuffer(1) = nominalSwitchTime/2;
+                        m_timesBuffer(1) = endSwitchTime;
                     } else if (phase == (phaseShift.size() - 1)){
                         m_timesBuffer(1) = (endOfPhase - instant)*dT;
                     } else {
@@ -506,7 +506,7 @@ public:
 
 
 
-bool ZMPTrajectoryGenerator::computeNewTrajectories(double initTime, double dT, double switchPercentage, double maxStepTime,
+bool ZMPTrajectoryGenerator::computeNewTrajectories(double initTime, double dT, double switchPercentage, double maxStepTime, double endSwitchTime,
                                                     double nominalStepTime, bool pauseActive, const std::vector<size_t> &mergePoints,
                                                     const FootPrint &left, const FootPrint &right, const std::vector<const Step *> &orderedSteps,
                                                     const std::vector<StepPhase> &lFootPhases, const std::vector<StepPhase> &rFootPhases, const std::vector<size_t> &phaseShift)
@@ -517,6 +517,18 @@ bool ZMPTrajectoryGenerator::computeNewTrajectories(double initTime, double dT, 
     m_pimpl->maxSwitchTime = switchPercentage * maxStepTime;
     m_pimpl->maxSwingTime = maxStepTime - m_pimpl->maxSwitchTime;
     m_pimpl->nominalSwingTime = nominalStepTime - m_pimpl->nominalSwitchTime;
+    m_pimpl->endSwitchTime = endSwitchTime;
+
+    if (m_pimpl->nominalSwitchTime + endSwitchTime > m_pimpl->maxSwitchTime) {
+        if (!m_pimpl->timingWarningPrinted) {
+            std::cerr << "[ZMPTrajectoryGenerator::computeNewTrajectories] Warning: the sum of nominalSwitchTime and endSwitchTime is greater than maxSwitchTime. ";
+            std::cerr << "The robot might not be able to pause in the middle of the stance phase." << std::endl;
+            m_pimpl->timingWarningPrinted = true;
+        }
+    }
+    else {
+        m_pimpl->timingWarningPrinted = false;
+    }
 
     if (!(m_pimpl->initialWeightSpecified)) {
         m_pimpl->initialState.initialPosition = 0.5;

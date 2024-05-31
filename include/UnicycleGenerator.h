@@ -51,7 +51,7 @@ public:
     //Settings
     bool setSwitchOverSwingRatio(double ratio = 1.0); //indeed the swing time cannot be null, while the switch time can be very close to zero (but not zero)
 
-    bool setTerminalHalfSwitchTime(double lastHalfSwitchTime); //if not set, it won't bring the ZMP at the center of the feet at the end
+    bool setTerminalHalfSwitchTime(double lastHalfSwitchTime);
 
     bool setPauseConditions(double maxStepTime, double nominalStepTime);
 
@@ -59,6 +59,7 @@ public:
 
     void disablePauseConditions();
 
+    [[deprecated("Use unicyclePlanner()->setNavigationPath(path) instead")]]
     bool setNavigationPath(const std::vector<UnicycleState> &path);
 
     /**
