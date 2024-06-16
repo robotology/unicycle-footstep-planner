@@ -2,7 +2,7 @@
  * @file utils.h
  * @author Giulio Romualdi
  * @copyright 2018 iCub Facility - Istituto Italiano di Tecnologia
- *            Released under the terms of the LGPLv2.1 or later, see LGPL.TXT
+ *            Released under the terms of the BSD-3-Clause license, see LICENSE
  * @date 2018
  */
 
