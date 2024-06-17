@@ -1,8 +1,7 @@
 # Copyright (C) 2017 Fondazione Istituto Italiano di Tecnologia
 # Authors: Stefano Dafarra
 #          Giulio Romualdi
-# CopyPolicy: Released under the terms of the LGPLv2.1 or later
-
+# CopyPolicy: Released under the terms of the BSD-3-Clause license, see LICENSE
 cmake_minimum_required(VERSION 3.1)
 
 set (CMAKE_CXX_STANDARD 11)
