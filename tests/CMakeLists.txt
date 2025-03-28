@@ -2,11 +2,6 @@
 # Authors: Stefano Dafarra
 #          Giulio Romualdi
 # CopyPolicy: Released under the terms of the BSD-3-Clause license, see LICENSE
-cmake_minimum_required(VERSION 3.1)
-
-set (CMAKE_CXX_STANDARD 11)
-
-project(UnicyclePlannerTest)
 
 # UnicycleTest
 add_executable(UnicycleTest UnicycleTest.cpp)
