@@ -1,7 +1,7 @@
-cmake_minimum_required(VERSION 3.1)
+cmake_minimum_required(VERSION 3.10)
 project(UnicyclePlanner
         LANGUAGES CXX
-        VERSION 0.8.0)
+        VERSION 0.8.1)
 
 # Defines the CMAKE_INSTALL_LIBDIR, CMAKE_INSTALL_BINDIR and many other useful macros
 # See https://cmake.org/cmake/help/latest/module/GNUInstallDirs.html
